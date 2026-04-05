@@ -257,6 +257,7 @@ function PageLayout() {
                   {flattenRoutes.map((route, index) => {
                     return (
                       <Route
+                        exact
                         key={index}
                         path={`/${route.key}`}
                         component={route.component}

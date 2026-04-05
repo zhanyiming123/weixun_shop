@@ -1,0 +1,177 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pageTitle {
+  margin: 0;
+}
+
+.formCard {
+  :global(.arco-card-body) {
+    padding: 28px 28px 32px;
+  }
+}
+
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.sectionDivider {
+  margin: 28px 0;
+}
+
+.inlineField {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inlineText {
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.discountTypeSelect {
+  width: 180px;
+}
+
+.moneyInput {
+  width: 188px;
+}
+
+.discountInput {
+  width: 140px;
+}
+
+.countInput {
+  width: 120px;
+}
+
+.rangePicker {
+  width: 100%;
+  max-width: 520px;
+}
+
+.scopeBlock,
+.validityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.scopeActionRow,
+.validityActionRow,
+.modalSearchRow,
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.validDaysInput {
+  width: 120px;
+}
+
+.fieldError {
+  margin-top: 8px;
+  color: rgb(var(--red-6));
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.actionCard {
+  :global(.arco-card-body) {
+    padding: 18px 24px;
+  }
+}
+
+.actionRow {
+  justify-content: flex-end;
+}
+
+.modalSearchRow {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modalFilters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modalSearchInput {
+  width: 320px;
+}
+
+.modalCategorySelect {
+  width: 220px;
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.namePrimary {
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.nameMeta {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+@media (max-width: 900px) {
+  .formCard {
+    :global(.arco-card-body) {
+      padding: 20px;
+    }
+  }
+
+  .sectionTitle {
+    font-size: 22px;
+  }
+
+  .discountTypeSelect,
+  .moneyInput,
+  .discountInput,
+  .countInput,
+  .validDaysInput,
+  .modalSearchInput,
+  .modalCategorySelect,
+  .rangePicker {
+    width: 100%;
+    max-width: none;
+  }
+
+  .actionRow {
+    justify-content: stretch;
+  }
+
+  .actionRow :global(.arco-btn) {
+    flex: 1;
+  }
+
+  .modalSearchRow {
+    align-items: stretch;
+  }
+}

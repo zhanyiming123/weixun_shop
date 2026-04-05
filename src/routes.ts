@@ -25,6 +25,18 @@ export const routes: IRoute[] = [
         key: 'product/create',
         ignore: true,
       },
+      {
+        name: 'menu.product.category',
+        key: 'product/category',
+      },
+      {
+        name: 'menu.product.catalog',
+        key: 'product/catalog',
+      },
+      {
+        name: 'menu.product.attribute',
+        key: 'product/attribute',
+      },
     ],
   },
   {
@@ -54,6 +66,18 @@ export const routes: IRoute[] = [
       {
         name: 'menu.marketing.center',
         key: 'marketing/center',
+        children: [
+          {
+            name: 'menu.marketing.couponList',
+            key: 'marketing/center/coupon/list',
+            ignore: true,
+          },
+          {
+            name: 'menu.marketing.couponCreate',
+            key: 'marketing/center/coupon/create',
+            ignore: true,
+          },
+        ],
       },
     ],
   },
