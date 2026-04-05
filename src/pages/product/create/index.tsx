@@ -208,7 +208,7 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
 
 function ProductCreatePage() {
   const history = useHistory();
-  const [classificationPath, setClassificationPath] = useState<string[]>([]);
+  const [categoryPath, setCategoryPath] = useState<string[]>([]);
   const [uploadFileList, setUploadFileList] = useState<UploadItem[]>([]);
   const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
   const [draggingUid, setDraggingUid] = useState<string>('');
@@ -222,9 +222,9 @@ function ProductCreatePage() {
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
 
-  const classificationLabelPath = useMemo(
-    () => findLabelPath(CLASSIFICATION_OPTIONS, classificationPath),
-    [classificationPath]
+  const categoryLabelPath = useMemo(
+    () => findLabelPath(CATEGORY_OPTIONS, categoryPath),
+    [categoryPath]
   );
 
   useEffect(() => {
@@ -480,7 +480,14 @@ function ProductCreatePage() {
             </Form.Item>
 
             <Form.Item field="productCategory" label="商品类目">
-              <Cascader options={CATEGORY_OPTIONS} placeholder="请选择商品类目" allowClear />
+              <Cascader
+                options={CATEGORY_OPTIONS}
+                placeholder="请选择商品类目"
+                allowClear
+                onChange={(value) => {
+                  setCategoryPath(normalizePath(value));
+                }}
+              />
             </Form.Item>
 
             <Form.Item field="productClassification" label="商品分类">
@@ -488,25 +495,22 @@ function ProductCreatePage() {
                 allowClear
                 options={CLASSIFICATION_OPTIONS}
                 placeholder="请选择商品分类"
-                onChange={(value) => {
-                  setClassificationPath(normalizePath(value));
-                }}
               />
             </Form.Item>
 
-            <Form.Item className={styles.fullWidth} label="分类属性">
+            <Form.Item className={styles.fullWidth} label="类目属性">
               <div className={styles.attributePanel}>
                 <Typography.Paragraph className={styles.attributeHint}>
-                  {classificationLabelPath.length
-                    ? `已选择商品分类：${classificationLabelPath.join(
+                  {categoryLabelPath.length
+                    ? `已选择商品类目：${categoryLabelPath.join(
                         ' / '
-                      )}。分类属性将随该分类动态变化（待配置）。`
-                    : '请先选择“商品分类”。分类属性区域会根据分类结果动态变化（当前先预留配置区域）。'}
+                      )}。类目属性将随该类目动态变化（待配置）。`
+                    : '请先选择“商品类目”。类目属性区域会根据类目结果动态变化（当前先预留配置区域）。'}
                 </Typography.Paragraph>
                 <div className={styles.placeholderRows}>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 01</div>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 02</div>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 03</div>
+                  <div className={styles.placeholderRow}>类目属性配置项预留区 01</div>
+                  <div className={styles.placeholderRow}>类目属性配置项预留区 02</div>
+                  <div className={styles.placeholderRow}>类目属性配置项预留区 03</div>
                 </div>
               </div>
             </Form.Item>

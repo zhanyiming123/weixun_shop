@@ -1,0 +1,355 @@
+import React, { useMemo, useState } from 'react';
+import {
+  Button,
+  Form,
+  Input,
+  Message,
+  Modal,
+  Popconfirm,
+  Tooltip,
+  Typography,
+} from '@arco-design/web-react';
+import {
+  IconDown,
+  IconDragDotVertical,
+  IconInfoCircle,
+  IconPlus,
+  IconRight,
+  IconSearch,
+} from '@arco-design/web-react/icon';
+import styles from './index.module.less';
+
+const { useForm } = Form;
+
+interface CatalogItem {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+const INITIAL_ITEMS: CatalogItem[] = [
+  { id: 'CAT001', name: '服饰箱包', parentId: null },
+  { id: 'CAT002', name: '男士服装', parentId: 'CAT001' },
+  { id: 'CAT004', name: 'T恤', parentId: 'CAT002' },
+  { id: 'CAT005', name: '衬衫', parentId: 'CAT002' },
+  { id: 'CAT003', name: '女士服装', parentId: 'CAT001' },
+  { id: 'CAT006', name: '连衣裙', parentId: 'CAT003' },
+  { id: 'CAT007', name: '数码电器', parentId: null },
+  { id: 'CAT008', name: '手机通讯', parentId: 'CAT007' },
+  { id: 'CAT009', name: '电脑整机', parentId: 'CAT007' },
+  { id: 'CAT010', name: '家居家装', parentId: null },
+];
+
+let counter = 11;
+
+function genId() {
+  return `CAT${String(counter++).padStart(3, '0')}`;
+}
+
+// Reorder siblings: move dragId before/after targetId (same parentId only)
+function reorderItems(
+  items: CatalogItem[],
+  dragId: string,
+  targetId: string,
+  pos: 'before' | 'after'
+): CatalogItem[] {
+  const drag = items.find((i) => i.id === dragId);
+  const target = items.find((i) => i.id === targetId);
+  if (!drag || !target || drag.parentId !== target.parentId) return items;
+
+  const pid = drag.parentId;
+  const siblings = items.filter((i) => i.parentId === pid);
+  const rest = siblings.filter((i) => i.id !== dragId);
+  const tIdx = rest.findIndex((i) => i.id === targetId);
+  const insertAt = pos === 'after' ? tIdx + 1 : tIdx;
+  const reordered = [...rest.slice(0, insertAt), drag, ...rest.slice(insertAt)];
+
+  // Rebuild full list: replace sibling-level slots in original order
+  const iter = reordered[Symbol.iterator]();
+  return items.map((item) =>
+    item.parentId === pid ? (iter.next().value as CatalogItem) : item
+  );
+}
+
+// Delete an item and all its descendants
+function removeWithDescendants(items: CatalogItem[], id: string): CatalogItem[] {
+  const toRemove = new Set<string>([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const item of items) {
+      if (item.parentId !== null && toRemove.has(item.parentId) && !toRemove.has(item.id)) {
+        toRemove.add(item.id);
+        changed = true;
+      }
+    }
+  }
+  return items.filter((i) => !toRemove.has(i.id));
+}
+
+// Max depth: 0/1/2 = 3 levels total (一级/二级/三级)
+const MAX_DEPTH = 2;
+
+function CatalogPage() {
+  const [items, setItems] = useState<CatalogItem[]>(INITIAL_ITEMS);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['CAT001', 'CAT007']));
+  const [searchText, setSearchText] = useState('');
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [addParentId, setAddParentId] = useState<string | null>(null);
+  const [form] = useForm();
+
+  // Drag-and-drop state
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dragOverPos, setDragOverPos] = useState<'before' | 'after'>('before');
+
+  // Build parentId → ordered children map
+  const childrenMap = useMemo(() => {
+    const map = new Map<string | null, CatalogItem[]>();
+    for (const item of items) {
+      const k = item.parentId;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(item);
+    }
+    return map;
+  }, [items]);
+
+  // Search: flat list of matching items; null = no search active
+  const searchResults = useMemo(() => {
+    const q = searchText.trim();
+    if (!q) return null;
+    return items.filter((i) => i.name.includes(q));
+  }, [items, searchText]);
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function openAddModal(parentId: string | null) {
+    setEditingItem(null);
+    setAddParentId(parentId);
+    form.resetFields();
+    setModalVisible(true);
+  }
+
+  function openEditModal(item: CatalogItem) {
+    setEditingItem(item);
+    setAddParentId(null);
+    form.setFieldsValue({ name: item.name });
+    setModalVisible(true);
+  }
+
+  async function handleModalOk() {
+    try {
+      const values = await form.validate();
+      if (editingItem) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === editingItem.id ? { ...i, name: values.name } : i))
+        );
+        Message.success('修改成功');
+      } else {
+        const newItem: CatalogItem = { id: genId(), name: values.name, parentId: addParentId };
+        setItems((prev) => [...prev, newItem]);
+        if (addParentId) {
+          setExpanded((prev) => new Set([...prev, addParentId]));
+        }
+        Message.success('添加成功');
+      }
+      setModalVisible(false);
+    } catch (_) {
+      // validation error
+    }
+  }
+
+  function handleDelete(item: CatalogItem) {
+    setItems((prev) => removeWithDescendants(prev, item.id));
+    Message.success('删除成功');
+  }
+
+  // ── DnD handlers ──────────────────────────────────────────────────────────
+  function onDragStart(e: React.DragEvent, id: string) {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDragOverId(id);
+    setDragOverPos(e.clientY < rect.top + rect.height / 2 ? 'before' : 'after');
+  }
+
+  function onDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    if (dragId && dragId !== targetId) {
+      setItems((prev) => reorderItems(prev, dragId, targetId, dragOverPos));
+    }
+    setDragId(null);
+    setDragOverId(null);
+  }
+
+  function onDragEnd() {
+    setDragId(null);
+    setDragOverId(null);
+  }
+
+  // ── Row renderer (recursive) ───────────────────────────────────────────────
+  function renderRow(item: CatalogItem, depth: number) {
+    const nodeChildren = childrenMap.get(item.id) || [];
+    const hasChildren = nodeChildren.length > 0;
+    const isExpanded = expanded.has(item.id);
+    const isDragging = dragId === item.id;
+    const isDropBefore = dragOverId === item.id && dragOverPos === 'before';
+    const isDropAfter = dragOverId === item.id && dragOverPos === 'after';
+    const canAddChild = depth < MAX_DEPTH;
+    const isSearchMode = searchResults !== null;
+
+    const cls = [
+      styles.row,
+      isDragging && styles.dragging,
+      isDropBefore && styles.dropBefore,
+      isDropAfter && styles.dropAfter,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return (
+      <div key={item.id}>
+        <div
+          className={cls}
+          style={{ paddingLeft: 16 + depth * 28 }}
+          draggable={!isSearchMode}
+          onDragStart={(e) => !isSearchMode && onDragStart(e, item.id)}
+          onDragOver={(e) => !isSearchMode && onDragOver(e, item.id)}
+          onDrop={(e) => !isSearchMode && onDrop(e, item.id)}
+          onDragEnd={() => !isSearchMode && onDragEnd()}
+        >
+          {!isSearchMode && (
+            <span className={styles.dragHandle}>
+              <IconDragDotVertical />
+            </span>
+          )}
+          <span
+            className={styles.expandIcon}
+            onClick={() => hasChildren && toggleExpand(item.id)}
+          >
+            {hasChildren ? (
+              isExpanded ? <IconDown /> : <IconRight />
+            ) : (
+              <span className={styles.expandPlaceholder} />
+            )}
+          </span>
+          <span className={styles.nodeName}>{item.name}</span>
+          <span className={styles.nodeActions}>
+            {canAddChild && (
+              <Typography.Text className={styles.actionLink} onClick={() => openAddModal(item.id)}>
+                新增子类目
+              </Typography.Text>
+            )}
+            <Typography.Text className={styles.actionLink} onClick={() => openEditModal(item)}>
+              编辑
+            </Typography.Text>
+            <Popconfirm
+              title={`确定删除「${item.name}」${hasChildren ? '及其所有子类目' : ''}吗？`}
+              onOk={() => handleDelete(item)}
+            >
+              <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
+            </Popconfirm>
+          </span>
+        </div>
+        {isExpanded && hasChildren && !isSearchMode && (
+          <div className={depth === 0 ? styles.childrenBg : ''}>
+            {nodeChildren.map((child) => renderRow(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const rootItems = childrenMap.get(null) || [];
+  const displayItems = searchResults ?? rootItems;
+
+  return (
+    <div className={styles.page}>
+      {/* ── Toolbar ── */}
+      <div className={styles.toolbar}>
+        <Button type="primary" icon={<IconPlus />} onClick={() => openAddModal(null)}>
+          新增类目
+        </Button>
+        <Button onClick={() => Message.info('导入功能暂未实现')}>导入类目</Button>
+        <Button onClick={() => Message.info('导出功能暂未实现')}>导出类目</Button>
+        <Typography.Text
+          className={styles.toolbarLink}
+          onClick={() => Message.info('查看已导出列表暂未实现')}
+        >
+          查看已导出列表
+        </Typography.Text>
+        <span className={styles.spacer} />
+        <Input
+          className={styles.searchInput}
+          prefix={<IconSearch />}
+          placeholder="搜索类目名称"
+          allowClear
+          value={searchText}
+          onChange={setSearchText}
+        />
+      </div>
+
+      {/* ── List ── */}
+      <div className={styles.listContainer}>
+        <div className={styles.listHeader}>
+          <span className={styles.headerName}>类目</span>
+          <span className={styles.headerOps}>
+            <Tooltip content="可对类目进行新增、编辑、删除操作，同级类目支持拖拽排序">
+              <IconInfoCircle className={styles.headerInfoIcon} />
+            </Tooltip>
+            操作
+          </span>
+        </div>
+
+        <div>
+          {displayItems.length === 0 ? (
+            <div className={styles.empty}>暂无类目数据</div>
+          ) : (
+            displayItems.map((item) => renderRow(item, 0))
+          )}
+        </div>
+
+        {/* System preset node */}
+        <div className={styles.systemNode}>
+          <div className={styles.systemName}>未分类</div>
+          <div className={styles.systemDesc}>系统预设类目，不可编辑和删除</div>
+        </div>
+      </div>
+
+      {/* ── Modal ── */}
+      <Modal
+        title={editingItem ? '编辑类目' : addParentId ? '新增子类目' : '新增类目'}
+        visible={modalVisible}
+        onOk={handleModalOk}
+        onCancel={() => setModalVisible(false)}
+        style={{ width: 440 }}
+        focusLock
+        autoFocus={false}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            field="name"
+            label="类目名称"
+            rules={[{ required: true, message: '请输入类目名称' }]}
+          >
+            <Input placeholder="请输入类目名称" maxLength={20} showWordLimit />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}
+
+export default CatalogPage;
