@@ -15,43 +15,22 @@ import {
   IconInfoCircle,
   IconPlus,
   IconRight,
-  IconSearch,
 } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
+import {
+  ProductCatalogConfigItem,
+  readProductCatalogItems,
+  useProductCatalogItems,
+} from './data';
 
 const { useForm } = Form;
 
-interface CatalogItem {
-  id: string;
-  name: string;
-  parentId: string | null;
-}
-
-const INITIAL_ITEMS: CatalogItem[] = [
-  { id: 'CAT001', name: '服饰箱包', parentId: null },
-  { id: 'CAT002', name: '男士服装', parentId: 'CAT001' },
-  { id: 'CAT004', name: 'T恤', parentId: 'CAT002' },
-  { id: 'CAT005', name: '衬衫', parentId: 'CAT002' },
-  { id: 'CAT003', name: '女士服装', parentId: 'CAT001' },
-  { id: 'CAT006', name: '连衣裙', parentId: 'CAT003' },
-  { id: 'CAT007', name: '数码电器', parentId: null },
-  { id: 'CAT008', name: '手机通讯', parentId: 'CAT007' },
-  { id: 'CAT009', name: '电脑整机', parentId: 'CAT007' },
-  { id: 'CAT010', name: '家居家装', parentId: null },
-];
-
-let counter = 11;
-
-function genId() {
-  return `CAT${String(counter++).padStart(3, '0')}`;
-}
-
 function reorderItems(
-  items: CatalogItem[],
+  items: ProductCatalogConfigItem[],
   dragId: string,
   targetId: string,
   pos: 'before' | 'after'
-): CatalogItem[] {
+): ProductCatalogConfigItem[] {
   const drag = items.find((i) => i.id === dragId);
   const target = items.find((i) => i.id === targetId);
   if (!drag || !target || drag.parentId !== target.parentId) return items;
@@ -65,11 +44,14 @@ function reorderItems(
 
   const iter = reordered[Symbol.iterator]();
   return items.map((item) =>
-    item.parentId === pid ? (iter.next().value as CatalogItem) : item
+    item.parentId === pid ? (iter.next().value as ProductCatalogConfigItem) : item
   );
 }
 
-function removeWithDescendants(items: CatalogItem[], id: string): CatalogItem[] {
+function removeWithDescendants(
+  items: ProductCatalogConfigItem[],
+  id: string
+): ProductCatalogConfigItem[] {
   const toRemove = new Set<string>([id]);
   let changed = true;
   while (changed) {
@@ -87,12 +69,20 @@ function removeWithDescendants(items: CatalogItem[], id: string): CatalogItem[] 
 const MAX_DEPTH = 2;
 
 function CatalogPage() {
-  const [items, setItems] = useState<CatalogItem[]>(INITIAL_ITEMS);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(['CAT001', 'CAT007']));
-  const [searchText, setSearchText] = useState('');
+  const [items, setItems] = useProductCatalogItems();
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () =>
+      new Set(
+        readProductCatalogItems()
+          .filter((item) => item.parentId === null)
+          .map((item) => item.id)
+      )
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ProductCatalogConfigItem | null>(
+    null
+  );
   const [addParentId, setAddParentId] = useState<string | null>(null);
   const [form] = useForm();
 
@@ -101,7 +91,7 @@ function CatalogPage() {
   const [dragOverPos, setDragOverPos] = useState<'before' | 'after'>('before');
 
   const childrenMap = useMemo(() => {
-    const map = new Map<string | null, CatalogItem[]>();
+    const map = new Map<string | null, ProductCatalogConfigItem[]>();
     for (const item of items) {
       const k = item.parentId;
       if (!map.has(k)) map.set(k, []);
@@ -112,12 +102,6 @@ function CatalogPage() {
     }
     return map;
   }, [items]);
-
-  const searchResults = useMemo(() => {
-    const q = searchText.trim();
-    if (!q) return null;
-    return items.filter((i) => i.name.includes(q));
-  }, [items, searchText]);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -134,7 +118,7 @@ function CatalogPage() {
     setModalVisible(true);
   }
 
-  function openEditModal(item: CatalogItem) {
+  function openEditModal(item: ProductCatalogConfigItem) {
     setEditingItem(item);
     setAddParentId(null);
     form.setFieldsValue({ name: item.name });
@@ -150,10 +134,19 @@ function CatalogPage() {
         );
         Message.success('修改成功');
       } else {
-        const newItem: CatalogItem = { id: genId(), name: values.name, parentId: addParentId };
+        const newItem: ProductCatalogConfigItem = {
+          id: `catalog_${Date.now()}`,
+          name: values.name,
+          parentId: addParentId,
+          hasSkuSpec: false,
+        };
         setItems((prev) => [...prev, newItem]);
         if (addParentId) {
-          setExpanded((prev) => new Set([...prev, addParentId]));
+          setExpanded((prev) => {
+            const next = new Set(prev);
+            next.add(addParentId);
+            return next;
+          });
         }
         Message.success('添加成功');
       }
@@ -163,7 +156,7 @@ function CatalogPage() {
     }
   }
 
-  function handleDelete(item: CatalogItem) {
+  function handleDelete(item: ProductCatalogConfigItem) {
     setItems((prev) => removeWithDescendants(prev, item.id));
     Message.success('删除成功');
   }
@@ -194,7 +187,7 @@ function CatalogPage() {
     setDragOverId(null);
   }
 
-  function renderRow(item: CatalogItem, depth: number) {
+  function renderRow(item: ProductCatalogConfigItem, depth: number) {
     const nodeChildren = childrenMap.get(item.id) || [];
     const hasChildren = nodeChildren.length > 0;
     const isExpanded = expanded.has(item.id);
@@ -202,7 +195,6 @@ function CatalogPage() {
     const isDropBefore = dragOverId === item.id && dragOverPos === 'before';
     const isDropAfter = dragOverId === item.id && dragOverPos === 'after';
     const canAddChild = depth < MAX_DEPTH;
-    const isSearchMode = searchResults !== null;
 
     const cls = [
       styles.row,
@@ -218,17 +210,15 @@ function CatalogPage() {
         <div
           className={cls}
           style={{ paddingLeft: 16 + depth * 28 }}
-          draggable={!isSearchMode}
-          onDragStart={(e) => !isSearchMode && onDragStart(e, item.id)}
-          onDragOver={(e) => !isSearchMode && onDragOver(e, item.id)}
-          onDrop={(e) => !isSearchMode && onDrop(e, item.id)}
-          onDragEnd={() => !isSearchMode && onDragEnd()}
+          draggable
+          onDragStart={(e) => onDragStart(e, item.id)}
+          onDragOver={(e) => onDragOver(e, item.id)}
+          onDrop={(e) => onDrop(e, item.id)}
+          onDragEnd={onDragEnd}
         >
-          {!isSearchMode && (
-            <span className={styles.dragHandle}>
-              <IconDragDotVertical />
-            </span>
-          )}
+          <span className={styles.dragHandle}>
+            <IconDragDotVertical />
+          </span>
           <span
             className={styles.expandIcon}
             onClick={() => hasChildren && toggleExpand(item.id)}
@@ -257,7 +247,7 @@ function CatalogPage() {
             </Popconfirm>
           </span>
         </div>
-        {isExpanded && hasChildren && !isSearchMode && (
+        {isExpanded && hasChildren && (
           <div className={depth === 0 ? styles.childrenBg : ''}>
             {nodeChildren.map((child) => renderRow(child, depth + 1))}
           </div>
@@ -267,7 +257,6 @@ function CatalogPage() {
   }
 
   const rootItems = childrenMap.get(null) || [];
-  const displayItems = searchResults ?? rootItems;
 
   return (
     <div className={styles.page}>
@@ -275,23 +264,6 @@ function CatalogPage() {
         <Button type="primary" icon={<IconPlus />} onClick={() => openAddModal(null)}>
           新增类目
         </Button>
-        <Button onClick={() => Message.info('导入功能暂未实现')}>导入类目</Button>
-        <Button onClick={() => Message.info('导出功能暂未实现')}>导出类目</Button>
-        <Typography.Text
-          className={styles.toolbarLink}
-          onClick={() => Message.info('查看已导出列表暂未实现')}
-        >
-          查看已导出列表
-        </Typography.Text>
-        <span className={styles.spacer} />
-        <Input
-          className={styles.searchInput}
-          prefix={<IconSearch />}
-          placeholder="搜索类目名称"
-          allowClear
-          value={searchText}
-          onChange={setSearchText}
-        />
       </div>
 
       <div className={styles.listContainer}>
@@ -306,10 +278,10 @@ function CatalogPage() {
         </div>
 
         <div>
-          {displayItems.length === 0 ? (
+          {rootItems.length === 0 ? (
             <div className={styles.empty}>暂无类目数据</div>
           ) : (
-            displayItems.map((item) => renderRow(item, 0))
+            rootItems.map((item) => renderRow(item, 0))
           )}
         </div>
 

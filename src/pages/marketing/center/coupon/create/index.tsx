@@ -19,6 +19,8 @@ import {
 import { useHistory } from 'react-router-dom';
 import styles from './index.module.less';
 import {
+  buildCouponProductCategoryOptions,
+  buildCouponSpus,
   CategoryConditionScope,
   COUPON_DISCOUNT_OPTIONS,
   CouponDiscountType,
@@ -32,16 +34,21 @@ import {
   formatCurrency,
   MOCK_CAMPUSES,
   MOCK_CATEGORY_SPEC_OPTIONS,
-  MOCK_COUPON_CATEGORIES,
-  MOCK_COUPON_SPUS,
-  MOCK_ORG_CASCADE_OPTIONS,
-  MOCK_PRODUCT_CATEGORY_OPTIONS,
   PRODUCT_SCOPE_OPTIONS,
   VALIDITY_TYPE_OPTIONS,
 } from '../data';
+import {
+  buildProductCatalogLeafItems,
+  readProductCatalogItems,
+} from '@/pages/product/catalog/data';
+import {
+  buildProductOwnershipCascaderOptions,
+  readProductOwnershipItems,
+} from '@/pages/product/category/data';
 
 const Option = Select.Option;
 const RangePicker = DatePicker.RangePicker;
+const MultiCascader = Cascader as any;
 
 type CouponErrorKey =
   | 'discountConfig'
@@ -58,6 +65,21 @@ type CouponFormErrors = Partial<Record<CouponErrorKey, string>>;
 
 function CouponCreatePage() {
   const history = useHistory();
+  const catalogItems = useMemo(() => readProductCatalogItems(), []);
+  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
+  const couponCategories = useMemo(
+    () => buildProductCatalogLeafItems(catalogItems),
+    [catalogItems]
+  );
+  const couponProductCategoryOptions = useMemo(
+    () => buildCouponProductCategoryOptions(couponCategories),
+    [couponCategories]
+  );
+  const couponOwnershipOptions = useMemo(
+    () => buildProductOwnershipCascaderOptions(ownershipItems),
+    [ownershipItems]
+  );
+  const couponSpus = useMemo(() => buildCouponSpus(couponCategories), [couponCategories]);
   const [formValues, setFormValues] = useState<CouponFormValues>(
     DEFAULT_COUPON_FORM_VALUES
   );
@@ -70,11 +92,11 @@ function CouponCreatePage() {
   const filteredProductData = useMemo(
     () =>
       filterCouponProducts(
-        MOCK_COUPON_SPUS,
+        couponSpus,
         skuKeyword,
         productCategoryValue || undefined
       ),
-    [productCategoryValue, skuKeyword]
+    [couponSpus, productCategoryValue, skuKeyword]
   );
 
   const selectedConditionCategoryIds = useMemo(
@@ -558,14 +580,14 @@ function CouponCreatePage() {
 
                 {formValues.productScope === 'condition' && (
                   <div className={styles.conditionScopePanel}>
-                    {/* Step 1: 选择类目（下拉多选） */}
+                    {/* Step 1: 选择商品类目（下拉多选） */}
                     <div className={styles.conditionFieldItem}>
-                      <span className={styles.conditionFieldLabel}>商品分类</span>
+                      <span className={styles.conditionFieldLabel}>商品类目</span>
                       <Select
                         allowClear
                         mode="multiple"
                         className={styles.categorySelect}
-                        placeholder="请选择适用的商品分类（可多选）"
+                        placeholder="请选择适用的商品类目（可多选）"
                         value={selectedConditionCategoryIds}
                         onChange={(values: string[]) => {
                           const next = values || [];
@@ -594,7 +616,7 @@ function CouponCreatePage() {
                           clearErrors('conditionScopes');
                         }}
                       >
-                        {MOCK_COUPON_CATEGORIES.map((category) => (
+                        {couponCategories.map((category) => (
                           <Option key={category.id} value={category.id}>
                             {category.label}
                           </Option>
@@ -603,7 +625,7 @@ function CouponCreatePage() {
                     </div>
 
                     {formValues.conditionScopes.map((scope) => {
-                      const catalogItem = MOCK_COUPON_CATEGORIES.find(
+                      const catalogItem = couponCategories.find(
                         (c) => c.id === scope.categoryId
                       );
                       const specOptions =
@@ -626,14 +648,14 @@ function CouponCreatePage() {
                               <span className={styles.conditionFieldLabel}>
                                 商品归属
                               </span>
-                              <Cascader
+                              <MultiCascader
                                 multiple
                                 allowClear
                                 changeOnSelect
                                 expandTrigger="hover"
                                 className={styles.orgCascader}
                                 placeholder="可选任意层级（事业部 / 课程体系 / 课程项），不选则全部适用"
-                                options={MOCK_ORG_CASCADE_OPTIONS}
+                                options={couponOwnershipOptions}
                                 value={scope.selectedOrgPaths}
                                 onChange={(value) =>
                                   handleOrgPathsChange(
@@ -868,7 +890,7 @@ function CouponCreatePage() {
                 setProductCategoryValue(typeof value === 'string' ? value : undefined)
               }
             >
-              {MOCK_PRODUCT_CATEGORY_OPTIONS.map((item) => (
+              {couponProductCategoryOptions.map((item) => (
                 <Option key={item.value} value={item.value}>
                   {item.label}
                 </Option>

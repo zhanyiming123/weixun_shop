@@ -4,9 +4,9 @@ import {
   ProductItem,
   ProductType,
 } from '@/pages/product/list/data';
-import { CatalogItem, MOCK_CATALOG_ITEMS } from '@/pages/product/catalog/data';
+import { ProductCatalogLeafItem } from '@/pages/product/catalog/data';
 
-export type { CatalogItem };
+export type { ProductCatalogLeafItem };
 
 export type CouponDiscountType =
   | 'fullReduction'
@@ -186,85 +186,6 @@ export const MOCK_CAMPUSES: CouponCampusOption[] = [
 ];
 
 /**
- * 商品类目列表，从商品类目管理模块（product/catalog）引入。
- * 优惠券等业务模块统一引用此数据，不在各自模块内重复定义。
- */
-export const MOCK_COUPON_CATEGORIES: CatalogItem[] = MOCK_CATALOG_ITEMS;
-
-/**
- * 商品归属级联选择器数据（事业部 → 课程体系 → 课程项，三级）。
- * 真实场景下应从后端 org_node 表动态加载；此处使用 mock 数据。
- */
-export const MOCK_ORG_CASCADE_OPTIONS: OrgCascaderOption[] = [
-  {
-    value: 'xm',
-    label: '橡沐事业部',
-    children: [
-      {
-        value: 'xm-study',
-        label: '橡沐留学',
-        children: [
-          { value: 'p001', label: '美国升学服务' },
-          { value: 'p002', label: '英国升学服务' },
-        ],
-      },
-      {
-        value: 'xm-lang',
-        label: '橡沐语培',
-        children: [
-          { value: 'p003', label: '雅思冲刺课' },
-          { value: 'p004', label: '托福强化课' },
-        ],
-      },
-    ],
-  },
-  {
-    value: 'wx',
-    label: '维新事业部',
-    children: [
-      {
-        value: 'wx-plan',
-        label: '维新升学规划',
-        children: [
-          { value: 'p005', label: '背景提升规划' },
-          { value: 'p006', label: '择校规划服务' },
-        ],
-      },
-      {
-        value: 'wx-thesis',
-        label: '维新论文文书',
-        children: [
-          { value: 'p007', label: '文书精修服务' },
-          { value: 'p008', label: '申请全案服务' },
-        ],
-      },
-    ],
-  },
-  {
-    value: 'hq',
-    label: '海桥事业部',
-    children: [
-      {
-        value: 'hq-international',
-        label: '海桥国际课程',
-        children: [
-          { value: 'p009', label: 'A-Level系统课' },
-          { value: 'p010', label: 'IB强化课程' },
-        ],
-      },
-      {
-        value: 'hq-overseas',
-        label: '海桥海外课程',
-        children: [
-          { value: 'p011', label: 'AP先修课程' },
-          { value: 'p012', label: 'STEP冲刺课程' },
-        ],
-      },
-    ],
-  },
-];
-
-/**
  * 各类目对应的 SKU 规格选项（如班型）。
  * 仅 CatalogItem.hasSkuSpec === true 的类目需要配置此项。
  * 真实场景下应从该类目下商品的 SKU 规格维度动态读取；此处使用 mock 数据。
@@ -283,11 +204,14 @@ const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
   service: ['基础服务', '进阶服务'],
 };
 
-export const MOCK_PRODUCT_CATEGORY_OPTIONS: CouponProductCategoryOption[] =
-  MOCK_CATALOG_ITEMS.map((item) => ({
+export function buildCouponProductCategoryOptions(
+  categories: ProductCatalogLeafItem[]
+) {
+  return categories.map((item) => ({
     label: item.label,
     value: item.id,
   }));
+}
 
 export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   discountType: 'fullReduction',
@@ -509,40 +433,42 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
   },
 ];
 
-function resolveProductCategory(product: ProductItem): CouponProductCategoryOption {
-  if (product.name.includes('预测课')) {
-    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
+function resolveProductCategory(
+  product: ProductItem,
+  categories: ProductCatalogLeafItem[]
+): CouponProductCategoryOption {
+  const matched = categories.find((item) => item.id === product.productCatalogId);
+  if (matched) {
+    return { label: matched.label, value: matched.id };
   }
-  if (product.name.includes('冲刺')) {
-    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
-  }
-  if (product.name.includes('预习课')) {
-    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
-  }
-  if (product.name.includes('模考')) {
-    return MOCK_PRODUCT_CATEGORY_OPTIONS[1];
-  }
-  return MOCK_PRODUCT_CATEGORY_OPTIONS[3];
+
+  const fallback = categories[0];
+  return {
+    label: fallback?.label || '未配置类目',
+    value: fallback?.id || '',
+  };
 }
 
-export const MOCK_COUPON_SPUS: CouponSpuItem[] = MOCK_PRODUCTS.map(
-  (product, productIndex) => {
-    const category = resolveProductCategory(product);
-    const children = SKU_SPEC_TEMPLATES[product.productType].map((specText, specIndex) => {
-      const surcharge = specIndex === 0 ? 0 : Math.max(product.price * 0.12, 10);
-      return {
-        key: `sku-${product.id}-${specIndex + 1}`,
-        rowType: 'sku' as const,
-        productId: product.id,
-        productName: product.name,
-        productCategory: category.label,
-        productCategoryValue: category.value,
-        skuId: `SKU_${productIndex + 1}_${specIndex + 1}`,
-        skuSpecText: specText,
-        productType: PRODUCT_TYPE_LABEL_MAP[product.productType],
-        price: Number((product.price + surcharge).toFixed(2)),
-      };
-    });
+export function buildCouponSpus(categories: ProductCatalogLeafItem[]) {
+  return MOCK_PRODUCTS.map((product, productIndex) => {
+    const category = resolveProductCategory(product, categories);
+    const children = SKU_SPEC_TEMPLATES[product.productType].map(
+      (specText, specIndex) => {
+        const surcharge = specIndex === 0 ? 0 : Math.max(product.price * 0.12, 10);
+        return {
+          key: `sku-${product.id}-${specIndex + 1}`,
+          rowType: 'sku' as const,
+          productId: product.id,
+          productName: product.name,
+          productCategory: category.label,
+          productCategoryValue: category.value,
+          skuId: `SKU_${productIndex + 1}_${specIndex + 1}`,
+          skuSpecText: specText,
+          productType: PRODUCT_TYPE_LABEL_MAP[product.productType],
+          price: Number((product.price + surcharge).toFixed(2)),
+        };
+      }
+    );
 
     const prices = children.map((item) => item.price);
 
@@ -561,12 +487,8 @@ export const MOCK_COUPON_SPUS: CouponSpuItem[] = MOCK_PRODUCTS.map(
       maxPrice: Math.max(...prices),
       children,
     };
-  }
-);
-
-export const MOCK_COUPON_SKUS: CouponSkuItem[] = MOCK_COUPON_SPUS.flatMap(
-  (item) => item.children
-);
+  });
+}
 
 export function normalizeCascaderPath(
   value: (string | string[])[] | undefined

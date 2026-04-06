@@ -4,21 +4,9 @@
   gap: 16px;
 }
 
-.headerCard {
-  :global(.arco-card-body) {
-    padding-bottom: 20px;
-  }
-}
-
-.headerTop {
+.pageActions {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.headerDesc {
-  margin-bottom: 0;
+  justify-content: flex-end;
 }
 
 .sectionCard {
@@ -28,11 +16,7 @@
 }
 
 .sectionHeader {
-  margin-bottom: 18px;
-}
-
-.sectionDesc {
-  margin-bottom: 0;
+  margin-bottom: 16px;
 }
 
 .sectionTitle {
@@ -41,7 +25,7 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 18px 20px;
 }
 
@@ -54,6 +38,10 @@
   color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
+}
+
+.singleFieldControl {
+  width: min(100%, 520px);
 }
 
 .limitSwitchRow {
@@ -279,6 +267,17 @@
   background: var(--color-fill-1);
 }
 
+.uploadContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.uploadPrimary {
+  width: 126px;
+  flex: none;
+}
+
 .uploadTrigger {
   width: 126px;
   height: 126px;
@@ -306,10 +305,11 @@
 }
 
 .thumbList {
-  margin-top: 14px;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .thumbItem {
@@ -383,9 +383,39 @@
   background: var(--color-fill-1);
 }
 
+.attributeSectionLabel {
+  margin-bottom: 8px;
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .attributeHint {
   margin-bottom: 8px;
   color: var(--color-text-2);
+}
+
+.attributeFieldList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attributeFieldItem {
+  margin-bottom: 0;
+}
+
+.attributeCheckboxGroup {
+  width: min(100%, 520px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.attributeEmpty {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 22px;
 }
 
 .placeholderRows {
@@ -411,16 +441,15 @@
 }
 
 @media (max-width: 900px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .headerTop {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .uploadTrigger {
+    width: 100%;
+  }
+
+  .uploadContent {
+    flex-direction: column;
+  }
+
+  .uploadPrimary {
     width: 100%;
   }
 

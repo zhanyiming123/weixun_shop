@@ -1,0 +1,113 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterCard {
+  :global(.arco-card-body) {
+    padding-bottom: 20px;
+  }
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 20px;
+}
+
+.filterItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.catalogCascader {
+  width: 240px;
+}
+
+.filterLabel {
+  flex: none;
+  color: var(--color-text-1);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filterActions {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.tableCard {
+  :global(.arco-card-body) {
+    padding-top: 16px;
+  }
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+}
+
+.categoryTitle {
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+.valueList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.textType {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.actionLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.actionLink {
+  color: rgb(var(--primary-6));
+  cursor: pointer;
+
+  &:hover {
+    color: rgb(var(--primary-5));
+  }
+}
+
+.actionLinkDanger {
+  color: rgb(var(--danger-6));
+  cursor: pointer;
+
+  &:hover {
+    color: rgb(var(--danger-5));
+  }
+}
+
+.actionDivider {
+  color: var(--color-border-2);
+}
+
+@media (max-width: 768px) {
+  .filterActions {
+    margin-left: 0;
+  }
+
+  .catalogCascader {
+    width: 100%;
+  }
+}

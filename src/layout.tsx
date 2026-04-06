@@ -108,13 +108,22 @@ function PageLayout() {
 
   function onClickMenuItem(key) {
     const currentRoute = flattenRoutes.find((r) => r.key === key);
+    if (!currentRoute) {
+      return;
+    }
+
+    const nextPath = currentRoute.path ? currentRoute.path : `/${key}`;
     const component = currentRoute.component;
-    const preload = component.preload();
     NProgress.start();
-    preload.then(() => {
-      history.push(currentRoute.path ? currentRoute.path : `/${key}`);
-      NProgress.done();
-    });
+    history.push(nextPath);
+
+    Promise.resolve(component?.preload?.())
+      .catch((error) => {
+        console.error(`Failed to preload route: ${nextPath}`, error);
+      })
+      .finally(() => {
+        NProgress.done();
+      });
   }
 
   function toggleCollapse() {

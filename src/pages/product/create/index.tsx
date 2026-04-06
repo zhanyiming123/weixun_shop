@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Cascader,
+  Checkbox,
   Form,
   Input,
   InputNumber,
@@ -37,12 +38,22 @@ import {
 } from '@arco-design/web-react/icon';
 import { useHistory } from 'react-router-dom';
 import styles from './index.module.less';
-
-type CascaderOption = {
-  label: string;
-  value: string;
-  children?: CascaderOption[];
-};
+import {
+  buildProductCatalogCascaderOptions,
+  getProductCatalogFullLabel,
+  getProductCatalogIdFromPath,
+  getProductCatalogPathById,
+  readProductCatalogItems,
+} from '../catalog/data';
+import {
+  buildProductOwnershipCascaderOptions,
+  readProductOwnershipItems,
+} from '../category/data';
+import {
+  ProductCatalogAttributeItem,
+  getEnabledAttributesByCatalogId,
+  readProductCatalogAttributes,
+} from '../attribute/data';
 
 type CarouselImage = {
   uid: string;
@@ -67,86 +78,6 @@ const PRODUCT_TYPE_OPTIONS = [
   },
 ];
 
-const CATEGORY_OPTIONS: CascaderOption[] = [
-  {
-    label: '留学服务',
-    value: 'overseas',
-    children: [
-      {
-        label: '国际课程',
-        value: 'international-course',
-        children: [
-          { label: 'IGCSE', value: 'igcse' },
-          { label: 'A-Level', value: 'a-level' },
-          { label: 'IB', value: 'ib' },
-        ],
-      },
-      {
-        label: '标化考试',
-        value: 'standardized',
-        children: [
-          { label: '雅思', value: 'ielts' },
-          { label: '托福', value: 'toefl' },
-        ],
-      },
-    ],
-  },
-  {
-    label: '背景提升',
-    value: 'background-boost',
-    children: [
-      {
-        label: '科研项目',
-        value: 'research',
-        children: [{ label: '导师课题', value: 'mentor-project' }],
-      },
-      {
-        label: '竞赛规划',
-        value: 'contest',
-        children: [{ label: '学术竞赛', value: 'academic-contest' }],
-      },
-    ],
-  },
-];
-
-const CLASSIFICATION_OPTIONS: CascaderOption[] = [
-  {
-    label: '课程类',
-    value: 'course',
-    children: [
-      {
-        label: '系统课',
-        value: 'system-course',
-        children: [
-          { label: '录播课', value: 'recorded' },
-          { label: '直播课', value: 'live' },
-        ],
-      },
-      {
-        label: '短期班',
-        value: 'short-term',
-        children: [{ label: '冲刺班', value: 'sprint' }],
-      },
-    ],
-  },
-  {
-    label: '服务类',
-    value: 'service',
-    children: [
-      {
-        label: '咨询服务',
-        value: 'consult',
-        children: [{ label: '1V1服务', value: 'one-to-one' }],
-      },
-      {
-        label: '资料服务',
-        value: 'material',
-        children: [{ label: '资料包', value: 'resource-pack' }],
-      },
-    ],
-  },
-];
-
 function normalizePath(value: (string | string[])[] | undefined): string[] {
   if (!Array.isArray(value) || !value.length) {
     return [];
@@ -158,22 +89,6 @@ function normalizePath(value: (string | string[])[] | undefined): string[] {
   }
 
   return value as string[];
-}
-
-function findLabelPath(options: CascaderOption[], path: string[]): string[] {
-  const labels: string[] = [];
-  let currentOptions = options;
-
-  for (const value of path) {
-    const matched = currentOptions.find((item) => item.value === value);
-    if (!matched) {
-      break;
-    }
-    labels.push(matched.label);
-    currentOptions = matched.children || [];
-  }
-
-  return labels;
 }
 
 function moveArrayItem<T>(list: T[], fromIndex: number, toIndex: number): T[] {
@@ -206,9 +121,51 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
   { label: '2.0', value: '2.0' },
 ];
 
+function renderCatalogAttributeField(
+  attribute: ProductCatalogAttributeItem,
+  className: string
+) {
+  if (attribute.type === 'text') {
+    return <Input className={className} placeholder={`请输入${attribute.name}`} allowClear />;
+  }
+
+  if (attribute.type === 'single') {
+    return (
+      <Select className={className} placeholder={`请选择${attribute.name}`} allowClear>
+        {attribute.values.map((value) => (
+          <Select.Option key={value} value={value}>
+            {value}
+          </Select.Option>
+        ))}
+      </Select>
+    );
+  }
+
+  return (
+    <Checkbox.Group className={styles.attributeCheckboxGroup}>
+      {attribute.values.map((value) => (
+        <Checkbox key={value} value={value}>
+          {value}
+        </Checkbox>
+      ))}
+    </Checkbox.Group>
+  );
+}
+
 function ProductCreatePage() {
   const history = useHistory();
-  const [classificationPath, setClassificationPath] = useState<string[]>([]);
+  const catalogItems = useMemo(() => readProductCatalogItems(), []);
+  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
+  const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const productCatalogOptions = useMemo(
+    () => buildProductCatalogCascaderOptions(catalogItems),
+    [catalogItems]
+  );
+  const productOwnershipOptions = useMemo(
+    () => buildProductOwnershipCascaderOptions(ownershipItems),
+    [ownershipItems]
+  );
+  const [productCatalogId, setProductCatalogId] = useState<string>();
   const [uploadFileList, setUploadFileList] = useState<UploadItem[]>([]);
   const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
   const [draggingUid, setDraggingUid] = useState<string>('');
@@ -221,11 +178,6 @@ function ProductCreatePage() {
   const [detailLineHeight, setDetailLineHeight] = useState('1.75');
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
-
-  const classificationLabelPath = useMemo(
-    () => findLabelPath(CLASSIFICATION_OPTIONS, classificationPath),
-    [classificationPath]
-  );
 
   useEffect(() => {
     const objectUrlMap = objectUrlMapRef.current;
@@ -435,30 +387,26 @@ function ProductCreatePage() {
     setDetailLineHeight(value);
   }
 
+  const selectedProductCatalogLabel = getProductCatalogFullLabel(
+    productCatalogId,
+    catalogItems
+  );
+  const currentCatalogAttributes = useMemo(
+    () => getEnabledAttributesByCatalogId(catalogAttributes, productCatalogId),
+    [catalogAttributes, productCatalogId]
+  );
+
   return (
     <div className={styles.page}>
-      <Card className={styles.headerCard}>
-        <div className={styles.headerTop}>
-          <div>
-            <Typography.Title heading={4} style={{ marginTop: 0, marginBottom: 6 }}>
-              添加商品
-            </Typography.Title>
-            <Typography.Paragraph className={styles.headerDesc} type="secondary">
-              当前已完成“基础信息”模块，正在逐步补充“规格与库存”等后续配置模块。
-            </Typography.Paragraph>
-          </div>
-          <Button onClick={() => history.push('/product/list')}>返回商品列表</Button>
-        </div>
-      </Card>
+      <div className={styles.pageActions}>
+        <Button onClick={() => history.push('/product/list')}>返回商品列表</Button>
+      </div>
 
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <Typography.Title className={styles.sectionTitle} heading={6}>
             基础信息
           </Typography.Title>
-          <Typography.Paragraph className={styles.sectionDesc} type="secondary">
-            基础信息用于定义商品的基本归属和上架方式，包含类型、类目、分类、名称与上架策略。
-          </Typography.Paragraph>
         </div>
 
         <Form
@@ -469,7 +417,7 @@ function ProductCreatePage() {
         >
           <div className={styles.formGrid}>
             <Form.Item label="商品类型">
-              <Select value="virtual" disabled>
+              <Select className={styles.singleFieldControl} value="virtual" disabled>
                 {PRODUCT_TYPE_OPTIONS.map((item) => (
                   <Select.Option key={item.value} value={item.value}>
                     {item.label}
@@ -480,35 +428,32 @@ function ProductCreatePage() {
             </Form.Item>
 
             <Form.Item field="productCategory" label="商品类目">
-              <Cascader options={CATEGORY_OPTIONS} placeholder="请选择商品类目" allowClear />
-            </Form.Item>
-
-            <Form.Item field="productClassification" label="商品分类">
               <Cascader
                 allowClear
-                options={CLASSIFICATION_OPTIONS}
-                placeholder="请选择商品分类"
+                className={styles.singleFieldControl}
+                options={productCatalogOptions}
+                placeholder="请选择商品类目"
+                value={
+                  productCatalogId
+                    ? getProductCatalogPathById(productCatalogId, catalogItems)
+                    : undefined
+                }
                 onChange={(value) => {
-                  setClassificationPath(normalizePath(value));
+                  const nextPath = normalizePath(value);
+                  setProductCatalogId(
+                    getProductCatalogIdFromPath(nextPath, catalogItems)
+                  );
                 }}
               />
             </Form.Item>
 
-            <Form.Item className={styles.fullWidth} label="分类属性">
-              <div className={styles.attributePanel}>
-                <Typography.Paragraph className={styles.attributeHint}>
-                  {classificationLabelPath.length
-                    ? `已选择商品分类：${classificationLabelPath.join(
-                        ' / '
-                      )}。分类属性将随该分类动态变化（待配置）。`
-                    : '请先选择“商品分类”。分类属性区域会根据分类结果动态变化（当前先预留配置区域）。'}
-                </Typography.Paragraph>
-                <div className={styles.placeholderRows}>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 01</div>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 02</div>
-                  <div className={styles.placeholderRow}>分类属性配置项预留区 03</div>
-                </div>
-              </div>
+            <Form.Item field="productClassification" label="商品归属">
+              <Cascader
+                allowClear
+                className={styles.singleFieldControl}
+                options={productOwnershipOptions}
+                placeholder="请选择商品归属"
+              />
             </Form.Item>
 
             <Form.Item
@@ -522,6 +467,7 @@ function ProductCreatePage() {
               ]}
             >
               <Input
+                className={styles.singleFieldControl}
                 maxLength={15}
                 placeholder="请输入商品名称"
                 showWordLimit
@@ -529,75 +475,124 @@ function ProductCreatePage() {
               />
             </Form.Item>
 
+            {productCatalogId && (
+              <div className={styles.fullWidth}>
+                <div className={styles.attributeSectionLabel}>商品类目属性</div>
+                <div className={styles.attributePanel}>
+                  <Typography.Paragraph className={styles.attributeHint}>
+                    {`已选择商品类目：${selectedProductCatalogLabel}。以下字段已按当前类目属性配置动态加载。`}
+                  </Typography.Paragraph>
+                  {currentCatalogAttributes.length ? (
+                    <div className={styles.attributeFieldList}>
+                      {currentCatalogAttributes.map((attribute) => (
+                        <Form.Item
+                          key={attribute.id}
+                          className={styles.attributeFieldItem}
+                          field={`catalogAttributeValue_${attribute.id}`}
+                          label={attribute.name}
+                          rules={
+                            attribute.required
+                              ? [
+                                  {
+                                    required: true,
+                                    message:
+                                      attribute.type === 'text'
+                                        ? `请输入${attribute.name}`
+                                        : `请选择${attribute.name}`,
+                                  },
+                                ]
+                              : undefined
+                          }
+                        >
+                          {renderCatalogAttributeField(
+                            attribute,
+                            styles.singleFieldControl
+                          )}
+                        </Form.Item>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.attributeEmpty}>
+                      当前类目暂无已启用的类目属性，请先前往“类目属性”完成配置。
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <Form.Item className={styles.fullWidth} label="商品轮播图">
               <div className={styles.uploadPanel}>
-                <Upload
-                  accept="image/*"
-                  fileList={uploadFileList}
-                  imagePreview={false}
-                  limit={8}
-                  listType="picture-card"
-                  multiple
-                  showUploadList={false}
-                  customRequest={({ onSuccess }) => {
-                    onSuccess({});
-                  }}
-                  onChange={handleUploadChange}
-                  onExceedLimit={() => {
-                    Message.warning('最多可上传 8 张图片');
-                  }}
-                >
-                  <div className={styles.uploadTrigger}>
-                    <IconPlus />
-                    <span className={styles.uploadTriggerText}>上传图片</span>
-                  </div>
-                </Upload>
-
-                <Typography.Paragraph className={styles.uploadTips}>
-                  建议尺寸 800px × 800px，默认首张图为主图，最多可上传 10 张图。
-                </Typography.Paragraph>
-
-                {!!carouselImages.length && (
-                  <div className={styles.thumbList}>
-                    {carouselImages.map((item, index) => (
-                      <div
-                        key={item.uid}
-                        className={`${styles.thumbItem} ${
-                          draggingUid === item.uid ? styles.thumbItemDragging : ''
-                        }`}
-                        draggable
-                        onDragStart={() => setDraggingUid(item.uid)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDragEnd={() => setDraggingUid('')}
-                        onDrop={() => handleDropTo(item.uid)}
-                      >
-                        <div className={styles.thumbImageBox}>
-                          {item.url ? (
-                            <img
-                              alt={item.name || `商品轮播图${index + 1}`}
-                              className={styles.thumbImage}
-                              src={item.url}
-                            />
-                          ) : (
-                            <div className={styles.thumbNoPreview}>暂无预览</div>
-                          )}
-                          <Button
-                            className={styles.thumbDelete}
-                            size="mini"
-                            type="secondary"
-                            onClick={() => handleRemoveImage(item.uid)}
-                          >
-                            删除
-                          </Button>
-                        </div>
-                        <div className={styles.thumbFooter}>
-                          <span className={styles.thumbOrder}>第 {index + 1} 张</span>
-                          {index === 0 && <span className={styles.thumbMain}>主图</span>}
-                        </div>
+                <div className={styles.uploadContent}>
+                  <div className={styles.uploadPrimary}>
+                    <Upload
+                      accept="image/*"
+                      fileList={uploadFileList}
+                      imagePreview={false}
+                      limit={8}
+                      listType="picture-card"
+                      multiple
+                      showUploadList={false}
+                      customRequest={({ onSuccess }) => {
+                        onSuccess({});
+                      }}
+                      onChange={handleUploadChange}
+                      onExceedLimit={() => {
+                        Message.warning('最多可上传 8 张图片');
+                      }}
+                    >
+                      <div className={styles.uploadTrigger}>
+                        <IconPlus />
+                        <span className={styles.uploadTriggerText}>上传图片</span>
                       </div>
-                    ))}
+                    </Upload>
+
+                    <Typography.Paragraph className={styles.uploadTips}>
+                      建议尺寸 800px × 800px，默认首张图为主图，最多可上传 8 张图。
+                    </Typography.Paragraph>
                   </div>
-                )}
+
+                  {!!carouselImages.length && (
+                    <div className={styles.thumbList}>
+                      {carouselImages.map((item, index) => (
+                        <div
+                          key={item.uid}
+                          className={`${styles.thumbItem} ${
+                            draggingUid === item.uid ? styles.thumbItemDragging : ''
+                          }`}
+                          draggable
+                          onDragStart={() => setDraggingUid(item.uid)}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDragEnd={() => setDraggingUid('')}
+                          onDrop={() => handleDropTo(item.uid)}
+                        >
+                          <div className={styles.thumbImageBox}>
+                            {item.url ? (
+                              <img
+                                alt={item.name || `商品轮播图${index + 1}`}
+                                className={styles.thumbImage}
+                                src={item.url}
+                              />
+                            ) : (
+                              <div className={styles.thumbNoPreview}>暂无预览</div>
+                            )}
+                            <Button
+                              className={styles.thumbDelete}
+                              size="mini"
+                              type="secondary"
+                              onClick={() => handleRemoveImage(item.uid)}
+                            >
+                              删除
+                            </Button>
+                          </div>
+                          <div className={styles.thumbFooter}>
+                            <span className={styles.thumbOrder}>第 {index + 1} 张</span>
+                            {index === 0 && <span className={styles.thumbMain}>主图</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </Form.Item>
 
@@ -623,7 +618,6 @@ function ProductCreatePage() {
                   <span className={styles.limitConfigLabel}>每人限购</span>
                   <InputNumber
                     className={styles.limitCountInput}
-                    hideButton
                     min={1}
                     precision={0}
                     value={limitCount}
@@ -644,9 +638,6 @@ function ProductCreatePage() {
           <Typography.Title className={styles.sectionTitle} heading={6}>
             规格与库存
           </Typography.Title>
-          <Typography.Paragraph className={styles.sectionDesc} type="secondary">
-            先完成规格模式切换和属性配置占位，后续再逐步补充库存规则与 SKU 明细配置。
-          </Typography.Paragraph>
         </div>
 
         <Form layout="vertical">
@@ -726,11 +717,8 @@ function ProductCreatePage() {
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <Typography.Title className={styles.sectionTitle} heading={6}>
-            图文配置
+            商品详情页配置
           </Typography.Title>
-          <Typography.Paragraph className={styles.sectionDesc} type="secondary">
-            在该模块中配置商品详情图文内容，编辑器样式与内容区可同步预览。
-          </Typography.Paragraph>
         </div>
 
         <Form layout="vertical">

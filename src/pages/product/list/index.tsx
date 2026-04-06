@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Cascader,
   Card,
   DatePicker,
   Form,
@@ -16,6 +17,13 @@ import {
 } from '@arco-design/web-react';
 import { useHistory } from 'react-router-dom';
 import styles from './index.module.less';
+import {
+  buildProductCatalogCascaderOptions,
+  getProductCatalogFullLabel,
+  getProductCatalogIdFromPath,
+  getProductCatalogPathById,
+  readProductCatalogItems,
+} from '../catalog/data';
 import {
   DEFAULT_FILTER_VALUES,
   MOCK_PRODUCTS,
@@ -54,6 +62,19 @@ function formatCurrency(price: number) {
   return `¥${price.toFixed(2)}`;
 }
 
+function normalizePath(value: (string | string[])[] | undefined): string[] {
+  if (!Array.isArray(value) || !value.length) {
+    return [];
+  }
+
+  const firstValue = value[0];
+  if (Array.isArray(firstValue)) {
+    return firstValue;
+  }
+
+  return value as string[];
+}
+
 function getProductsByTab(products: ProductItem[], tab: ProductTab) {
   if (tab === 'selling') {
     return products.filter((item) => item.status === 'on');
@@ -81,6 +102,13 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
     }
 
     if (filters.productType && item.productType !== filters.productType) {
+      return false;
+    }
+
+    if (
+      filters.productCatalogId &&
+      item.productCatalogId !== filters.productCatalogId
+    ) {
       return false;
     }
 
@@ -117,6 +145,11 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
 
 function ProductListPage() {
   const history = useHistory();
+  const catalogItems = useMemo(() => readProductCatalogItems(), []);
+  const productCatalogOptions = useMemo(
+    () => buildProductCatalogCascaderOptions(catalogItems),
+    [catalogItems]
+  );
   const [products, setProducts] = useState<ProductItem[]>(MOCK_PRODUCTS);
   const [formValues, setFormValues] = useState<ProductFilterValues>(
     getDefaultFilterValues()
@@ -252,6 +285,12 @@ function ProductListPage() {
       render: (value: ProductType) => PRODUCT_TYPE_LABEL_MAP[value],
     },
     {
+      title: '商品类目',
+      dataIndex: 'productCatalogId',
+      width: 220,
+      render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
+    },
+    {
       title: '上架状态',
       dataIndex: 'status',
       width: 170,
@@ -352,11 +391,32 @@ function ProductListPage() {
             </div>
 
             <div className={styles.filterItem}>
+              <div className={styles.filterLabel}>商品类目</div>
+              <Cascader
+                allowClear
+                className={styles.catalogCascader}
+                options={productCatalogOptions}
+                placeholder="请选择商品类目"
+                value={
+                  formValues.productCatalogId
+                    ? getProductCatalogPathById(formValues.productCatalogId, catalogItems)
+                    : undefined
+                }
+                onChange={(value) => {
+                  const path = normalizePath(value);
+                  updateFormValue(
+                    'productCatalogId',
+                    getProductCatalogIdFromPath(path, catalogItems)
+                  );
+                }}
+              />
+            </div>
+
+            <div className={styles.filterItem}>
               <div className={styles.filterLabel}>价格区间</div>
               <div className={styles.priceGroup}>
                 <InputNumber
                   className={styles.numberInput}
-                  hideButton={false}
                   min={0}
                   placeholder="最低价格"
                   precision={2}
@@ -366,7 +426,6 @@ function ProductListPage() {
                 <span className={styles.rangeSeparator}>至</span>
                 <InputNumber
                   className={styles.numberInput}
-                  hideButton={false}
                   min={0}
                   placeholder="最高价格"
                   precision={2}
@@ -444,7 +503,7 @@ function ProductListPage() {
               columnWidth: 48,
               onChange: (keys) => setSelectedRowKeys(keys),
             }}
-            scroll={{ x: 1220 }}
+            scroll={{ x: 1460 }}
             tableLayoutFixed
           />
         </div>
