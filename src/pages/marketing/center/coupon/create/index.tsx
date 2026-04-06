@@ -14,16 +14,18 @@ import {
   Select,
   Table,
   Tag,
+  TreeSelect,
   Typography,
 } from '@arco-design/web-react';
 import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
+  buildCouponCampusTreeValue,
   buildCouponFormValuesFromRecord,
   buildCouponProductCategoryOptions,
   buildCouponSpus,
   buildCreateValuesFromCoupon,
-  CategoryConditionScope,
+  COUPON_CAMPUS_TREE_DATA,
   COUPON_DISCOUNT_OPTIONS,
   CouponDiscountType,
   CouponFormValues,
@@ -36,20 +38,17 @@ import {
   filterCouponProducts,
   formatCouponPriceRange,
   formatCurrency,
-  MOCK_CAMPUSES,
+  normalizeCouponCampusIds,
   PRODUCT_SCOPE_OPTIONS,
   readCouponById,
   updateCouponQuota,
   VALIDITY_TYPE_OPTIONS,
 } from '../data';
 import {
+  buildProductCatalogCascaderOptions,
   buildProductCatalogLeafItems,
   readProductCatalogItems,
 } from '@/pages/product/catalog/data';
-import {
-  buildProductOwnershipCascaderOptions,
-  readProductOwnershipItems,
-} from '@/pages/product/category/data';
 
 const Option = Select.Option;
 const RangePicker = DatePicker.RangePicker;
@@ -62,7 +61,7 @@ type CouponErrorKey =
   | 'discountConfig'
   | 'campusIds'
   | 'productScope'
-  | 'conditionScopes'
+  | 'conditionCategoryPaths'
   | 'selectedSkuIds'
   | 'name'
   | 'couponQuantity'
@@ -75,11 +74,29 @@ function createDefaultFormValues(): CouponFormValues {
   return {
     ...DEFAULT_COUPON_FORM_VALUES,
     campusIds: [],
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
     receiveTimeRange: [],
     customUseTimeRange: [],
   };
+}
+
+function normalizeTreeSelectValues(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  return typeof value === 'string' ? [value] : [];
+}
+
+function normalizeCascaderMultipleValues(
+  value: Array<string | string[]> | undefined
+) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string[] => Array.isArray(item));
 }
 
 function buildSelectedSpuTree(data: CouponSpuItem[], selectedSkuIds: string[]) {
@@ -113,18 +130,17 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   const couponId = query.get('id')?.trim() || '';
 
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
-  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const couponCategories = useMemo(
     () => buildProductCatalogLeafItems(catalogItems),
+    [catalogItems]
+  );
+  const couponCatalogOptions = useMemo(
+    () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
   );
   const couponProductCategoryOptions = useMemo(
     () => buildCouponProductCategoryOptions(couponCategories),
     [couponCategories]
-  );
-  const couponOwnershipOptions = useMemo(
-    () => buildProductOwnershipCascaderOptions(ownershipItems),
-    [ownershipItems]
   );
   const couponSpus = useMemo(() => buildCouponSpus(couponCategories), [couponCategories]);
 
@@ -174,12 +190,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     setFormErrors({});
   }, [couponId, history, isCreateMode, sourceId]);
 
-  const selectedConditionCategoryIds = useMemo(
-    () => formValues.conditionScopes.map((scope) => scope.categoryId),
-    [formValues.conditionScopes]
-  );
-
   const selectedSkuCount = formValues.selectedSkuIds.length;
+  const selectedCampusTreeValue = useMemo(
+    () => buildCouponCampusTreeValue(formValues.campusIds),
+    [formValues.campusIds]
+  );
 
   const filteredProductData = useMemo(
     () =>
@@ -213,15 +228,6 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     }));
   }
 
-  function patchConditionScopes(
-    updater: (previous: CategoryConditionScope[]) => CategoryConditionScope[]
-  ) {
-    setFormValues((previous) => ({
-      ...previous,
-      conditionScopes: updater(previous.conditionScopes),
-    }));
-  }
-
   function clearErrors(...keys: CouponErrorKey[]) {
     if (!keys.length) {
       return;
@@ -251,12 +257,14 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     clearErrors('discountConfig');
   }
 
-  function handleCampusChange(value: string[]) {
+  function handleCampusChange(value: string | string[] | undefined) {
     if (!isCreateMode) {
       return;
     }
 
-    patchFormValues({ campusIds: value || [] });
+    patchFormValues({
+      campusIds: normalizeCouponCampusIds(normalizeTreeSelectValues(value)),
+    });
     clearErrors('campusIds');
   }
 
@@ -269,22 +277,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     patchFormValues({
       productScope: nextScope,
     });
-    clearErrors('productScope', 'conditionScopes', 'selectedSkuIds');
+    clearErrors('productScope', 'conditionCategoryPaths', 'selectedSkuIds');
   }
 
-  function handleOrgPathsChange(categoryId: string, value: string[][]) {
+  function handleConditionCategoryChange(
+    value: Array<string | string[]> | undefined
+  ) {
     if (!isCreateMode) {
       return;
     }
 
-    patchConditionScopes((previous) =>
-      previous.map((scope) =>
-        scope.categoryId === categoryId
-          ? { ...scope, selectedOrgPaths: value }
-          : scope
-      )
-    );
-    clearErrors('conditionScopes');
+    patchFormValues({
+      conditionCategoryPaths: normalizeCascaderMultipleValues(value),
+    });
+    clearErrors('conditionCategoryPaths');
   }
 
   function handleReceiveTimeChange(dateString: string[]) {
@@ -461,16 +467,23 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       errors.productScope = '请选择商品范围';
     }
 
-    if (formValues.productScope === 'condition' && !formValues.conditionScopes.length) {
-      errors.conditionScopes = '请至少选择一个类目';
+    if (
+      formValues.productScope === 'condition' &&
+      !formValues.conditionCategoryPaths.length
+    ) {
+      errors.conditionCategoryPaths = '请至少选择一个类目';
     }
 
     if (formValues.productScope === 'specific' && !formValues.selectedSkuIds.length) {
       errors.selectedSkuIds = '请选择至少 1 个 SKU';
     }
 
-    if (!formValues.name.trim()) {
+    const trimmedName = formValues.name.trim();
+
+    if (!trimmedName) {
       errors.name = '请输入券名称';
+    } else if (trimmedName.length > 15) {
+      errors.name = '券名称支持 15 个字以内';
     }
 
     if (
@@ -617,7 +630,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       </Typography.Title>
 
       <Card className={styles.formCard}>
-        <Form layout="vertical">
+        <Form
+          className={styles.couponForm}
+          labelCol={{ span: 3 }}
+          wrapperCol={{ span: 21 }}
+        >
           <div className={styles.sectionBlock}>
             <Typography.Title className={styles.sectionTitle} heading={5}>
               优惠信息
@@ -724,21 +741,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
             </Form.Item>
 
             <Form.Item required label="适用校区">
-              <Select
+              <TreeSelect
                 allowClear
-                mode="multiple"
+                multiple
+                treeCheckable
+                treeCheckStrictly={false}
+                treeCheckedStrategy="parent"
+                treeData={COUPON_CAMPUS_TREE_DATA}
+                showSearch
                 className={styles.formControl}
                 placeholder="请选择适用校区"
                 disabled={!isCreateMode}
-                value={formValues.campusIds}
+                value={selectedCampusTreeValue}
                 onChange={handleCampusChange}
-              >
-                {MOCK_CAMPUSES.map((item) => (
-                  <Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
+              />
               {formErrors.campusIds && (
                 <div className={styles.fieldError}>{formErrors.campusIds}</div>
               )}
@@ -762,82 +778,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                   <div className={styles.conditionScopePanel}>
                     <div className={styles.conditionFieldItem}>
                       <span className={styles.conditionFieldLabel}>商品类目</span>
-                      <Select
-                        allowClear
+                      <Cascader
                         mode="multiple"
-                        className={styles.categorySelect}
+                        allowClear
+                        changeOnSelect
+                        expandTrigger="hover"
+                        className={styles.orgCascader}
                         placeholder="请选择适用的商品类目（可多选）"
+                        options={couponCatalogOptions}
+                        showSearch={{ retainInputValueWhileSelect: true }}
                         disabled={!isCreateMode}
-                        value={selectedConditionCategoryIds}
-                        onChange={(values: string[]) => {
-                          if (!isCreateMode) {
-                            return;
-                          }
-                          const next = values || [];
-                          patchConditionScopes((previous) => {
-                            const added = next
-                              .filter(
-                                (id) => !previous.some((item) => item.categoryId === id)
-                              )
-                              .map((id) => ({
-                                categoryId: id,
-                                selectedOrgPaths: [],
-                                selectedSpecValues: [],
-                              }));
-                            return [
-                              ...previous.filter((item) => next.includes(item.categoryId)),
-                              ...added,
-                            ];
-                          });
-                          clearErrors('conditionScopes');
-                        }}
-                      >
-                        {couponCategories.map((category) => (
-                          <Option key={category.id} value={category.id}>
-                            {category.label}
-                          </Option>
-                        ))}
-                      </Select>
+                        value={formValues.conditionCategoryPaths}
+                        onChange={handleConditionCategoryChange}
+                      />
                     </div>
-
-                    {formValues.conditionScopes.map((scope) => {
-                      const catalogItem = couponCategories.find(
-                        (item) => item.id === scope.categoryId
-                      );
-
-                      return (
-                        <div className={styles.categorySection} key={scope.categoryId}>
-                          <div className={styles.categorySectionHeader}>
-                            <Typography.Text bold>
-                              {catalogItem?.label || scope.categoryId}
-                            </Typography.Text>
-                          </div>
-
-                          <div className={styles.conditionFields}>
-                            <div className={styles.conditionFieldItem}>
-                              <span className={styles.conditionFieldLabel}>商品归属</span>
-                              <Cascader
-                                multiple
-                                allowClear
-                                changeOnSelect
-                                expandTrigger="hover"
-                                className={styles.orgCascader}
-                                placeholder="支持级联多选，可选任意层级（事业部 / 课程体系 / 课程项）"
-                                options={couponOwnershipOptions}
-                                disabled={!isCreateMode}
-                                value={scope.selectedOrgPaths}
-                                onChange={(value) =>
-                                  handleOrgPathsChange(
-                                    scope.categoryId,
-                                    (value as string[][]) || []
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
 
@@ -868,11 +822,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 )}
               </div>
               {(formErrors.productScope ||
-                formErrors.conditionScopes ||
+                formErrors.conditionCategoryPaths ||
                 formErrors.selectedSkuIds) && (
                 <div className={styles.fieldError}>
                   {formErrors.productScope ||
-                    formErrors.conditionScopes ||
+                    formErrors.conditionCategoryPaths ||
                     formErrors.selectedSkuIds}
                 </div>
               )}
@@ -890,6 +844,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               <Input
                 className={styles.formControl}
                 placeholder="请输入券名称"
+                maxLength={15}
+                showWordLimit
                 disabled={!isCreateMode}
                 value={formValues.name}
                 onChange={(value) => {
@@ -908,7 +864,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 <span className={styles.inlineText}>发放张数</span>
                 <InputNumber
                   className={styles.countInput}
-                  min={1}
+                  min={0}
                   precision={0}
                   disabled={isDetailMode}
                   value={formValues.issueCount}

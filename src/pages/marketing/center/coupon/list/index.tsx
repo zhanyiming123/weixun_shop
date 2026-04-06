@@ -219,11 +219,6 @@ function CouponListPage() {
       ),
     },
     {
-      title: '推广场景',
-      dataIndex: 'promotionScene',
-      width: 140,
-    },
-    {
       title: '优惠详情',
       dataIndex: 'discountSummary',
       width: 140,
@@ -372,7 +367,7 @@ function CouponListPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: 1480 }}
+            scroll={{ x: 1320 }}
             tableLayoutFixed
           />
         </div>
