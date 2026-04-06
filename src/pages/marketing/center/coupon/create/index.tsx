@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Button,
   Card,
-  Cascader,
+  Checkbox,
   DatePicker,
   Divider,
   Form,
@@ -14,26 +14,29 @@ import {
   Select,
   Table,
   Tag,
+  TreeSelect,
   Typography,
 } from '@arco-design/web-react';
 import { useHistory } from 'react-router-dom';
 import styles from './index.module.less';
 import {
+  CategoryConditionScope,
   COUPON_DISCOUNT_OPTIONS,
   CouponDiscountType,
   CouponFormValues,
-  CouponProductTableItem,
   CouponProductScope,
+  CouponProductTableItem,
   CouponValidityType,
   DEFAULT_COUPON_FORM_VALUES,
   filterCouponProducts,
-  formatCurrency,
   formatCouponPriceRange,
-  MOCK_BUSINESS_LINES,
+  formatCurrency,
   MOCK_CAMPUSES,
+  MOCK_CATEGORY_SPEC_OPTIONS,
+  MOCK_COUPON_CATEGORIES,
   MOCK_COUPON_SPUS,
+  MOCK_ORG_TREE,
   MOCK_PRODUCT_CATEGORY_OPTIONS,
-  normalizeCascaderPath,
   PRODUCT_SCOPE_OPTIONS,
   VALIDITY_TYPE_OPTIONS,
 } from '../data';
@@ -44,8 +47,8 @@ const RangePicker = DatePicker.RangePicker;
 type CouponErrorKey =
   | 'discountConfig'
   | 'campusIds'
-  | 'businessLinePath'
   | 'productScope'
+  | 'conditionScopes'
   | 'selectedSkuIds'
   | 'name'
   | 'couponQuantity'
@@ -75,6 +78,11 @@ function CouponCreatePage() {
     [productCategoryValue, skuKeyword]
   );
 
+  const selectedConditionCategoryIds = useMemo(
+    () => formValues.conditionScopes.map((scope) => scope.categoryId),
+    [formValues.conditionScopes]
+  );
+
   const selectedSkuCount = formValues.selectedSkuIds.length;
   const filteredSpuCount = filteredProductData.length;
   const filteredSkuCount = filteredProductData.reduce(
@@ -86,6 +94,15 @@ function CouponCreatePage() {
     setFormValues((previous) => ({
       ...previous,
       ...patch,
+    }));
+  }
+
+  function patchConditionScopes(
+    updater: (previous: CategoryConditionScope[]) => CategoryConditionScope[]
+  ) {
+    setFormValues((previous) => ({
+      ...previous,
+      conditionScopes: updater(previous.conditionScopes),
     }));
   }
 
@@ -119,21 +136,46 @@ function CouponCreatePage() {
     clearErrors('campusIds');
   }
 
-  function handleBusinessLineChange(value: (string | string[])[] | undefined) {
-    patchFormValues({ businessLinePath: normalizeCascaderPath(value) });
-    clearErrors('businessLinePath');
-  }
-
   function handleProductScopeChange(value: string) {
     const nextScope = value as CouponProductScope;
     patchFormValues({
       productScope: nextScope,
-      selectedSkuIds: nextScope === 'all' ? [] : formValues.selectedSkuIds,
     });
-    if (nextScope === 'all') {
-      setDraftSelectedSkuIds([]);
-    }
-    clearErrors('productScope', 'selectedSkuIds');
+    clearErrors('productScope', 'conditionScopes', 'selectedSkuIds');
+  }
+
+  function handleCategoryToggle(categoryId: string, checked: boolean) {
+    patchConditionScopes((previous) => {
+      const exists = previous.some((item) => item.categoryId === categoryId);
+      if (checked) {
+        if (exists) {
+          return previous;
+        }
+        return [
+          ...previous,
+          {
+            categoryId,
+            selectedOrgNodeIds: [],
+            selectedSpecValues: [],
+          },
+        ];
+      }
+      return previous.filter((item) => item.categoryId !== categoryId);
+    });
+    clearErrors('conditionScopes');
+  }
+
+  function handleConditionChange(
+    categoryId: string,
+    field: 'selectedOrgNodeIds' | 'selectedSpecValues',
+    value: string[]
+  ) {
+    patchConditionScopes((previous) =>
+      previous.map((scope) =>
+        scope.categoryId === categoryId ? { ...scope, [field]: value } : scope
+      )
+    );
+    clearErrors('conditionScopes');
   }
 
   function handleReceiveTimeChange(dateString: string[]) {
@@ -271,16 +313,18 @@ function CouponCreatePage() {
       errors.campusIds = '请选择适用校区';
     }
 
-    if (!formValues.businessLinePath.length) {
-      errors.businessLinePath = '请选择适用业务线';
-    }
-
     if (!formValues.productScope) {
       errors.productScope = '请选择商品范围';
     }
 
+    if (formValues.productScope === 'condition') {
+      if (!formValues.conditionScopes.length) {
+        errors.conditionScopes = '请至少选择一个类目';
+      }
+    }
+
     if (
-      formValues.productScope === 'partial' &&
+      formValues.productScope === 'specific' &&
       !formValues.selectedSkuIds.length
     ) {
       errors.selectedSkuIds = '请选择至少 1 个 SKU';
@@ -512,23 +556,6 @@ function CouponCreatePage() {
               )}
             </Form.Item>
 
-            <Form.Item required label="业务线">
-              <Cascader
-                allowClear
-                options={MOCK_BUSINESS_LINES}
-                placeholder="请选择适用业务线"
-                value={
-                  formValues.businessLinePath.length
-                    ? formValues.businessLinePath
-                    : undefined
-                }
-                onChange={handleBusinessLineChange}
-              />
-              {formErrors.businessLinePath && (
-                <div className={styles.fieldError}>{formErrors.businessLinePath}</div>
-              )}
-            </Form.Item>
-
             <Form.Item required label="选择商品">
               <div className={styles.scopeBlock}>
                 <Radio.Group
@@ -542,7 +569,117 @@ function CouponCreatePage() {
                   ))}
                 </Radio.Group>
 
-                {formValues.productScope === 'partial' && (
+                {formValues.productScope === 'condition' && (
+                  <div className={styles.conditionScopePanel}>
+                    {/* Step 1: 选择类目 */}
+                    <div className={styles.conditionStepLabel}>
+                      <Typography.Text type="secondary">
+                        第一步：选择适用类目
+                      </Typography.Text>
+                    </div>
+                    <div className={styles.categoryCheckboxRow}>
+                      {MOCK_COUPON_CATEGORIES.map((category) => (
+                        <Checkbox
+                          key={category.id}
+                          checked={selectedConditionCategoryIds.includes(category.id)}
+                          onChange={(checked) =>
+                            handleCategoryToggle(category.id, checked)
+                          }
+                        >
+                          {category.label}
+                        </Checkbox>
+                      ))}
+                    </div>
+
+                    {/* Step 2: 为每个已选类目配置组织架构范围 */}
+                    {formValues.conditionScopes.length > 0 && (
+                      <div className={styles.conditionStepLabel}>
+                        <Typography.Text type="secondary">
+                          第二步：为每个类目选择适用的事业部 / 课程体系 / 课程项范围
+                        </Typography.Text>
+                      </div>
+                    )}
+
+                    {formValues.conditionScopes.map((scope) => {
+                      const catalogItem = MOCK_COUPON_CATEGORIES.find(
+                        (c) => c.id === scope.categoryId
+                      );
+                      const specOptions =
+                        MOCK_CATEGORY_SPEC_OPTIONS[scope.categoryId] || [];
+
+                      return (
+                        <div
+                          className={styles.categorySection}
+                          key={scope.categoryId}
+                        >
+                          <div className={styles.categorySectionHeader}>
+                            <Typography.Text bold>
+                              {catalogItem?.label || scope.categoryId}
+                            </Typography.Text>
+                          </div>
+
+                          <div className={styles.conditionFields}>
+                            {/* 组织架构多级多选 */}
+                            <div className={styles.conditionFieldItem}>
+                              <span className={styles.conditionFieldLabel}>
+                                事业部 / 课程体系 / 课程项
+                              </span>
+                              <TreeSelect
+                                multiple
+                                treeCheckable
+                                allowClear
+                                className={styles.orgTreeSelect}
+                                placeholder="可选择任意层级，不选则全部适用"
+                                treeData={MOCK_ORG_TREE}
+                                value={scope.selectedOrgNodeIds}
+                                onChange={(value) =>
+                                  handleConditionChange(
+                                    scope.categoryId,
+                                    'selectedOrgNodeIds',
+                                    Array.isArray(value) ? (value as string[]) : []
+                                  )
+                                }
+                              />
+                            </div>
+
+                            {/* SKU 规格（班型）：仅对 hasSkuSpec=true 的类目显示 */}
+                            {catalogItem?.hasSkuSpec && specOptions.length > 0 && (
+                              <div className={styles.conditionFieldItem}>
+                                <span className={styles.conditionFieldLabel}>
+                                  班型规格
+                                </span>
+                                <Select
+                                  allowClear
+                                  mode="multiple"
+                                  className={styles.specSelect}
+                                  placeholder="可多选，不选则全部班型适用"
+                                  value={scope.selectedSpecValues}
+                                  onChange={(value) =>
+                                    handleConditionChange(
+                                      scope.categoryId,
+                                      'selectedSpecValues',
+                                      Array.isArray(value)
+                                        ? value.map(String)
+                                        : []
+                                    )
+                                  }
+                                >
+                                  {specOptions.map((item) => (
+                                    <Option key={item.value} value={item.value}>
+                                      {item.label}
+                                    </Option>
+                                  ))}
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {formValues.productScope === 'specific' && (
                   <div className={styles.scopeActionRow}>
                     <Button type="outline" onClick={openSkuModal}>
                       选择商品
@@ -555,9 +692,13 @@ function CouponCreatePage() {
                   </div>
                 )}
               </div>
-              {(formErrors.productScope || formErrors.selectedSkuIds) && (
+              {(formErrors.productScope ||
+                formErrors.conditionScopes ||
+                formErrors.selectedSkuIds) && (
                 <div className={styles.fieldError}>
-                  {formErrors.productScope || formErrors.selectedSkuIds}
+                  {formErrors.productScope ||
+                    formErrors.conditionScopes ||
+                    formErrors.selectedSkuIds}
                 </div>
               )}
             </Form.Item>

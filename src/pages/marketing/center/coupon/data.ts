@@ -4,12 +4,15 @@ import {
   ProductItem,
   ProductType,
 } from '@/pages/product/list/data';
+import { CatalogItem, MOCK_CATALOG_ITEMS } from '@/pages/product/catalog/data';
+
+export type { CatalogItem };
 
 export type CouponDiscountType =
   | 'fullReduction'
   | 'directReduction'
   | 'discount';
-export type CouponProductScope = 'all' | 'partial';
+export type CouponProductScope = 'all' | 'condition' | 'specific';
 export type CouponValidityType =
   | 'sameAsReceive'
   | 'afterReceiveDays'
@@ -26,10 +29,33 @@ export type CouponProductCategoryOption = {
   value: string;
 };
 
-export type CouponBusinessLineOption = {
-  label: string;
+export type CouponOrgOption = {
   value: string;
-  children?: CouponBusinessLineOption[];
+  label: string;
+};
+
+/** 组织架构树节点（事业部 → 课程体系 → 课程项，三级） */
+export type OrgTreeNode = {
+  key: string;
+  value: string;
+  title: string;
+  children?: OrgTreeNode[];
+};
+
+/**
+ * 按条件圈品 — 单个类目的圈选范围。
+ *
+ * 字段说明：
+ * - selectedOrgNodeIds：从组织架构树中多选的节点 ID，可选任意层级（事业部/课程体系/课程项），
+ *   空数组表示该类目下的全部组织架构均适用。
+ * - selectedSpecValues：SKU 规格值（如班型），仅对 hasSkuSpec=true 的类目有效，
+ *   空数组表示全部规格均适用。是否显示此字段由类目配置（CatalogItem.hasSkuSpec）决定，
+ *   不在业务代码中硬编码判断。
+ */
+export type CategoryConditionScope = {
+  categoryId: string;
+  selectedOrgNodeIds: string[];
+  selectedSpecValues: string[];
 };
 
 export type CouponSkuItem = {
@@ -70,8 +96,8 @@ export type CouponFormValues = {
   directReductionAmount?: number;
   discountRate?: number;
   campusIds: string[];
-  businessLinePath: string[];
   productScope: CouponProductScope;
+  conditionScopes: CategoryConditionScope[];
   selectedSkuIds: string[];
   name: string;
   issueCount: number;
@@ -113,7 +139,8 @@ export const COUPON_DISCOUNT_OPTIONS = [
 
 export const PRODUCT_SCOPE_OPTIONS = [
   { label: '全部商品', value: 'all' as CouponProductScope },
-  { label: '部分商品', value: 'partial' as CouponProductScope },
+  { label: '按条件圈品', value: 'condition' as CouponProductScope },
+  { label: '指定商品', value: 'specific' as CouponProductScope },
 ];
 
 export const VALIDITY_TYPE_OPTIONS = [
@@ -144,7 +171,8 @@ export const COUPON_LIST_STATUS_LABEL_MAP: Record<CouponListStatus, string> = {
 
 export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> = {
   all: '全部商品',
-  partial: '适用商品',
+  condition: '按条件圈品',
+  specific: '适用商品',
 };
 
 export const MOCK_CAMPUSES: CouponCampusOption[] = [
@@ -154,55 +182,106 @@ export const MOCK_CAMPUSES: CouponCampusOption[] = [
   { label: '杭州校区', value: 'hangzhou' },
 ];
 
-const PRODUCT_CATEGORY_PRESETS: CouponProductCategoryOption[] = [
-  { label: '预测课', value: 'forecast-course' },
-  { label: '冲刺课程', value: 'sprint-course' },
-  { label: '预习课程', value: 'preview-course' },
-  { label: '服务套餐', value: 'service-package' },
-  { label: '模考产品', value: 'mock-package' },
+/**
+ * 商品类目列表，从商品类目管理模块（product/catalog）引入。
+ * 优惠券等业务模块统一引用此数据，不在各自模块内重复定义。
+ */
+export const MOCK_COUPON_CATEGORIES: CatalogItem[] = MOCK_CATALOG_ITEMS;
+
+/**
+ * 组织架构树（事业部 → 课程体系 → 课程项），三级结构。
+ * 真实场景下应从后端 org_node 表动态加载；此处使用 mock 数据。
+ */
+export const MOCK_ORG_TREE: OrgTreeNode[] = [
+  {
+    key: 'xm',
+    value: 'xm',
+    title: '橡沐事业部',
+    children: [
+      {
+        key: 'xm-study',
+        value: 'xm-study',
+        title: '橡沐留学',
+        children: [
+          { key: 'p001', value: 'p001', title: '美国升学服务' },
+          { key: 'p002', value: 'p002', title: '英国升学服务' },
+        ],
+      },
+      {
+        key: 'xm-lang',
+        value: 'xm-lang',
+        title: '橡沐语培',
+        children: [
+          { key: 'p003', value: 'p003', title: '雅思冲刺课' },
+          { key: 'p004', value: 'p004', title: '托福强化课' },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'wx',
+    value: 'wx',
+    title: '维新事业部',
+    children: [
+      {
+        key: 'wx-plan',
+        value: 'wx-plan',
+        title: '维新升学规划',
+        children: [
+          { key: 'p005', value: 'p005', title: '背景提升规划' },
+          { key: 'p006', value: 'p006', title: '择校规划服务' },
+        ],
+      },
+      {
+        key: 'wx-thesis',
+        value: 'wx-thesis',
+        title: '维新论文文书',
+        children: [
+          { key: 'p007', value: 'p007', title: '文书精修服务' },
+          { key: 'p008', value: 'p008', title: '申请全案服务' },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'hq',
+    value: 'hq',
+    title: '海桥事业部',
+    children: [
+      {
+        key: 'hq-international',
+        value: 'hq-international',
+        title: '海桥国际课程',
+        children: [
+          { key: 'p009', value: 'p009', title: 'A-Level系统课' },
+          { key: 'p010', value: 'p010', title: 'IB强化课程' },
+        ],
+      },
+      {
+        key: 'hq-overseas',
+        value: 'hq-overseas',
+        title: '海桥海外课程',
+        children: [
+          { key: 'p011', value: 'p011', title: 'AP先修课程' },
+          { key: 'p012', value: 'p012', title: 'STEP冲刺课程' },
+        ],
+      },
+    ],
+  },
 ];
 
-export const MOCK_BUSINESS_LINES: CouponBusinessLineOption[] = [
-  {
-    label: '留学服务',
-    value: 'overseas',
-    children: [
-      {
-        label: '国际课程',
-        value: 'international-course',
-        children: [
-          { label: 'IGCSE', value: 'igcse' },
-          { label: 'A-Level', value: 'a-level' },
-          { label: 'IB', value: 'ib' },
-        ],
-      },
-      {
-        label: '标化考试',
-        value: 'standardized',
-        children: [
-          { label: '雅思', value: 'ielts' },
-          { label: '托福', value: 'toefl' },
-        ],
-      },
-    ],
-  },
-  {
-    label: '背景提升',
-    value: 'background-boost',
-    children: [
-      {
-        label: '科研项目',
-        value: 'research',
-        children: [{ label: '导师课题', value: 'mentor-project' }],
-      },
-      {
-        label: '竞赛规划',
-        value: 'contest',
-        children: [{ label: '学术竞赛', value: 'academic-contest' }],
-      },
-    ],
-  },
-];
+/**
+ * 各类目对应的 SKU 规格选项（如班型）。
+ * 仅 CatalogItem.hasSkuSpec === true 的类目需要配置此项。
+ * 真实场景下应从该类目下商品的 SKU 规格维度动态读取；此处使用 mock 数据。
+ */
+export const MOCK_CATEGORY_SPEC_OPTIONS: Record<string, CouponOrgOption[]> = {
+  international: [
+    { value: 'vip_1v4', label: '1v4 金牌班' },
+    { value: 'vip_1v1', label: '1v1 旗舰班' },
+    { value: 'standard', label: '标准直播班' },
+  ],
+};
 
 const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
   virtual: ['标准版', 'VIP版'],
@@ -210,7 +289,11 @@ const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
   service: ['基础服务', '进阶服务'],
 };
 
-export const MOCK_PRODUCT_CATEGORY_OPTIONS = PRODUCT_CATEGORY_PRESETS;
+export const MOCK_PRODUCT_CATEGORY_OPTIONS: CouponProductCategoryOption[] =
+  MOCK_CATALOG_ITEMS.map((item) => ({
+    label: item.label,
+    value: item.id,
+  }));
 
 export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   discountType: 'fullReduction',
@@ -219,8 +302,8 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   directReductionAmount: undefined,
   discountRate: undefined,
   campusIds: [],
-  businessLinePath: [],
   productScope: 'all',
+  conditionScopes: [],
   selectedSkuIds: [],
   name: '',
   issueCount: 0,
@@ -258,7 +341,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783978',
     name: '遴选计划-减免8000',
     discountType: 'fullReduction',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '满10减2',
     receivedCount: 200,
@@ -274,7 +357,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783979',
     name: '择校季-立减体验券',
     discountType: 'directReduction',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '直减2',
     receivedCount: 200,
@@ -290,7 +373,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783980',
     name: '备考季-折扣福利券',
     discountType: 'discount',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '打9折',
     receivedCount: 200,
@@ -306,7 +389,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783981',
     name: '留学冲刺-满减券',
     discountType: 'fullReduction',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '满20减5',
     receivedCount: 168,
@@ -354,7 +437,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783984',
     name: '模考包-折扣券',
     discountType: 'discount',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '打9.5折',
     receivedCount: 88,
@@ -402,7 +485,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783987',
     name: '冬令营-早鸟券',
     discountType: 'discount',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '打8折',
     receivedCount: 45,
@@ -418,7 +501,7 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
     id: '122661783988',
     name: '科研项目-专享券',
     discountType: 'directReduction',
-    productScope: 'partial',
+    productScope: 'specific',
     promotionScene: '全场景',
     discountSummary: '直减100',
     receivedCount: 120,
@@ -434,18 +517,18 @@ export const MOCK_COUPON_LIST: CouponListItem[] = [
 
 function resolveProductCategory(product: ProductItem): CouponProductCategoryOption {
   if (product.name.includes('预测课')) {
-    return PRODUCT_CATEGORY_PRESETS[0];
+    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
   }
   if (product.name.includes('冲刺')) {
-    return PRODUCT_CATEGORY_PRESETS[1];
+    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
   }
   if (product.name.includes('预习课')) {
-    return PRODUCT_CATEGORY_PRESETS[2];
+    return MOCK_PRODUCT_CATEGORY_OPTIONS[0];
   }
   if (product.name.includes('模考')) {
-    return PRODUCT_CATEGORY_PRESETS[4];
+    return MOCK_PRODUCT_CATEGORY_OPTIONS[1];
   }
-  return PRODUCT_CATEGORY_PRESETS[3];
+  return MOCK_PRODUCT_CATEGORY_OPTIONS[3];
 }
 
 export const MOCK_COUPON_SPUS: CouponSpuItem[] = MOCK_PRODUCTS.map(

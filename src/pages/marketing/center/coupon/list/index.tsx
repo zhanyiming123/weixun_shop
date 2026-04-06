@@ -219,7 +219,7 @@ function CouponListPage() {
               {COUPON_DISCOUNT_LABEL_MAP[record.discountType]}
             </Typography.Text>
             <span className={styles.metaDivider}>|</span>
-            {record.productScope === 'partial' ? (
+            {record.productScope === 'specific' ? (
               <Link
                 className={styles.inlineLink}
                 onClick={() =>

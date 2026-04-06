@@ -71,6 +71,73 @@
   gap: 14px;
 }
 
+.conditionScopePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conditionStepLabel {
+  margin-top: 4px;
+}
+
+.categoryCheckboxRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+}
+
+.categorySection {
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.categorySectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.conditionFields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conditionFieldItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.conditionFieldLabel {
+  flex-shrink: 0;
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 22px;
+  width: 152px;
+}
+
+.orgTreeSelect {
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.specSelect {
+  flex: 1;
+  min-width: 0;
+  max-width: 360px;
+}
+
 .scopeActionRow,
 .validityActionRow,
 .modalSearchRow,
@@ -158,9 +225,20 @@
   .validDaysInput,
   .modalSearchInput,
   .modalCategorySelect,
+  .orgTreeSelect,
+  .specSelect,
   .rangePicker {
     width: 100%;
     max-width: none;
+  }
+
+  .conditionFieldItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .conditionFieldLabel {
+    width: auto;
   }
 
   .actionRow {
