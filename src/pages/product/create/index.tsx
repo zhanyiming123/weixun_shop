@@ -56,7 +56,12 @@ import {
   getEnabledAttributesByCatalogId,
   readProductCatalogAttributes,
 } from '../attribute/data';
-import { getMockProductById, ProductItem } from '../list/data';
+import {
+  DEFAULT_INVENTORY_UNIT,
+  INVENTORY_UNIT_OPTIONS,
+  getMockProductById,
+  ProductItem,
+} from '../list/data';
 
 type CarouselImage = {
   uid: string;
@@ -241,6 +246,7 @@ function ProductCreatePage() {
   const [uploadFileList, setUploadFileList] = useState<UploadItem[]>([]);
   const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
   const [draggingUid, setDraggingUid] = useState<string>('');
+  const [inventoryUnit, setInventoryUnit] = useState(DEFAULT_INVENTORY_UNIT);
   const [specMode, setSpecMode] = useState<SpecMode>('multi');
   const [specItems, setSpecItems] = useState<SpecItem[]>([]);
   const [singleSpecFileList, setSingleSpecFileList] = useState<UploadItem[]>([]);
@@ -269,6 +275,7 @@ function ProductCreatePage() {
       setProductOwnershipId(undefined);
       setProductName('');
       setShelfTime('immediately');
+      setInventoryUnit(DEFAULT_INVENTORY_UNIT);
       setSpecMode('multi');
       setSpecItems([]);
       setSingleSpecFileList([]);
@@ -285,6 +292,7 @@ function ProductCreatePage() {
         : sourceProduct.name
     );
     setShelfTime(sourceProduct.status === 'on' ? 'immediately' : 'warehouse');
+    setInventoryUnit(sourceProduct.inventoryUnit || DEFAULT_INVENTORY_UNIT);
     setSpecMode('single');
     setSpecItems([]);
     setSingleSpecFileList([]);
@@ -805,6 +813,21 @@ function ProductCreatePage() {
 
         <Form layout="vertical">
           <div className={styles.formGrid}>
+            <Form.Item className={styles.fullWidth} label="库存单位" required>
+              <Select
+                className={styles.singleFieldControl}
+                disabled={isEditMode}
+                value={inventoryUnit}
+                onChange={setInventoryUnit}
+              >
+                {INVENTORY_UNIT_OPTIONS.map((item) => (
+                  <Select.Option key={item} value={item}>
+                    {item}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
             <Form.Item className={styles.fullWidth} label="商品规格">
               <Radio.Group
                 disabled={isEditMode}
@@ -862,19 +885,22 @@ function ProductCreatePage() {
 
                     <div className={styles.singleSpecField}>
                       <div className={styles.singleSpecLabel}>库存</div>
-                      <InputNumber
-                        className={styles.singleSpecControl}
-                        disabled={isEditMode}
-                        min={0}
-                        precision={0}
-                        placeholder="请输入库存"
-                        value={singleSpecStock}
-                        onChange={(value) =>
-                          setSingleSpecStock(
-                            typeof value === 'number' ? value : undefined
-                          )
-                        }
-                      />
+                      <div className={styles.singleSpecInputRow}>
+                        <InputNumber
+                          className={styles.singleSpecControl}
+                          disabled={isEditMode}
+                          min={0}
+                          precision={0}
+                          placeholder="请输入库存"
+                          value={singleSpecStock}
+                          onChange={(value) =>
+                            setSingleSpecStock(
+                              typeof value === 'number' ? value : undefined
+                            )
+                          }
+                        />
+                        <span className={styles.singleSpecUnit}>{inventoryUnit}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

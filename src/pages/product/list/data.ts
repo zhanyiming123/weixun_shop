@@ -8,6 +8,7 @@ export type ProductItem = {
   productCatalogId: string;
   productOwnershipId: string;
   productType: ProductType;
+  inventoryUnit: string;
   status: ProductStatus;
   price: number;
   stock: number;
@@ -34,6 +35,19 @@ export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
   createdAtRange: [],
 };
 
+export const DEFAULT_INVENTORY_UNIT = '份';
+
+export const INVENTORY_UNIT_OPTIONS = [
+  DEFAULT_INVENTORY_UNIT,
+  '课时',
+  '课次',
+  '期',
+  '名额',
+  '人次',
+  '席位',
+  '套',
+];
+
 export const MOCK_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1237036327413878784',
@@ -41,6 +55,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'virtual',
+    inventoryUnit: '名额',
     status: 'on',
     price: 199,
     stock: 2998,
@@ -52,6 +67,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
+    inventoryUnit: '名额',
     status: 'on',
     price: 199,
     stock: 29992,
@@ -63,6 +79,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
+    inventoryUnit: '名额',
     status: 'on',
     price: 199,
     stock: 29980,
@@ -74,6 +91,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'service',
     productOwnershipId: 'item_06_01_01',
     productType: 'service',
+    inventoryUnit: '课时',
     status: 'off',
     price: 1,
     stock: 444,
@@ -85,6 +103,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
+    inventoryUnit: '名额',
     status: 'on',
     price: 49,
     stock: 1000,
@@ -96,6 +115,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
+    inventoryUnit: '名额',
     status: 'on',
     price: 49,
     stock: 599,
@@ -107,6 +127,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
+    inventoryUnit: '名额',
     status: 'on',
     price: 129,
     stock: 998,
@@ -118,6 +139,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
+    inventoryUnit: '名额',
     status: 'on',
     price: 129,
     stock: 598,
@@ -129,6 +151,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'virtual',
+    inventoryUnit: '名额',
     status: 'off',
     price: 49,
     stock: 1000,
@@ -140,6 +163,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
+    inventoryUnit: '席位',
     status: 'off',
     price: 299,
     stock: 88,
@@ -151,6 +175,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
+    inventoryUnit: '课时',
     status: 'on',
     price: 899,
     stock: 32,
@@ -162,6 +187,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'thesis',
     productOwnershipId: 'item_05_03_04',
     productType: 'virtual',
+    inventoryUnit: '套',
     status: 'off',
     price: 159,
     stock: 200,

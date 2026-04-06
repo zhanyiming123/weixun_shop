@@ -33,6 +33,7 @@ import {
   readProductOwnershipItems,
 } from '../category/data';
 import {
+  DEFAULT_INVENTORY_UNIT,
   DEFAULT_FILTER_VALUES,
   MOCK_PRODUCTS,
   ProductFilterValues,
@@ -337,7 +338,9 @@ function ProductListPage() {
     {
       title: '库存',
       dataIndex: 'stock',
-      width: 120,
+      width: 140,
+      render: (value: number, record: ProductItem) =>
+        `${value} ${record.inventoryUnit || DEFAULT_INVENTORY_UNIT}`,
       sorter: (a: ProductItem, b: ProductItem) => a.stock - b.stock,
     },
     {
