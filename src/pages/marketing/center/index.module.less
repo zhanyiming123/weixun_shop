@@ -9,21 +9,21 @@
 }
 
 .boardCard {
-  min-height: 360px;
+  min-height: 320px;
 
   :global(.arco-card-body) {
-    padding: 28px 28px 32px;
+    padding: 24px;
   }
 }
 
 .sectionHeader {
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .sectionTitle {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--color-text-1);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -41,28 +41,14 @@
 }
 
 .moduleCard {
-  width: 332px;
-  min-height: 104px;
-  padding: 20px 22px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f7f8fb 0%, #f1f4f8 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 72%),
-    0 1px 2px rgb(15 23 42 / 3%);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-align: left;
+  width: 288px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
+  transition: all 0.2s ease;
 
-.moduleCard:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 72%),
-    0 10px 24px rgb(31 35 41 / 8%);
+  :global(.arco-card-body) {
+    padding: 14px 16px;
+  }
 }
 
 .moduleCard:focus-visible {
@@ -70,11 +56,18 @@
   outline-offset: 2px;
 }
 
+.moduleCardInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+}
+
 .moduleIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgb(var(--arcoblue-6)) 0%, #4d94ff 100%);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgb(var(--arcoblue-6));
   color: rgb(var(--white));
   display: flex;
   align-items: center;
@@ -82,27 +75,27 @@
   flex-shrink: 0;
 
   svg {
-    font-size: 22px;
+    font-size: 18px;
   }
 }
 
 .moduleContent {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .moduleTitle {
   color: var(--color-text-1);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .moduleDesc {
   color: var(--color-text-2);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 @media (max-width: 900px) {
@@ -124,16 +117,21 @@
 
   .moduleCard {
     width: 100%;
-    min-height: 96px;
-    padding: 18px;
-    border-radius: 14px;
+
+    :global(.arco-card-body) {
+      padding: 14px;
+    }
+  }
+
+  .moduleCardInner {
+    min-height: 62px;
   }
 
   .moduleTitle {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .moduleDesc {
-    font-size: 14px;
+    font-size: 12px;
   }
 }

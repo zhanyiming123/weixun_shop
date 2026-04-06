@@ -24,6 +24,12 @@ export type ProductFilterValues = {
   createdAtRange: string[];
 };
 
+export const PRODUCT_TYPE_LABEL_MAP: Record<ProductType, string> = {
+  virtual: '虚拟商品',
+  course: '课程商品',
+  service: '服务商品',
+};
+
 export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
   searchType: 'productName',
   keyword: '',

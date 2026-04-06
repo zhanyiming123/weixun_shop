@@ -15,44 +15,22 @@ import {
   IconInfoCircle,
   IconPlus,
   IconRight,
-  IconSearch,
 } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
+import {
+  ProductOwnershipConfigItem,
+  readProductOwnershipItems,
+  useProductOwnershipItems,
+} from './data';
 
 const { useForm } = Form;
 
-interface CategoryItem {
-  id: string;
-  name: string;
-  parentId: string | null;
-}
-
-const INITIAL_ITEMS: CategoryItem[] = [
-  { id: 'C001', name: '服装', parentId: null },
-  { id: 'C002', name: '男装', parentId: 'C001' },
-  { id: 'C009', name: 'T恤', parentId: 'C002' },
-  { id: 'C010', name: '衬衫', parentId: 'C002' },
-  { id: 'C003', name: '女装', parentId: 'C001' },
-  { id: 'C004', name: '童装', parentId: 'C001' },
-  { id: 'C005', name: '数码', parentId: null },
-  { id: 'C006', name: '手机', parentId: 'C005' },
-  { id: 'C007', name: '电脑', parentId: 'C005' },
-  { id: 'C008', name: '家居', parentId: null },
-];
-
-let counter = 11;
-
-function genId() {
-  return `C${String(counter++).padStart(3, '0')}`;
-}
-
-// Reorder siblings: move dragId before/after targetId (same parentId only)
 function reorderItems(
-  items: CategoryItem[],
+  items: ProductOwnershipConfigItem[],
   dragId: string,
   targetId: string,
   pos: 'before' | 'after'
-): CategoryItem[] {
+): ProductOwnershipConfigItem[] {
   const drag = items.find((i) => i.id === dragId);
   const target = items.find((i) => i.id === targetId);
   if (!drag || !target || drag.parentId !== target.parentId) return items;
@@ -64,15 +42,16 @@ function reorderItems(
   const insertAt = pos === 'after' ? tIdx + 1 : tIdx;
   const reordered = [...rest.slice(0, insertAt), drag, ...rest.slice(insertAt)];
 
-  // Rebuild full list: replace sibling-level slots in original order
   const iter = reordered[Symbol.iterator]();
   return items.map((item) =>
-    item.parentId === pid ? (iter.next().value as CategoryItem) : item
+    item.parentId === pid ? (iter.next().value as ProductOwnershipConfigItem) : item
   );
 }
 
-// Delete an item and all its descendants
-function removeWithDescendants(items: CategoryItem[], id: string): CategoryItem[] {
+function removeWithDescendants(
+  items: ProductOwnershipConfigItem[],
+  id: string
+): ProductOwnershipConfigItem[] {
   const toRemove = new Set<string>([id]);
   let changed = true;
   while (changed) {
@@ -87,41 +66,42 @@ function removeWithDescendants(items: CategoryItem[], id: string): CategoryItem[
   return items.filter((i) => !toRemove.has(i.id));
 }
 
-// Max depth allowed: 0/1/2 = 3 levels total
 const MAX_DEPTH = 2;
 
 function CategoryPage() {
-  const [items, setItems] = useState<CategoryItem[]>(INITIAL_ITEMS);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(['C001', 'C005']));
-  const [searchText, setSearchText] = useState('');
+  const [items, setItems] = useProductOwnershipItems();
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () =>
+      new Set(
+        readProductOwnershipItems()
+          .filter((item) => item.parentId === null)
+          .map((item) => item.id)
+      )
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<CategoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ProductOwnershipConfigItem | null>(
+    null
+  );
   const [addParentId, setAddParentId] = useState<string | null>(null);
   const [form] = useForm();
 
-  // Drag-and-drop state
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverPos, setDragOverPos] = useState<'before' | 'after'>('before');
 
-  // Build parentId → ordered children map
   const childrenMap = useMemo(() => {
-    const map = new Map<string | null, CategoryItem[]>();
+    const map = new Map<string | null, ProductOwnershipConfigItem[]>();
     for (const item of items) {
       const k = item.parentId;
       if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(item);
+      const group = map.get(k);
+      if (group) {
+        group.push(item);
+      }
     }
     return map;
   }, [items]);
-
-  // Search: flat list of matching items; null = no search active
-  const searchResults = useMemo(() => {
-    const q = searchText.trim();
-    if (!q) return null;
-    return items.filter((i) => i.name.includes(q));
-  }, [items, searchText]);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -138,7 +118,7 @@ function CategoryPage() {
     setModalVisible(true);
   }
 
-  function openEditModal(item: CategoryItem) {
+  function openEditModal(item: ProductOwnershipConfigItem) {
     setEditingItem(item);
     setAddParentId(null);
     form.setFieldsValue({ name: item.name });
@@ -154,10 +134,18 @@ function CategoryPage() {
         );
         Message.success('修改成功');
       } else {
-        const newItem: CategoryItem = { id: genId(), name: values.name, parentId: addParentId };
+        const newItem: ProductOwnershipConfigItem = {
+          id: `ownership_${Date.now()}`,
+          name: values.name,
+          parentId: addParentId,
+        };
         setItems((prev) => [...prev, newItem]);
         if (addParentId) {
-          setExpanded((prev) => new Set([...prev, addParentId]));
+          setExpanded((prev) => {
+            const next = new Set(prev);
+            next.add(addParentId);
+            return next;
+          });
         }
         Message.success('添加成功');
       }
@@ -167,12 +155,11 @@ function CategoryPage() {
     }
   }
 
-  function handleDelete(item: CategoryItem) {
+  function handleDelete(item: ProductOwnershipConfigItem) {
     setItems((prev) => removeWithDescendants(prev, item.id));
     Message.success('删除成功');
   }
 
-  // ── DnD handlers ──────────────────────────────────────────────────────────
   function onDragStart(e: React.DragEvent, id: string) {
     setDragId(id);
     e.dataTransfer.effectAllowed = 'move';
@@ -199,8 +186,7 @@ function CategoryPage() {
     setDragOverId(null);
   }
 
-  // ── Row renderer (recursive) ───────────────────────────────────────────────
-  function renderRow(item: CategoryItem, depth: number) {
+  function renderRow(item: ProductOwnershipConfigItem, depth: number) {
     const nodeChildren = childrenMap.get(item.id) || [];
     const hasChildren = nodeChildren.length > 0;
     const isExpanded = expanded.has(item.id);
@@ -208,7 +194,6 @@ function CategoryPage() {
     const isDropBefore = dragOverId === item.id && dragOverPos === 'before';
     const isDropAfter = dragOverId === item.id && dragOverPos === 'after';
     const canAddChild = depth < MAX_DEPTH;
-    const isSearchMode = searchResults !== null;
 
     const cls = [
       styles.row,
@@ -224,17 +209,15 @@ function CategoryPage() {
         <div
           className={cls}
           style={{ paddingLeft: 16 + depth * 28 }}
-          draggable={!isSearchMode}
-          onDragStart={(e) => !isSearchMode && onDragStart(e, item.id)}
-          onDragOver={(e) => !isSearchMode && onDragOver(e, item.id)}
-          onDrop={(e) => !isSearchMode && onDrop(e, item.id)}
-          onDragEnd={() => !isSearchMode && onDragEnd()}
+          draggable
+          onDragStart={(e) => onDragStart(e, item.id)}
+          onDragOver={(e) => onDragOver(e, item.id)}
+          onDrop={(e) => onDrop(e, item.id)}
+          onDragEnd={onDragEnd}
         >
-          {!isSearchMode && (
-            <span className={styles.dragHandle}>
-              <IconDragDotVertical />
-            </span>
-          )}
+          <span className={styles.dragHandle}>
+            <IconDragDotVertical />
+          </span>
           <span
             className={styles.expandIcon}
             onClick={() => hasChildren && toggleExpand(item.id)}
@@ -249,21 +232,21 @@ function CategoryPage() {
           <span className={styles.nodeActions}>
             {canAddChild && (
               <Typography.Text className={styles.actionLink} onClick={() => openAddModal(item.id)}>
-                新增子分类
+                新增子归属
               </Typography.Text>
             )}
             <Typography.Text className={styles.actionLink} onClick={() => openEditModal(item)}>
               编辑
             </Typography.Text>
             <Popconfirm
-              title={`确定删除「${item.name}」${hasChildren ? '及其所有子分类' : ''}吗？`}
+              title={`确定删除「${item.name}」${hasChildren ? '及其所有子归属' : ''}吗？`}
               onOk={() => handleDelete(item)}
             >
               <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
             </Popconfirm>
           </span>
         </div>
-        {isExpanded && hasChildren && !isSearchMode && (
+        {isExpanded && hasChildren && (
           <div className={depth === 0 ? styles.childrenBg : ''}>
             {nodeChildren.map((child) => renderRow(child, depth + 1))}
           </div>
@@ -273,40 +256,20 @@ function CategoryPage() {
   }
 
   const rootItems = childrenMap.get(null) || [];
-  const displayItems = searchResults ?? rootItems;
 
   return (
     <div className={styles.page}>
-      {/* ── Toolbar ── */}
       <div className={styles.toolbar}>
         <Button type="primary" icon={<IconPlus />} onClick={() => openAddModal(null)}>
-          新增分类
+          新增归属
         </Button>
-        <Button onClick={() => Message.info('导入功能暂未实现')}>导入分类</Button>
-        <Button onClick={() => Message.info('导出功能暂未实现')}>导出分类</Button>
-        <Typography.Text
-          className={styles.toolbarLink}
-          onClick={() => Message.info('查看已导出列表暂未实现')}
-        >
-          查看已导出列表
-        </Typography.Text>
-        <span className={styles.spacer} />
-        <Input
-          className={styles.searchInput}
-          prefix={<IconSearch />}
-          placeholder="搜索分类名称"
-          allowClear
-          value={searchText}
-          onChange={setSearchText}
-        />
       </div>
 
-      {/* ── List ── */}
       <div className={styles.listContainer}>
         <div className={styles.listHeader}>
-          <span className={styles.headerName}>分类</span>
+          <span className={styles.headerName}>商品归属</span>
           <span className={styles.headerOps}>
-            <Tooltip content="可对分类进行新增、编辑、删除操作，同级分类支持拖拽排序">
+            <Tooltip content="可对商品归属进行新增、编辑、删除操作，同级归属支持拖拽排序">
               <IconInfoCircle className={styles.headerInfoIcon} />
             </Tooltip>
             操作
@@ -314,23 +277,21 @@ function CategoryPage() {
         </div>
 
         <div>
-          {displayItems.length === 0 ? (
-            <div className={styles.empty}>暂无分类数据</div>
+          {rootItems.length === 0 ? (
+            <div className={styles.empty}>暂无归属数据</div>
           ) : (
-            displayItems.map((item) => renderRow(item, 0))
+            rootItems.map((item) => renderRow(item, 0))
           )}
         </div>
 
-        {/* System preset node */}
         <div className={styles.systemNode}>
-          <div className={styles.systemName}>未分类</div>
-          <div className={styles.systemDesc}>系统预设分类，不可编辑和删除</div>
+          <div className={styles.systemName}>未归属</div>
+          <div className={styles.systemDesc}>系统预设归属，不可编辑和删除</div>
         </div>
       </div>
 
-      {/* ── Modal ── */}
       <Modal
-        title={editingItem ? '编辑分类' : addParentId ? '新增子分类' : '新增分类'}
+        title={editingItem ? '编辑归属' : addParentId ? '新增子归属' : '新增归属'}
         visible={modalVisible}
         onOk={handleModalOk}
         onCancel={() => setModalVisible(false)}
@@ -341,10 +302,10 @@ function CategoryPage() {
         <Form form={form} layout="vertical">
           <Form.Item
             field="name"
-            label="分类名称"
-            rules={[{ required: true, message: '请输入分类名称' }]}
+            label="归属名称"
+            rules={[{ required: true, message: '请输入归属名称' }]}
           >
-            <Input placeholder="请输入分类名称" maxLength={20} showWordLimit />
+            <Input placeholder="请输入归属名称" maxLength={20} showWordLimit />
           </Form.Item>
         </Form>
       </Modal>

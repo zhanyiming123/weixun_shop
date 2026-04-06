@@ -23,6 +23,10 @@
   gap: 10px;
 }
 
+.catalogCascader {
+  width: 240px;
+}
+
 .filterLabel {
   flex: none;
   color: var(--color-text-1);
@@ -96,4 +100,14 @@
 
 .actionDivider {
   color: var(--color-border-2);
+}
+
+@media (max-width: 768px) {
+  .filterActions {
+    margin-left: 0;
+  }
+
+  .catalogCascader {
+    width: 100%;
+  }
 }
