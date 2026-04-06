@@ -77,6 +77,16 @@ export const routes: IRoute[] = [
             key: 'marketing/center/coupon/create',
             ignore: true,
           },
+          {
+            name: 'menu.marketing.couponDetail',
+            key: 'marketing/center/coupon/detail',
+            ignore: true,
+          },
+          {
+            name: 'menu.marketing.couponEdit',
+            key: 'marketing/center/coupon/edit',
+            ignore: true,
+          },
         ],
       },
     ],

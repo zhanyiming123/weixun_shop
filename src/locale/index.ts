@@ -64,6 +64,8 @@ const i18n = {
     'menu.marketing.center': '营销中心',
     'menu.marketing.couponList': '优惠券列表',
     'menu.marketing.couponCreate': '创建优惠券',
+    'menu.marketing.couponDetail': '优惠券详情',
+    'menu.marketing.couponEdit': '修改优惠券',
     'menu.user.info': '用户信息',
     'menu.user.setting': '用户设置',
     'menu.user.switchRoles': '切换角色',
