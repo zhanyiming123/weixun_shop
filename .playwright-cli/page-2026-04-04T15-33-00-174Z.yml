@@ -1,0 +1,70 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e50]:
+    - complementary [ref=e51]:
+      - generic [ref=e52]:
+        - menu [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57] [cursor=pointer]:
+                - generic [ref=e58]:
+                  - img [ref=e59]
+                  - text: 商品管理
+                - img [ref=e65]
+              - menuitem "商品列表" [ref=e68] [cursor=pointer]:
+                - generic [ref=e70]: 商品列表
+            - generic [ref=e73] [cursor=pointer]:
+              - generic [ref=e74]:
+                - img [ref=e75]
+                - text: 订单管理
+              - img [ref=e78]
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 售后管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 营销管理
+              - img [ref=e95]
+        - img [ref=e98] [cursor=pointer]
+    - generic [ref=e100]:
+      - generic [ref=e101]:
+        - list [ref=e103]:
+          - listitem [ref=e104]: 商品管理
+          - img [ref=e106]
+          - listitem [ref=e108]: 添加商品
+        - main [ref=e109]:
+          - generic [ref=e112]:
+            - generic [ref=e114]:
+              - heading "添加商品" [level=4] [ref=e115]
+              - generic [ref=e116]: 添加商品页路由已经准备好，具体配置项我们可以在这里继续补充。
+            - generic [ref=e120]:
+              - generic [ref=e122]: 当前阶段已完成：
+              - generic [ref=e124]: "1. 已建立独立页面路由 `/product/create`"
+              - generic [ref=e126]: 2. 商品列表页“添加商品”按钮已接入跳转
+              - generic [ref=e128]: 3. 后续可直接在这里补商品基础信息、销售信息和库存配置
+            - button "返回商品列表" [ref=e132] [cursor=pointer]
+      - generic [ref=e133]: Arco Design Pro

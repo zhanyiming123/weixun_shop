@@ -309,7 +309,7 @@ function ProductListPage() {
       render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
     },
     {
-      title: '商品归属',
+      title: '商品分类',
       dataIndex: 'productOwnershipId',
       width: 260,
       render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
@@ -439,12 +439,12 @@ function ProductListPage() {
             </div>
 
             <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>商品归属</div>
+              <div className={styles.filterLabel}>商品分类</div>
               <Cascader
                 allowClear
                 className={styles.catalogCascader}
                 options={productOwnershipOptions}
-                placeholder="请选择商品归属"
+                placeholder="请选择商品分类"
                 value={
                   formValues.productOwnershipId
                     ? getProductOwnershipPathById(

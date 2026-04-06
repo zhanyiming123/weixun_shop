@@ -1,0 +1,24 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - img [ref=e48]

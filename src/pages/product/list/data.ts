@@ -1,6 +1,15 @@
 export type ProductSearchType = 'productName' | 'productId';
 export type ProductStatus = 'on' | 'off';
 export type ProductType = 'virtual' | 'course' | 'service';
+export type ProductSpecMode = 'single' | 'multi';
+
+export type ProductSkuItem = {
+  id: string;
+  specText: string;
+  price: number;
+  stock: number;
+  status: ProductStatus;
+};
 
 export type ProductItem = {
   id: string;
@@ -8,6 +17,8 @@ export type ProductItem = {
   productCatalogId: string;
   productOwnershipId: string;
   productType: ProductType;
+  specMode: ProductSpecMode;
+  skus: ProductSkuItem[];
   status: ProductStatus;
   price: number;
   stock: number;
@@ -47,7 +58,24 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'virtual',
-    status: 'on',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1237036327413878784-1',
+        specText: '标准版',
+        price: 199,
+        stock: 1800,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1237036327413878784-2',
+        specText: 'VIP版',
+        price: 239,
+        stock: 1198,
+        status: 'on',
+      },
+    ],
+    status: 'off',
     price: 199,
     stock: 2998,
     createdAt: '2026-04-02 11:01:49',
@@ -58,7 +86,17 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
-    status: 'on',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1231319097741021184-1',
+        specText: '',
+        price: 199,
+        stock: 29992,
+        status: 'on',
+      },
+    ],
+    status: 'off',
     price: 199,
     stock: 29992,
     createdAt: '2026-03-17 16:23:35',
@@ -69,6 +107,16 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1231318174553739264-1',
+        specText: '',
+        price: 199,
+        stock: 29980,
+        status: 'on',
+      },
+    ],
     status: 'on',
     price: 199,
     stock: 29980,
@@ -80,7 +128,17 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'service',
     productOwnershipId: 'item_06_01_01',
     productType: 'service',
-    status: 'off',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1215778084171681792-1',
+        specText: '',
+        price: 1,
+        stock: 444,
+        status: 'off',
+      },
+    ],
+    status: 'on',
     price: 1,
     stock: 444,
     createdAt: '2026-02-02 19:09:09',
@@ -91,6 +149,23 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1211793802365374464-1',
+        specText: '录播班',
+        price: 49,
+        stock: 600,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1211793802365374464-2',
+        specText: '直播班',
+        price: 69,
+        stock: 400,
+        status: 'on',
+      },
+    ],
     status: 'on',
     price: 49,
     stock: 1000,
@@ -102,6 +177,23 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1211793279398580224-1',
+        specText: '录播班',
+        price: 49,
+        stock: 380,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1211793279398580224-2',
+        specText: '直播班',
+        price: 69,
+        stock: 219,
+        status: 'off',
+      },
+    ],
     status: 'on',
     price: 49,
     stock: 599,
@@ -113,6 +205,16 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1210999402622266432-1',
+        specText: '',
+        price: 129,
+        stock: 998,
+        status: 'on',
+      },
+    ],
     status: 'on',
     price: 129,
     stock: 998,
@@ -124,9 +226,19 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1210998727024709632-1',
+        specText: '',
+        price: 129,
+        stock: 0,
+        status: 'on',
+      },
+    ],
     status: 'on',
     price: 129,
-    stock: 598,
+    stock: 0,
     createdAt: '2026-01-20 14:37:41',
   },
   {
@@ -135,7 +247,17 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'virtual',
-    status: 'off',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1210997383807242240-1',
+        specText: '',
+        price: 49,
+        stock: 1000,
+        status: 'off',
+      },
+    ],
+    status: 'on',
     price: 49,
     stock: 1000,
     createdAt: '2026-01-20 14:32:21',
@@ -146,6 +268,23 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'international',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1210876543210987654-1',
+        specText: '录播班',
+        price: 299,
+        stock: 52,
+        status: 'off',
+      },
+      {
+        id: 'sku-G_1210876543210987654-2',
+        specText: '直播班',
+        price: 359,
+        stock: 36,
+        status: 'on',
+      },
+    ],
     status: 'off',
     price: 299,
     stock: 88,
@@ -157,6 +296,16 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1210123456789012345-1',
+        specText: '',
+        price: 899,
+        stock: 32,
+        status: 'on',
+      },
+    ],
     status: 'on',
     price: 899,
     stock: 32,
@@ -168,6 +317,23 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     productCatalogId: 'thesis',
     productOwnershipId: 'item_05_03_04',
     productType: 'virtual',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1209988776655443322-1',
+        specText: '标准版',
+        price: 159,
+        stock: 120,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1209988776655443322-2',
+        specText: 'VIP版',
+        price: 199,
+        stock: 80,
+        status: 'on',
+      },
+    ],
     status: 'off',
     price: 159,
     stock: 200,

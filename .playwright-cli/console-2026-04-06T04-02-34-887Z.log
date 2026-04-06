@@ -1,0 +1,356 @@
+[   12872ms] [LOG] [vite] connecting... @ http://127.0.0.1:3000/@vite/client:183
+[   12952ms] [LOG] [vite] connected. @ http://127.0.0.1:3000/@vite/client:205
+[   13130ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13130ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13132ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13132ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13132ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13132ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13158ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13158ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13158ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13158ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13158ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13158ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13208ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13208ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13209ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13209ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13209ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   13209ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   13264ms] [LOG] [vite] connecting... @ http://127.0.0.1:3000/@vite/client:183
+[   13270ms] [LOG] [vite] connected. @ http://127.0.0.1:3000/@vite/client:205
+[   13334ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://127.0.0.1:3000/login:0
+[   24700ms] [LOG] [vite] connecting... @ http://127.0.0.1:3000/@vite/client:183
+[   24707ms] [LOG] [vite] connected. @ http://127.0.0.1:3000/@vite/client:205
+[   24751ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24751ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   24751ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24751ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   24751ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24751ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   24759ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24759ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   24760ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24760ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   24760ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   24760ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   25408ms] [LOG] product/category @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   25409ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   25409ms] [LOG] product/catalog @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   25409ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   25409ms] [LOG] product/attribute @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:108
+[   25409ms] [ERROR] TypeError: Cannot read properties of undefined (reading 'requireAsync')
+    at load (http://127.0.0.1:3000/src/utils/lazyload.tsx:29:26)
+    at default (http://127.0.0.1:3000/src/utils/lazyload.tsx:54:27)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:106:29
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:115:9
+    at Array.forEach (<anonymous>)
+    at travel (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:101:13)
+    at getFlattenRoutes (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:120:3)
+    at http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:152:39 @ http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:109
+[   25419ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://lf1-xgcdn-tos.pstatp.com/obj/vcloud/vadmin/start.8e0e4855ee346a46ccff8ff3e24db27b.png:0
+[   25427ms] [ERROR] Warning: React does not recognize the `%s` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `%s` instead. If you accidentally passed it from a parent component, remove it from the DOM element.%s hideButton hidebutton 
+    at input
+    at http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:6739:26
+    at span
+    at span
+    at div
+    at Input (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:6950:42)
+    at InputNumber (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:18963:43)
+    at div
+    at div
+    at div
+    at form
+    at ConfigProvider (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:4129:15)
+    at Form (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:25668:44)
+    at div
+    at div
+    at Card (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:16039:43)
+    at div
+    at ProductListPage (http://127.0.0.1:3000/src/pages/product/list/index.tsx:108:19)
+    at InnerLoadable2 (http://127.0.0.1:3000/node_modules/.vite/@loadable_component.js?v=c7b76ecb:290:34)
+    at LoadableWithChunkExtractor2
+    at Loadable
+    at Route2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1729:29)
+    at Switch2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1873:29)
+    at main
+    at Content (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14490:25)
+    at div
+    at section
+    at Layout (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14559:43)
+    at section
+    at Layout (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14559:43)
+    at section
+    at Layout (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14559:43)
+    at PageLayout (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:128:19)
+    at Route2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1729:29)
+    at Switch2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1873:29)
+    at Provider (http://127.0.0.1:3000/node_modules/.vite/react-redux.js?v=c7b76ecb:369:20)
+    at ConfigProvider (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:4129:15)
+    at Router2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1452:30)
+    at BrowserRouter2 (http://127.0.0.1:3000/node_modules/.vite/react-router-dom.js?v=c7b76ecb:1990:35)
+    at Index (http://127.0.0.1:3000/src/main.tsx:48:27) @ http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:830
+[   56879ms] TypeError: Cannot read properties of undefined (reading 'component')
+    at onClickMenuItem (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:156:36)
+    at onClickMenuItem (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14740:26)
+    at menuItemClickHandler (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:12888:7)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3671:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3696:24)
+    at invokeGuardedCallback (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3730:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3733:33)
+    at executeDispatch (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6356:11)
+    at processDispatchQueueItemsInOrder (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6376:15)
+    at processDispatchQueue (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6385:13)
+[   56880ms] TypeError: Cannot read properties of undefined (reading 'component')
+    at onClickMenuItem (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:156:36)
+    at onClickMenuItem (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14740:26)
+    at menuItemClickHandler (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:12888:7)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3671:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3696:24)
+    at invokeGuardedCallback (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3730:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3733:33)
+    at executeDispatch (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6356:11)
+    at processDispatchQueueItemsInOrder (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6376:15)
+    at processDispatchQueue (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6385:13)
+[   57316ms] TypeError: Cannot read properties of undefined (reading 'component')
+    at onClickMenuItem (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:156:36)
+    at onClickMenuItem (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14740:26)
+    at menuItemClickHandler (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:12888:7)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3671:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3696:24)
+    at invokeGuardedCallback (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3730:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3733:33)
+    at executeDispatch (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6356:11)
+    at processDispatchQueueItemsInOrder (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6376:15)
+    at processDispatchQueue (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6385:13)
+[   57316ms] TypeError: Cannot read properties of undefined (reading 'component')
+    at onClickMenuItem (http://127.0.0.1:3000/src/layout.tsx?t=1775394716219:156:36)
+    at onClickMenuItem (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:14740:26)
+    at menuItemClickHandler (http://127.0.0.1:3000/node_modules/.vite/@arco-design_web-react.js?v=c7b76ecb:12888:7)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3671:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3696:24)
+    at invokeGuardedCallback (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3730:39)
+    at invokeGuardedCallbackAndCatchFirstError (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:3733:33)
+    at executeDispatch (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6356:11)
+    at processDispatchQueueItemsInOrder (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6376:15)
+    at processDispatchQueue (http://127.0.0.1:3000/node_modules/.vite/chunk-XSQFVHY5.js?v=c7b76ecb:6385:13)
+[   76228ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[   76277ms] [WARNING] Missing page module for route: product/category @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[   76277ms] [WARNING] Missing page module for route: product/catalog @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[   76277ms] [WARNING] Missing page module for route: product/attribute @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[   76285ms] [WARNING] Missing page module for route: product/category @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[   76285ms] [WARNING] Missing page module for route: product/catalog @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[   76285ms] [WARNING] Missing page module for route: product/attribute @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448231018:108
+[  124422ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448279221:0
+[  124422ms] [ERROR] [hmr] Failed to reload /src/layout.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:193
+[  124423ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  138544ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448293390:0
+[  138546ms] [ERROR] [hmr] Failed to reload /src/layout.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:193
+[  138546ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  337991ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448492700:0
+[  337991ms] [ERROR] [hmr] Failed to reload /src/layout.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:193
+[  337992ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  337997ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:3000/src/layout.tsx?import&t=1775448492702:0
+[  337997ms] [ERROR] [hmr] Failed to reload /src/layout.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:3000/@vite/client:193
+[  337997ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  428792ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  887329ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  887332ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  887333ms] [LOG] [vite] hot updated: /src/pages/product/category/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  887333ms] [LOG] [vite] hot updated: /src/pages/product/category/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  910512ms] [LOG] [vite] hot updated: /src/pages/product/category/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[  910513ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 1229355ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 1229360ms] [LOG] [vite] hot updated: /src/pages/product/category/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 1404469ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 1404550ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3329474ms] [LOG] [vite] connecting... @ http://127.0.0.1:3000/@vite/client:183
+[ 3329523ms] [LOG] [vite] connected. @ http://127.0.0.1:3000/@vite/client:205
+[ 3330585ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://lf1-xgcdn-tos.pstatp.com/obj/vcloud/vadmin/start.8e0e4855ee346a46ccff8ff3e24db27b.png:0
+[ 3546651ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3594608ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/layout.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/NavBar/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/pages/login/banner.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/pages/login/form.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/Settings/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/MessageBox/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/MessageBox/list.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/Settings/block.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/Settings/color.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3713766ms] [LOG] [vite] hot updated: /src/components/NavBar/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3725264ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442
+[ 3797318ms] [LOG] [vite] hot updated: /src/pages/product/catalog/index.tsx @ http://127.0.0.1:3000/@vite/client:442

@@ -1,9 +1,7 @@
-import {
-  MOCK_PRODUCTS,
-  ProductItem,
-  ProductType,
-} from '@/pages/product/list/data';
+import { MOCK_PRODUCTS, ProductItem } from '@/pages/product/list/data';
 import { ProductCatalogLeafItem } from '@/pages/product/catalog/data';
+import { ProductOwnershipLeafItem } from '@/pages/product/category/data';
+import { MarketingProductSelectorSpuItem } from '../components/product-selector/types';
 
 export type { ProductCatalogLeafItem };
 
@@ -25,59 +23,6 @@ export type CouponCampusOption = {
   value: string;
 };
 
-export type CouponProductCategoryOption = {
-  label: string;
-  value: string;
-};
-
-export type CouponOrgOption = {
-  value: string;
-  label: string;
-};
-
-export type OrgCascaderOption = {
-  value: string;
-  label: string;
-  children?: OrgCascaderOption[];
-};
-
-export type CategoryConditionScope = {
-  categoryId: string;
-  selectedOrgPaths: string[][];
-  selectedSpecValues: string[];
-};
-
-export type CouponSkuItem = {
-  key: string;
-  rowType: 'sku';
-  productId: string;
-  productName: string;
-  productCategory: string;
-  productCategoryValue: string;
-  skuId: string;
-  skuSpecText: string;
-  productType: string;
-  price: number;
-};
-
-export type CouponSpuItem = {
-  key: string;
-  rowType: 'spu';
-  productId: string;
-  productName: string;
-  productCategory: string;
-  productCategoryValue: string;
-  skuId: string;
-  skuSpecText: string;
-  productType: string;
-  price: number;
-  minPrice: number;
-  maxPrice: number;
-  children: CouponSkuItem[];
-};
-
-export type CouponProductTableItem = CouponSpuItem | CouponSkuItem;
-
 export type CouponFormValues = {
   discountType: CouponDiscountType;
   fullReductionThreshold?: number;
@@ -86,7 +31,7 @@ export type CouponFormValues = {
   discountRate?: number;
   campusIds: string[];
   productScope: CouponProductScope;
-  conditionScopes: CategoryConditionScope[];
+  conditionCategoryPaths: string[][];
   selectedSkuIds: string[];
   name: string;
   issueCount: number;
@@ -109,7 +54,6 @@ export type CouponListItem = {
   name: string;
   discountType: CouponDiscountType;
   productScope: CouponProductScope;
-  promotionScene: string;
   discountSummary: string;
   receivedCount: number;
   issueCount: number;
@@ -132,11 +76,11 @@ export type CouponDetailRecord = {
   discountRate?: number;
   campusIds: string[];
   productScope: CouponProductScope;
-  conditionScopes: CategoryConditionScope[];
+  conditionCategoryPaths: string[][];
   selectedSkuIds: string[];
-  promotionScene: string;
   receivedCount: number;
   issueCount: number;
+  limitPerUser: number;
   receiveRate: number;
   receiveStartAt: string;
   receiveEndAt: string;
@@ -196,32 +140,54 @@ export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> 
   specific: '指定商品',
 };
 
-export const MOCK_CAMPUSES: CouponCampusOption[] = [
-  { label: '上海校区', value: 'shanghai' },
-  { label: '北京校区', value: 'beijing' },
-  { label: '深圳校区', value: 'shenzhen' },
-  { label: '杭州校区', value: 'hangzhou' },
+export const COUPON_ALL_CAMPUS_VALUE = 'all';
+
+export const COUPON_CAMPUS_OPTIONS: CouponCampusOption[] = [
+  { label: '唯寻广州', value: 'guangzhou' },
+  { label: '唯寻英国', value: 'uk' },
+  { label: '唯寻上海', value: 'shanghai' },
+  { label: '唯寻江苏', value: 'jiangsu' },
+  { label: '唯寻西南', value: 'southwest' },
+  { label: '唯寻北京', value: 'beijing' },
+  { label: '唯寻深圳', value: 'shenzhen' },
+  { label: '唯寻西安', value: 'xian' },
 ];
 
-export const MOCK_CATEGORY_SPEC_OPTIONS: Record<string, CouponOrgOption[]> = {
-  international: [
-    { value: 'vip_1v4', label: '1v4 金牌班' },
-    { value: 'vip_1v1', label: '1v1 旗舰班' },
-    { value: 'standard', label: '标准直播班' },
-  ],
-};
+export const COUPON_CAMPUS_TREE_DATA = [
+  {
+    key: COUPON_ALL_CAMPUS_VALUE,
+    value: COUPON_ALL_CAMPUS_VALUE,
+    title: '全部校区',
+    children: COUPON_CAMPUS_OPTIONS.map((item) => ({
+      key: item.value,
+      value: item.value,
+      title: item.label,
+    })),
+  },
+];
 
-const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
-  virtual: ['标准版', 'VIP版'],
-  course: ['录播班', '直播班'],
-  service: ['基础服务', '进阶服务'],
-};
+const ALL_COUPON_CAMPUS_IDS = COUPON_CAMPUS_OPTIONS.map((item) => item.value);
 
-const COUPON_PRODUCT_TYPE_LABEL_MAP: Record<ProductType, string> = {
-  virtual: '虚拟商品',
-  course: '课程商品',
-  service: '服务商品',
-};
+export function normalizeCouponCampusIds(campusIds: string[] = []) {
+  const selectedValues = campusIds.includes(COUPON_ALL_CAMPUS_VALUE)
+    ? ALL_COUPON_CAMPUS_IDS
+    : campusIds;
+  const selectedSet = new Set(
+    selectedValues.filter((item) => ALL_COUPON_CAMPUS_IDS.includes(item))
+  );
+
+  return ALL_COUPON_CAMPUS_IDS.filter((item) => selectedSet.has(item));
+}
+
+export function buildCouponCampusTreeValue(campusIds: string[] = []) {
+  const normalizedCampusIds = normalizeCouponCampusIds(campusIds);
+
+  if (normalizedCampusIds.length === ALL_COUPON_CAMPUS_IDS.length) {
+    return [COUPON_ALL_CAMPUS_VALUE];
+  }
+
+  return normalizedCampusIds;
+}
 
 const DEFAULT_SELECTED_SKUS_BY_RECORD: Record<string, string[]> = {
   '122661783978': ['sku-G_1237036327413878784-1', 'sku-G_1237036327413878784-2'],
@@ -233,6 +199,20 @@ const DEFAULT_SELECTED_SKUS_BY_RECORD: Record<string, string[]> = {
   '122661783988': ['sku-G_1209988776655443322-1', 'sku-G_1209988776655443322-2'],
 };
 
+const COUPON_COPY_NAME_SUFFIX = '_副本';
+
+function buildCopyCouponName(name: string) {
+  const maxLength = 15;
+  const trimmedName = name.trim();
+  const baseLength = maxLength - COUPON_COPY_NAME_SUFFIX.length;
+
+  if (trimmedName.length <= baseLength) {
+    return `${trimmedName}${COUPON_COPY_NAME_SUFFIX}`;
+  }
+
+  return `${trimmedName.slice(0, baseLength)}${COUPON_COPY_NAME_SUFFIX}`;
+}
+
 const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   {
     id: '122661783977',
@@ -243,11 +223,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     fullReductionAmount: 2,
     campusIds: ['shanghai', 'beijing'],
     productScope: 'all',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
-    promotionScene: '全场景',
     receivedCount: 200,
     issueCount: 400,
+    limitPerUser: 1,
     receiveRate: 50,
     receiveStartAt: '2026/10/30 00:00:00',
     receiveEndAt: '2026/10/30 00:00:00',
@@ -267,11 +247,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     fullReductionAmount: 2,
     campusIds: ['shanghai', 'shenzhen'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783978'],
-    promotionScene: '全场景',
     receivedCount: 200,
     issueCount: 400,
+    limitPerUser: 1,
     receiveRate: 50,
     receiveStartAt: '2026/03/30 00:00:00',
     receiveEndAt: '2026/10/30 00:00:00',
@@ -288,13 +268,13 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '择校季-立减体验券',
     discountType: 'directReduction',
     directReductionAmount: 2,
-    campusIds: ['beijing', 'hangzhou'],
+    campusIds: ['beijing', 'jiangsu'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783979'],
-    promotionScene: '全场景',
     receivedCount: 200,
     issueCount: 400,
+    limitPerUser: 1,
     receiveRate: 50,
     receiveStartAt: '2025/03/30 00:00:00',
     receiveEndAt: '2025/10/30 00:00:00',
@@ -313,11 +293,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountRate: 9,
     campusIds: ['shanghai'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783980'],
-    promotionScene: '全场景',
     receivedCount: 200,
     issueCount: 400,
+    limitPerUser: 1,
     receiveRate: 50,
     receiveStartAt: '2024/03/30 00:00:00',
     receiveEndAt: '2024/10/30 00:00:00',
@@ -335,13 +315,13 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountType: 'fullReduction',
     fullReductionThreshold: 20,
     fullReductionAmount: 5,
-    campusIds: ['shenzhen', 'hangzhou'],
+    campusIds: ['shenzhen', 'guangzhou'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783981'],
-    promotionScene: '全场景',
     receivedCount: 168,
     issueCount: 300,
+    limitPerUser: 1,
     receiveRate: 56,
     receiveStartAt: '2026/05/01 00:00:00',
     receiveEndAt: '2026/06/30 23:59:59',
@@ -360,11 +340,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     directReductionAmount: 50,
     campusIds: ['beijing', 'shanghai'],
     productScope: 'all',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
-    promotionScene: '全场景',
     receivedCount: 96,
     issueCount: 200,
+    limitPerUser: 1,
     receiveRate: 48,
     receiveStartAt: '2026/08/01 00:00:00',
     receiveEndAt: '2026/08/31 23:59:59',
@@ -381,13 +361,13 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: 'A-Level秋季折扣券',
     discountType: 'discount',
     discountRate: 8.5,
-    campusIds: ['shanghai', 'hangzhou'],
+    campusIds: ['shanghai', 'uk'],
     productScope: 'all',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
-    promotionScene: '全场景',
     receivedCount: 320,
     issueCount: 600,
+    limitPerUser: 1,
     receiveRate: 53,
     receiveStartAt: '2026/02/01 00:00:00',
     receiveEndAt: '2026/03/31 23:59:59',
@@ -406,11 +386,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountRate: 9.5,
     campusIds: ['beijing'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783984'],
-    promotionScene: '全场景',
     receivedCount: 88,
     issueCount: 180,
+    limitPerUser: 1,
     receiveRate: 49,
     receiveStartAt: '2025/09/01 00:00:00',
     receiveEndAt: '2025/09/30 23:59:59',
@@ -428,19 +408,13 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountType: 'fullReduction',
     fullReductionThreshold: 100,
     fullReductionAmount: 20,
-    campusIds: ['shenzhen'],
+    campusIds: ['southwest'],
     productScope: 'condition',
-    conditionScopes: [
-      {
-        categoryId: 'planning',
-        selectedOrgPaths: [['xm'], ['wx', 'wx-plan']],
-        selectedSpecValues: [],
-      },
-    ],
+    conditionCategoryPaths: [['weixun-course', 'planning']],
     selectedSkuIds: [],
-    promotionScene: '全场景',
     receivedCount: 58,
     issueCount: 120,
+    limitPerUser: 1,
     receiveRate: 48,
     receiveStartAt: '2024/11/01 00:00:00',
     receiveEndAt: '2024/11/30 23:59:59',
@@ -457,13 +431,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '申请季-全场通用券',
     discountType: 'directReduction',
     directReductionAmount: 30,
-    campusIds: ['shanghai', 'beijing', 'shenzhen'],
+    campusIds: [
+      'guangzhou',
+      'uk',
+      'shanghai',
+      'jiangsu',
+      'southwest',
+      'beijing',
+      'shenzhen',
+      'xian',
+    ],
     productScope: 'all',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
-    promotionScene: '全场景',
     receivedCount: 260,
     issueCount: 500,
+    limitPerUser: 1,
     receiveRate: 52,
     receiveStartAt: '2026/04/01 00:00:00',
     receiveEndAt: '2026/05/31 23:59:59',
@@ -480,13 +463,13 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '冬令营-早鸟券',
     discountType: 'discount',
     discountRate: 8,
-    campusIds: ['hangzhou', 'shenzhen'],
+    campusIds: ['xian', 'shenzhen'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783987'],
-    promotionScene: '全场景',
     receivedCount: 45,
     issueCount: 150,
+    limitPerUser: 1,
     receiveRate: 30,
     receiveStartAt: '2026/11/01 00:00:00',
     receiveEndAt: '2026/11/30 23:59:59',
@@ -505,11 +488,11 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     directReductionAmount: 100,
     campusIds: ['beijing'],
     productScope: 'specific',
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783988'],
-    promotionScene: '全场景',
     receivedCount: 120,
     issueCount: 180,
+    limitPerUser: 1,
     receiveRate: 67,
     receiveStartAt: '2024/06/01 00:00:00',
     receiveEndAt: '2024/07/15 23:59:59',
@@ -522,19 +505,15 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   },
 ];
 
-function cloneConditionScopes(scopes: CategoryConditionScope[]) {
-  return scopes.map((scope) => ({
-    categoryId: scope.categoryId,
-    selectedOrgPaths: scope.selectedOrgPaths.map((path) => [...path]),
-    selectedSpecValues: [...scope.selectedSpecValues],
-  }));
+function cloneConditionCategoryPaths(conditionCategoryPaths: string[][]) {
+  return conditionCategoryPaths.map((path) => [...path]);
 }
 
 function cloneCouponDetailRecord(record: CouponDetailRecord): CouponDetailRecord {
   return {
     ...record,
-    campusIds: [...record.campusIds],
-    conditionScopes: cloneConditionScopes(record.conditionScopes),
+    campusIds: normalizeCouponCampusIds(record.campusIds),
+    conditionCategoryPaths: cloneConditionCategoryPaths(record.conditionCategoryPaths),
     selectedSkuIds: [...record.selectedSkuIds],
     customUseTimeRange: [...record.customUseTimeRange],
   };
@@ -576,7 +555,6 @@ function toCouponListItem(record: CouponDetailRecord): CouponListItem {
     name: record.name,
     discountType: record.discountType,
     productScope: record.productScope,
-    promotionScene: record.promotionScene,
     discountSummary: formatCouponDiscountSummary(record),
     receivedCount: record.receivedCount,
     issueCount: record.issueCount,
@@ -641,9 +619,9 @@ export function buildCouponFormValuesFromRecord(record: CouponDetailRecord): Cou
     fullReductionAmount: record.fullReductionAmount,
     directReductionAmount: record.directReductionAmount,
     discountRate: record.discountRate,
-    campusIds: [...record.campusIds],
+    campusIds: normalizeCouponCampusIds(record.campusIds),
     productScope: record.productScope,
-    conditionScopes: cloneConditionScopes(record.conditionScopes),
+    conditionCategoryPaths: cloneConditionCategoryPaths(record.conditionCategoryPaths),
     selectedSkuIds: [...record.selectedSkuIds],
     name: record.name,
     issueCount: record.issueCount,
@@ -662,7 +640,7 @@ export function buildCreateValuesFromCoupon(id: string) {
   }
   return {
     ...buildCouponFormValuesFromRecord(source),
-    name: `${source.name}_副本`,
+    name: buildCopyCouponName(source.name),
   };
 }
 
@@ -674,7 +652,7 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   discountRate: undefined,
   campusIds: [],
   productScope: 'all',
-  conditionScopes: [],
+  conditionCategoryPaths: [],
   selectedSkuIds: [],
   name: '',
   issueCount: 0,
@@ -691,131 +669,108 @@ export const DEFAULT_COUPON_LIST_FILTER_VALUES: CouponListFilterValues = {
   keyword: '',
 };
 
-function resolveProductCategory(
+function resolveProductCatalog(
   product: ProductItem,
   categories: ProductCatalogLeafItem[]
-): CouponProductCategoryOption {
+) {
   const matched = categories.find((item) => item.id === product.productCatalogId);
   if (matched) {
-    return { label: matched.label, value: matched.id };
+    return matched;
   }
 
   const fallback = categories[0];
   return {
+    id: fallback?.id || '',
     label: fallback?.label || '未配置类目',
-    value: fallback?.id || '',
+    labelPath: fallback?.labelPath || ['未配置类目'],
+    path: fallback?.path || [],
+    hasSkuSpec: Boolean(fallback?.hasSkuSpec),
   };
 }
 
-export function buildCouponProductCategoryOptions(
-  categories: ProductCatalogLeafItem[]
+function resolveProductOwnership(
+  product: ProductItem,
+  ownershipItems: ProductOwnershipLeafItem[]
 ) {
-  return categories.map((item) => ({
-    label: item.label,
-    value: item.id,
-  }));
+  const matched = ownershipItems.find(
+    (item) => item.id === product.productOwnershipId
+  );
+  if (matched) {
+    return matched;
+  }
+
+  const fallback = ownershipItems[0];
+  return {
+    id: fallback?.id || '',
+    label: fallback?.label || '未配置分类',
+    labelPath: fallback?.labelPath || ['未配置分类'],
+    path: fallback?.path || [],
+  };
 }
 
-export function buildCouponSpus(categories: ProductCatalogLeafItem[]) {
-  return MOCK_PRODUCTS.map((product, productIndex) => {
-    const category = resolveProductCategory(product, categories);
-    const children = SKU_SPEC_TEMPLATES[product.productType].map(
-      (specText, specIndex) => {
-        const surcharge = specIndex === 0 ? 0 : Math.max(product.price * 0.12, 10);
-        return {
-          key: `sku-${product.id}-${specIndex + 1}`,
-          rowType: 'sku' as const,
-          productId: product.id,
-          productName: product.name,
-          productCategory: category.label,
-          productCategoryValue: category.value,
-          skuId: `SKU_${productIndex + 1}_${specIndex + 1}`,
-          skuSpecText: specText,
-          productType: COUPON_PRODUCT_TYPE_LABEL_MAP[product.productType],
-          price: Number((product.price + surcharge).toFixed(2)),
-        };
-      }
-    );
+function getSkuDisabledReason(product: ProductItem, stock: number, status: string) {
+  if (status === 'off') {
+    return '已下架';
+  }
 
-    const prices = children.map((item) => item.price);
+  if (stock <= 0) {
+    return '库存不足';
+  }
 
-    return {
-      key: `spu-${product.id}`,
-      rowType: 'spu' as const,
-      productId: product.id,
-      productName: product.name,
-      productCategory: category.label,
-      productCategoryValue: category.value,
-      skuId: '',
-      skuSpecText: `共 ${children.length} 个 SKU`,
-      productType: COUPON_PRODUCT_TYPE_LABEL_MAP[product.productType],
-      price: prices[0],
-      minPrice: Math.min(...prices),
-      maxPrice: Math.max(...prices),
-      children,
-    };
-  });
+  if (product.status === 'off' && product.skus.length === 1) {
+    return '已下架';
+  }
+
+  return '';
 }
 
 export function formatCurrency(price: number) {
   return `¥${price.toFixed(2)}`;
 }
 
-export function formatCouponPriceRange(minPrice: number, maxPrice: number) {
-  if (minPrice === maxPrice) {
-    return formatCurrency(minPrice);
-  }
-
-  return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
-}
-
-function matchKeyword(item: CouponProductTableItem, keyword: string) {
-  return (
-    item.productName.toLowerCase().includes(keyword) ||
-    item.productId.toLowerCase().includes(keyword) ||
-    item.productCategory.toLowerCase().includes(keyword) ||
-    item.skuId.toLowerCase().includes(keyword)
-  );
-}
-
-export function filterCouponProducts(
-  data: CouponSpuItem[],
-  keyword: string,
-  categoryValue?: string
+export function buildMarketingProductSelectorSpus(
+  categories: ProductCatalogLeafItem[],
+  ownershipItems: ProductOwnershipLeafItem[]
 ) {
-  const normalizedKeyword = keyword.trim().toLowerCase();
-
-  return data
-    .filter((item) => {
-      if (!categoryValue) {
-        return true;
-      }
-      return item.productCategoryValue === categoryValue;
-    })
-    .map((item) => {
-      if (!normalizedKeyword) {
-        return item;
-      }
-
-      const matchedChildren = item.children.filter((child) =>
-        matchKeyword(child, normalizedKeyword)
-      );
-
-      if (matchKeyword(item, normalizedKeyword)) {
-        return item;
-      }
-
-      if (!matchedChildren.length) {
-        return null;
-      }
+  return MOCK_PRODUCTS.map((product) => {
+    const catalog = resolveProductCatalog(product, categories);
+    const ownership = resolveProductOwnership(product, ownershipItems);
+    const children = product.skus.map((sku) => {
+      const disabledReason = getSkuDisabledReason(product, sku.stock, sku.status);
 
       return {
-        ...item,
-        skuSpecText: `共 ${matchedChildren.length} 个 SKU`,
-        minPrice: Math.min(...matchedChildren.map((child) => child.price)),
-        maxPrice: Math.max(...matchedChildren.map((child) => child.price)),
-        children: matchedChildren,
+        key: sku.id,
+        rowType: 'sku' as const,
+        productId: product.id,
+        productName: product.name,
+        productCatalogId: catalog.id,
+        productCatalogLabel: catalog.label,
+        productOwnershipId: ownership.id,
+        productOwnershipLabel: ownership.label,
+        skuId: sku.id,
+        specText: product.specMode === 'multi' ? sku.specText : '',
+        price: sku.price,
+        stock: sku.stock,
+        status: sku.status,
+        selectable: !disabledReason,
+        disabledReason,
       };
-    })
-    .filter(Boolean) as CouponSpuItem[];
+    });
+
+    const hasSelectableSku = children.some((item) => item.selectable);
+
+    return {
+      key: `spu-${product.id}`,
+      rowType: 'spu' as const,
+      productId: product.id,
+      productName: product.name,
+      productCatalogId: catalog.id,
+      productCatalogLabel: catalog.label,
+      productOwnershipId: ownership.id,
+      productOwnershipLabel: ownership.label,
+      selectable: hasSelectableSku,
+      disabledReason: hasSelectableSku ? '' : '该商品下无可选 SKU',
+      children,
+    } as MarketingProductSelectorSpuItem;
+  });
 }

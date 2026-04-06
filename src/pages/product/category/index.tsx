@@ -232,14 +232,14 @@ function CategoryPage() {
           <span className={styles.nodeActions}>
             {canAddChild && (
               <Typography.Text className={styles.actionLink} onClick={() => openAddModal(item.id)}>
-                新增子归属
+                新增子分类
               </Typography.Text>
             )}
             <Typography.Text className={styles.actionLink} onClick={() => openEditModal(item)}>
               编辑
             </Typography.Text>
             <Popconfirm
-              title={`确定删除「${item.name}」${hasChildren ? '及其所有子归属' : ''}吗？`}
+              title={`确定删除「${item.name}」${hasChildren ? '及其所有子分类' : ''}吗？`}
               onOk={() => handleDelete(item)}
             >
               <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
@@ -261,15 +261,15 @@ function CategoryPage() {
     <div className={styles.page}>
       <div className={styles.toolbar}>
         <Button type="primary" icon={<IconPlus />} onClick={() => openAddModal(null)}>
-          新增归属
+          新增分类
         </Button>
       </div>
 
       <div className={styles.listContainer}>
         <div className={styles.listHeader}>
-          <span className={styles.headerName}>商品归属</span>
+          <span className={styles.headerName}>商品分类</span>
           <span className={styles.headerOps}>
-            <Tooltip content="可对商品归属进行新增、编辑、删除操作，同级归属支持拖拽排序">
+            <Tooltip content="可对商品分类进行新增、编辑、删除操作，同级分类支持拖拽排序">
               <IconInfoCircle className={styles.headerInfoIcon} />
             </Tooltip>
             操作
@@ -278,7 +278,7 @@ function CategoryPage() {
 
         <div>
           {rootItems.length === 0 ? (
-            <div className={styles.empty}>暂无归属数据</div>
+            <div className={styles.empty}>暂无分类数据</div>
           ) : (
             rootItems.map((item) => renderRow(item, 0))
           )}
@@ -286,12 +286,12 @@ function CategoryPage() {
 
         <div className={styles.systemNode}>
           <div className={styles.systemName}>未归属</div>
-          <div className={styles.systemDesc}>系统预设归属，不可编辑和删除</div>
+          <div className={styles.systemDesc}>系统预设分类，不可编辑和删除</div>
         </div>
       </div>
 
       <Modal
-        title={editingItem ? '编辑归属' : addParentId ? '新增子归属' : '新增归属'}
+        title={editingItem ? '编辑分类' : addParentId ? '新增子分类' : '新增分类'}
         visible={modalVisible}
         onOk={handleModalOk}
         onCancel={() => setModalVisible(false)}
@@ -299,13 +299,13 @@ function CategoryPage() {
         focusLock
         autoFocus={false}
       >
-        <Form form={form} layout="vertical">
+        <Form className="platform-form-spacing" form={form} layout="vertical">
           <Form.Item
             field="name"
-            label="归属名称"
-            rules={[{ required: true, message: '请输入归属名称' }]}
+            label="分类名称"
+            rules={[{ required: true, message: '请输入分类名称' }]}
           >
-            <Input placeholder="请输入归属名称" maxLength={20} showWordLimit />
+            <Input placeholder="请输入分类名称" maxLength={20} showWordLimit />
           </Form.Item>
         </Form>
       </Modal>

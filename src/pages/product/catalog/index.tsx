@@ -300,7 +300,7 @@ function CatalogPage() {
         focusLock
         autoFocus={false}
       >
-        <Form form={form} layout="vertical">
+        <Form className="platform-form-spacing" form={form} layout="vertical">
           <Form.Item
             field="name"
             label="类目名称"

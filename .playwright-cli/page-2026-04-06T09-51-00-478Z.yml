@@ -1,0 +1,302 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - generic [ref=e63]:
+                - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                  - generic [ref=e66]: 商品列表
+                - menuitem "商品归属" [active] [ref=e68] [cursor=pointer]:
+                  - generic [ref=e70]: 商品归属
+                - menuitem "商品类目" [ref=e72] [cursor=pointer]:
+                  - generic [ref=e74]: 商品类目
+                - menuitem "类目属性" [ref=e76] [cursor=pointer]:
+                  - generic [ref=e78]: 类目属性
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 订单管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 售后管理
+              - img [ref=e94]
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - text: 营销管理
+              - img [ref=e103]
+        - img [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - list [ref=e111]:
+          - listitem [ref=e112]: 商品管理
+          - img [ref=e114]
+          - listitem [ref=e116]: 商品归属
+        - main [ref=e117]:
+          - generic [ref=e2564]:
+            - button "新增归属" [ref=e2566] [cursor=pointer]:
+              - img [ref=e2567]
+              - text: 新增归属
+            - generic [ref=e2569]:
+              - generic [ref=e2570]:
+                - generic [ref=e2571]: 商品归属
+                - generic [ref=e2572]:
+                  - img [ref=e2573] [cursor=pointer]
+                  - text: 操作
+              - generic [ref=e2575]:
+                - generic [ref=e2576]:
+                  - generic [ref=e2577]:
+                    - img [ref=e2579]
+                    - img [ref=e2583] [cursor=pointer]
+                    - generic [ref=e2585]: 青少
+                    - generic [ref=e2586]:
+                      - generic [ref=e2587] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2588] [cursor=pointer]: 编辑
+                      - generic [ref=e2589] [cursor=pointer]: 删除
+                  - generic [ref=e2590]:
+                    - generic [ref=e2592]:
+                      - img [ref=e2594]
+                      - img [ref=e2598] [cursor=pointer]
+                      - generic [ref=e2600]: 青少留学
+                      - generic [ref=e2601]:
+                        - generic [ref=e2602] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2603] [cursor=pointer]: 编辑
+                        - generic [ref=e2604] [cursor=pointer]: 删除
+                    - generic [ref=e2606]:
+                      - img [ref=e2608]
+                      - img [ref=e2612] [cursor=pointer]
+                      - generic [ref=e2614]: 青少语培
+                      - generic [ref=e2615]:
+                        - generic [ref=e2616] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2617] [cursor=pointer]: 编辑
+                        - generic [ref=e2618] [cursor=pointer]: 删除
+                    - generic [ref=e2620]:
+                      - img [ref=e2622]
+                      - img [ref=e2626] [cursor=pointer]
+                      - generic [ref=e2628]: 青少竞赛
+                      - generic [ref=e2629]:
+                        - generic [ref=e2630] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2631] [cursor=pointer]: 编辑
+                        - generic [ref=e2632] [cursor=pointer]: 删除
+                - generic [ref=e2633]:
+                  - generic [ref=e2634]:
+                    - img [ref=e2636]
+                    - img [ref=e2640] [cursor=pointer]
+                    - generic [ref=e2642]: 择校
+                    - generic [ref=e2643]:
+                      - generic [ref=e2644] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2645] [cursor=pointer]: 编辑
+                      - generic [ref=e2646] [cursor=pointer]: 删除
+                  - generic [ref=e2647]:
+                    - generic [ref=e2649]:
+                      - img [ref=e2651]
+                      - img [ref=e2655] [cursor=pointer]
+                      - generic [ref=e2657]: 择校备考
+                      - generic [ref=e2658]:
+                        - generic [ref=e2659] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2660] [cursor=pointer]: 编辑
+                        - generic [ref=e2661] [cursor=pointer]: 删除
+                    - generic [ref=e2663]:
+                      - img [ref=e2665]
+                      - img [ref=e2669] [cursor=pointer]
+                      - generic [ref=e2671]: 择校语培
+                      - generic [ref=e2672]:
+                        - generic [ref=e2673] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2674] [cursor=pointer]: 编辑
+                        - generic [ref=e2675] [cursor=pointer]: 删除
+                - generic [ref=e2676]:
+                  - generic [ref=e2677]:
+                    - img [ref=e2679]
+                    - img [ref=e2683] [cursor=pointer]
+                    - generic [ref=e2685]: 橡沐
+                    - generic [ref=e2686]:
+                      - generic [ref=e2687] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2688] [cursor=pointer]: 编辑
+                      - generic [ref=e2689] [cursor=pointer]: 删除
+                  - generic [ref=e2690]:
+                    - generic [ref=e2692]:
+                      - img [ref=e2694]
+                      - img [ref=e2698] [cursor=pointer]
+                      - generic [ref=e2700]: 橡沐竞赛
+                      - generic [ref=e2701]:
+                        - generic [ref=e2702] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2703] [cursor=pointer]: 编辑
+                        - generic [ref=e2704] [cursor=pointer]: 删除
+                    - generic [ref=e2706]:
+                      - img [ref=e2708]
+                      - img [ref=e2712] [cursor=pointer]
+                      - generic [ref=e2714]: 橡沐留学
+                      - generic [ref=e2715]:
+                        - generic [ref=e2716] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2717] [cursor=pointer]: 编辑
+                        - generic [ref=e2718] [cursor=pointer]: 删除
+                    - generic [ref=e2720]:
+                      - img [ref=e2722]
+                      - img [ref=e2726] [cursor=pointer]
+                      - generic [ref=e2728]: 橡沐学科
+                      - generic [ref=e2729]:
+                        - generic [ref=e2730] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2731] [cursor=pointer]: 编辑
+                        - generic [ref=e2732] [cursor=pointer]: 删除
+                    - generic [ref=e2734]:
+                      - img [ref=e2736]
+                      - img [ref=e2740] [cursor=pointer]
+                      - generic [ref=e2742]: 橡沐语培
+                      - generic [ref=e2743]:
+                        - generic [ref=e2744] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2745] [cursor=pointer]: 编辑
+                        - generic [ref=e2746] [cursor=pointer]: 删除
+                - generic [ref=e2747]:
+                  - generic [ref=e2748]:
+                    - img [ref=e2750]
+                    - img [ref=e2754] [cursor=pointer]
+                    - generic [ref=e2756]: 全日制
+                    - generic [ref=e2757]:
+                      - generic [ref=e2758] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2759] [cursor=pointer]: 编辑
+                      - generic [ref=e2760] [cursor=pointer]: 删除
+                  - generic [ref=e2761]:
+                    - generic [ref=e2763]:
+                      - img [ref=e2765]
+                      - img [ref=e2769] [cursor=pointer]
+                      - generic [ref=e2771]: 全日制学科
+                      - generic [ref=e2772]:
+                        - generic [ref=e2773] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2774] [cursor=pointer]: 编辑
+                        - generic [ref=e2775] [cursor=pointer]: 删除
+                    - generic [ref=e2777]:
+                      - img [ref=e2779]
+                      - img [ref=e2783] [cursor=pointer]
+                      - generic [ref=e2785]: 全日制语培
+                      - generic [ref=e2786]:
+                        - generic [ref=e2787] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2788] [cursor=pointer]: 编辑
+                        - generic [ref=e2789] [cursor=pointer]: 删除
+                    - generic [ref=e2791]:
+                      - img [ref=e2793]
+                      - img [ref=e2797] [cursor=pointer]
+                      - generic [ref=e2799]: 全日制留学
+                      - generic [ref=e2800]:
+                        - generic [ref=e2801] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2802] [cursor=pointer]: 编辑
+                        - generic [ref=e2803] [cursor=pointer]: 删除
+                - generic [ref=e2804]:
+                  - generic [ref=e2805]:
+                    - img [ref=e2807]
+                    - img [ref=e2811] [cursor=pointer]
+                    - generic [ref=e2813]: 高端
+                    - generic [ref=e2814]:
+                      - generic [ref=e2815] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2816] [cursor=pointer]: 编辑
+                      - generic [ref=e2817] [cursor=pointer]: 删除
+                  - generic [ref=e2818]:
+                    - generic [ref=e2820]:
+                      - img [ref=e2822]
+                      - img [ref=e2826] [cursor=pointer]
+                      - generic [ref=e2828]: 高端背提
+                      - generic [ref=e2829]:
+                        - generic [ref=e2830] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2831] [cursor=pointer]: 编辑
+                        - generic [ref=e2832] [cursor=pointer]: 删除
+                    - generic [ref=e2834]:
+                      - img [ref=e2836]
+                      - img [ref=e2840] [cursor=pointer]
+                      - generic [ref=e2842]: 高端竞赛
+                      - generic [ref=e2843]:
+                        - generic [ref=e2844] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2845] [cursor=pointer]: 编辑
+                        - generic [ref=e2846] [cursor=pointer]: 删除
+                    - generic [ref=e2848]:
+                      - img [ref=e2850]
+                      - img [ref=e2854] [cursor=pointer]
+                      - generic [ref=e2856]: 高端牛剑
+                      - generic [ref=e2857]:
+                        - generic [ref=e2858] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2859] [cursor=pointer]: 编辑
+                        - generic [ref=e2860] [cursor=pointer]: 删除
+                - generic [ref=e2861]:
+                  - generic [ref=e2862]:
+                    - img [ref=e2864]
+                    - img [ref=e2868] [cursor=pointer]
+                    - generic [ref=e2870]: 英联邦
+                    - generic [ref=e2871]:
+                      - generic [ref=e2872] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2873] [cursor=pointer]: 编辑
+                      - generic [ref=e2874] [cursor=pointer]: 删除
+                  - generic [ref=e2875]:
+                    - generic [ref=e2877]:
+                      - img [ref=e2879]
+                      - img [ref=e2883] [cursor=pointer]
+                      - generic [ref=e2885]: 英联邦留学
+                      - generic [ref=e2886]:
+                        - generic [ref=e2887] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2888] [cursor=pointer]: 编辑
+                        - generic [ref=e2889] [cursor=pointer]: 删除
+                    - generic [ref=e2891]:
+                      - img [ref=e2893]
+                      - img [ref=e2897] [cursor=pointer]
+                      - generic [ref=e2899]: 英联邦学科
+                      - generic [ref=e2900]:
+                        - generic [ref=e2901] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2902] [cursor=pointer]: 编辑
+                        - generic [ref=e2903] [cursor=pointer]: 删除
+                    - generic [ref=e2905]:
+                      - img [ref=e2907]
+                      - img [ref=e2911] [cursor=pointer]
+                      - generic [ref=e2913]: 英联邦语培
+                      - generic [ref=e2914]:
+                        - generic [ref=e2915] [cursor=pointer]: 新增子归属
+                        - generic [ref=e2916] [cursor=pointer]: 编辑
+                        - generic [ref=e2917] [cursor=pointer]: 删除
+                - generic [ref=e2918]:
+                  - generic [ref=e2919]:
+                    - img [ref=e2921]
+                    - img [ref=e2925] [cursor=pointer]
+                    - generic [ref=e2927]: 英研
+                    - generic [ref=e2928]:
+                      - generic [ref=e2929] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2930] [cursor=pointer]: 编辑
+                      - generic [ref=e2931] [cursor=pointer]: 删除
+                  - generic [ref=e2934]:
+                    - img [ref=e2936]
+                    - img [ref=e2940] [cursor=pointer]
+                    - generic [ref=e2942]: 英研课程
+                    - generic [ref=e2943]:
+                      - generic [ref=e2944] [cursor=pointer]: 新增子归属
+                      - generic [ref=e2945] [cursor=pointer]: 编辑
+                      - generic [ref=e2946] [cursor=pointer]: 删除
+              - generic [ref=e2947]:
+                - generic [ref=e2948]: 未归属
+                - generic [ref=e2949]: 系统预设归属，不可编辑和删除
+      - generic [ref=e717]: Arco Design Pro

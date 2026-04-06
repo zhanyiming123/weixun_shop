@@ -1,0 +1,155 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - generic [ref=e63]:
+                - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                  - generic [ref=e66]: 商品列表
+                - menuitem "商品分类" [ref=e68] [cursor=pointer]:
+                  - generic [ref=e70]: 商品分类
+                - menuitem "商品类目" [active] [ref=e72] [cursor=pointer]:
+                  - generic [ref=e74]: 商品类目
+                - menuitem "类目属性" [ref=e76] [cursor=pointer]:
+                  - generic [ref=e78]: 类目属性
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 订单管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 售后管理
+              - img [ref=e94]
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - text: 营销管理
+              - img [ref=e103]
+        - img [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - list [ref=e111]:
+          - listitem [ref=e112]: 商品管理
+          - img [ref=e114]
+          - listitem [ref=e116]: 商品类目
+        - main [ref=e117]:
+          - generic [ref=e2017]:
+            - generic [ref=e2018]:
+              - button "新增类目" [ref=e2019] [cursor=pointer]:
+                - img [ref=e2020]
+                - text: 新增类目
+              - button "导入类目" [ref=e2022] [cursor=pointer]
+              - button "导出类目" [ref=e2023] [cursor=pointer]
+              - generic [ref=e2024] [cursor=pointer]: 查看已导出列表
+              - generic [ref=e2027]:
+                - img [ref=e2029]
+                - textbox "搜索类目名称" [ref=e2031]
+            - generic [ref=e2032]:
+              - generic [ref=e2033]:
+                - generic [ref=e2034]: 类目
+                - generic [ref=e2036]:
+                  - img [ref=e2037] [cursor=pointer]
+                  - text: 操作
+              - generic [ref=e2039]:
+                - tree [ref=e2040]:
+                  - treeitem "fold button 服饰箱包 新增子类目 编辑 删除" [expanded] [ref=e2041] [cursor=pointer]:
+                    - button "fold button" [ref=e2043]
+                    - generic [ref=e2045]:
+                      - generic [ref=e2047]: 服饰箱包
+                      - img [ref=e2049]
+                    - generic [ref=e2052]:
+                      - generic [ref=e2054]: 新增子类目
+                      - generic [ref=e2056]: 编辑
+                      - generic [ref=e2058]: 删除
+                  - treeitem "expand button 男士服装 新增子类目 编辑 删除" [level=1] [ref=e2059] [cursor=pointer]:
+                    - button "expand button" [ref=e2063]
+                    - generic [ref=e2065]:
+                      - generic [ref=e2067]: 男士服装
+                      - img [ref=e2069]
+                    - generic [ref=e2072]:
+                      - generic [ref=e2074]: 新增子类目
+                      - generic [ref=e2076]: 编辑
+                      - generic [ref=e2078]: 删除
+                  - treeitem "expand button 女士服装 新增子类目 编辑 删除" [level=1] [ref=e2079] [cursor=pointer]:
+                    - button "expand button" [ref=e2083]
+                    - generic [ref=e2085]:
+                      - generic [ref=e2087]: 女士服装
+                      - img [ref=e2089]
+                    - generic [ref=e2092]:
+                      - generic [ref=e2094]: 新增子类目
+                      - generic [ref=e2096]: 编辑
+                      - generic [ref=e2098]: 删除
+                  - treeitem "fold button 数码电器 新增子类目 编辑 删除" [expanded] [ref=e2099] [cursor=pointer]:
+                    - button "fold button" [ref=e2101]
+                    - generic [ref=e2103]:
+                      - generic [ref=e2105]: 数码电器
+                      - img [ref=e2107]
+                    - generic [ref=e2110]:
+                      - generic [ref=e2112]: 新增子类目
+                      - generic [ref=e2114]: 编辑
+                      - generic [ref=e2116]: 删除
+                  - treeitem "expand button 手机通讯 新增子类目 编辑 删除" [level=1] [ref=e2117] [cursor=pointer]:
+                    - button "expand button" [ref=e2122]:
+                      - img [ref=e2123]
+                    - generic [ref=e2125]:
+                      - generic [ref=e2127]: 手机通讯
+                      - img [ref=e2129]
+                    - generic [ref=e2132]:
+                      - generic [ref=e2134]: 新增子类目
+                      - generic [ref=e2136]: 编辑
+                      - generic [ref=e2138]: 删除
+                  - treeitem "expand button 电脑整机 新增子类目 编辑 删除" [level=1] [ref=e2139] [cursor=pointer]:
+                    - button "expand button" [ref=e2144]:
+                      - img [ref=e2145]
+                    - generic [ref=e2147]:
+                      - generic [ref=e2149]: 电脑整机
+                      - img [ref=e2151]
+                    - generic [ref=e2154]:
+                      - generic [ref=e2156]: 新增子类目
+                      - generic [ref=e2158]: 编辑
+                      - generic [ref=e2160]: 删除
+                  - treeitem "expand button 家居家装 新增子类目 编辑 删除" [ref=e2161] [cursor=pointer]:
+                    - button "expand button" [ref=e2164]:
+                      - img [ref=e2165]
+                    - generic [ref=e2167]:
+                      - generic [ref=e2169]: 家居家装
+                      - img [ref=e2171]
+                    - generic [ref=e2174]:
+                      - generic [ref=e2176]: 新增子类目
+                      - generic [ref=e2178]: 编辑
+                      - generic [ref=e2180]: 删除
+                - generic [ref=e2182]:
+                  - generic [ref=e2183]: 未分类
+                  - generic [ref=e2184]: 系统预设类目，不可编辑和删除
+      - generic [ref=e680]: Arco Design Pro

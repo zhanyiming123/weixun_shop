@@ -9,47 +9,42 @@ import {
   Input,
   InputNumber,
   Message,
-  Modal,
   Radio,
   Select,
-  Table,
-  Tag,
+  TreeSelect,
   Typography,
 } from '@arco-design/web-react';
 import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
+  buildCouponCampusTreeValue,
   buildCouponFormValuesFromRecord,
-  buildCouponProductCategoryOptions,
-  buildCouponSpus,
+  buildMarketingProductSelectorSpus,
   buildCreateValuesFromCoupon,
-  CategoryConditionScope,
+  COUPON_CAMPUS_TREE_DATA,
   COUPON_DISCOUNT_OPTIONS,
   CouponDiscountType,
   CouponFormValues,
   CouponPageMode,
   CouponProductScope,
-  CouponProductTableItem,
-  CouponSpuItem,
   CouponValidityType,
   DEFAULT_COUPON_FORM_VALUES,
-  filterCouponProducts,
-  formatCouponPriceRange,
-  formatCurrency,
-  MOCK_CAMPUSES,
+  normalizeCouponCampusIds,
   PRODUCT_SCOPE_OPTIONS,
   readCouponById,
   updateCouponQuota,
   VALIDITY_TYPE_OPTIONS,
 } from '../data';
 import {
+  buildProductCatalogCascaderOptions,
   buildProductCatalogLeafItems,
   readProductCatalogItems,
 } from '@/pages/product/catalog/data';
 import {
-  buildProductOwnershipCascaderOptions,
+  buildProductOwnershipLeafItems,
   readProductOwnershipItems,
 } from '@/pages/product/category/data';
+import MarketingProductSelector from '../../components/product-selector';
 
 const Option = Select.Option;
 const RangePicker = DatePicker.RangePicker;
@@ -62,7 +57,7 @@ type CouponErrorKey =
   | 'discountConfig'
   | 'campusIds'
   | 'productScope'
-  | 'conditionScopes'
+  | 'conditionCategoryPaths'
   | 'selectedSkuIds'
   | 'name'
   | 'couponQuantity'
@@ -75,34 +70,29 @@ function createDefaultFormValues(): CouponFormValues {
   return {
     ...DEFAULT_COUPON_FORM_VALUES,
     campusIds: [],
-    conditionScopes: [],
+    conditionCategoryPaths: [],
     selectedSkuIds: [],
     receiveTimeRange: [],
     customUseTimeRange: [],
   };
 }
 
-function buildSelectedSpuTree(data: CouponSpuItem[], selectedSkuIds: string[]) {
-  if (!selectedSkuIds.length) {
+function normalizeTreeSelectValues(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  return typeof value === 'string' ? [value] : [];
+}
+
+function normalizeCascaderMultipleValues(
+  value: Array<string | string[]> | undefined
+) {
+  if (!Array.isArray(value)) {
     return [];
   }
 
-  const selectedSet = new Set(selectedSkuIds);
-  return data
-    .map((spu) => {
-      const matchedChildren = spu.children.filter((sku) => selectedSet.has(sku.key));
-      if (!matchedChildren.length) {
-        return null;
-      }
-      return {
-        ...spu,
-        skuSpecText: `共 ${matchedChildren.length} 个 SKU`,
-        minPrice: Math.min(...matchedChildren.map((item) => item.price)),
-        maxPrice: Math.max(...matchedChildren.map((item) => item.price)),
-        children: matchedChildren,
-      };
-    })
-    .filter(Boolean) as CouponSpuItem[];
+  return value.filter((item): item is string[] => Array.isArray(item));
 }
 
 export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
@@ -113,27 +103,27 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   const couponId = query.get('id')?.trim() || '';
 
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
-  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const couponCategories = useMemo(
     () => buildProductCatalogLeafItems(catalogItems),
     [catalogItems]
   );
-  const couponProductCategoryOptions = useMemo(
-    () => buildCouponProductCategoryOptions(couponCategories),
-    [couponCategories]
-  );
-  const couponOwnershipOptions = useMemo(
-    () => buildProductOwnershipCascaderOptions(ownershipItems),
+  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
+  const ownershipLeafItems = useMemo(
+    () => buildProductOwnershipLeafItems(ownershipItems),
     [ownershipItems]
   );
-  const couponSpus = useMemo(() => buildCouponSpus(couponCategories), [couponCategories]);
+  const couponCatalogOptions = useMemo(
+    () => buildProductCatalogCascaderOptions(catalogItems),
+    [catalogItems]
+  );
+  const selectorSpuData = useMemo(
+    () => buildMarketingProductSelectorSpus(couponCategories, ownershipLeafItems),
+    [couponCategories, ownershipLeafItems]
+  );
 
   const [formValues, setFormValues] = useState<CouponFormValues>(createDefaultFormValues);
   const [formErrors, setFormErrors] = useState<CouponFormErrors>({});
   const [skuModalVisible, setSkuModalVisible] = useState(false);
-  const [skuKeyword, setSkuKeyword] = useState('');
-  const [productCategoryValue, setProductCategoryValue] = useState<string>();
-  const [draftSelectedSkuIds, setDraftSelectedSkuIds] = useState<string[]>([]);
 
   const isCreateMode = mode === 'create';
   const isEditMode = mode === 'edit';
@@ -174,51 +164,16 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     setFormErrors({});
   }, [couponId, history, isCreateMode, sourceId]);
 
-  const selectedConditionCategoryIds = useMemo(
-    () => formValues.conditionScopes.map((scope) => scope.categoryId),
-    [formValues.conditionScopes]
-  );
-
   const selectedSkuCount = formValues.selectedSkuIds.length;
-
-  const filteredProductData = useMemo(
-    () =>
-      filterCouponProducts(couponSpus, skuKeyword, productCategoryValue || undefined),
-    [couponSpus, productCategoryValue, skuKeyword]
+  const selectedCampusTreeValue = useMemo(
+    () => buildCouponCampusTreeValue(formValues.campusIds),
+    [formValues.campusIds]
   );
-
-  const selectedSpuData = useMemo(
-    () => buildSelectedSpuTree(couponSpus, formValues.selectedSkuIds),
-    [couponSpus, formValues.selectedSkuIds]
-  );
-
-  const filteredReadonlyProductData = useMemo(
-    () =>
-      filterCouponProducts(
-        selectedSpuData,
-        skuKeyword,
-        productCategoryValue || undefined
-      ),
-    [selectedSpuData, productCategoryValue, skuKeyword]
-  );
-
-  const modalData = isCreateMode ? filteredProductData : filteredReadonlyProductData;
-  const modalSpuCount = modalData.length;
-  const modalSkuCount = modalData.reduce((count, item) => count + item.children.length, 0);
 
   function patchFormValues(patch: Partial<CouponFormValues>) {
     setFormValues((previous) => ({
       ...previous,
       ...patch,
-    }));
-  }
-
-  function patchConditionScopes(
-    updater: (previous: CategoryConditionScope[]) => CategoryConditionScope[]
-  ) {
-    setFormValues((previous) => ({
-      ...previous,
-      conditionScopes: updater(previous.conditionScopes),
     }));
   }
 
@@ -251,12 +206,14 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     clearErrors('discountConfig');
   }
 
-  function handleCampusChange(value: string[]) {
+  function handleCampusChange(value: string | string[] | undefined) {
     if (!isCreateMode) {
       return;
     }
 
-    patchFormValues({ campusIds: value || [] });
+    patchFormValues({
+      campusIds: normalizeCouponCampusIds(normalizeTreeSelectValues(value)),
+    });
     clearErrors('campusIds');
   }
 
@@ -269,22 +226,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     patchFormValues({
       productScope: nextScope,
     });
-    clearErrors('productScope', 'conditionScopes', 'selectedSkuIds');
+    clearErrors('productScope', 'conditionCategoryPaths', 'selectedSkuIds');
   }
 
-  function handleOrgPathsChange(categoryId: string, value: string[][]) {
+  function handleConditionCategoryChange(
+    value: Array<string | string[]> | undefined
+  ) {
     if (!isCreateMode) {
       return;
     }
 
-    patchConditionScopes((previous) =>
-      previous.map((scope) =>
-        scope.categoryId === categoryId
-          ? { ...scope, selectedOrgPaths: value }
-          : scope
-      )
-    );
-    clearErrors('conditionScopes');
+    patchFormValues({
+      conditionCategoryPaths: normalizeCascaderMultipleValues(value),
+    });
+    clearErrors('conditionCategoryPaths');
   }
 
   function handleReceiveTimeChange(dateString: string[]) {
@@ -375,49 +330,19 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     if (!isCreateMode) {
       return;
     }
-    setDraftSelectedSkuIds(formValues.selectedSkuIds);
-    setSkuKeyword('');
-    setProductCategoryValue(undefined);
     setSkuModalVisible(true);
   }
 
   function openReadonlySkuModal() {
-    setSkuKeyword('');
-    setProductCategoryValue(undefined);
     setSkuModalVisible(true);
   }
 
-  function handleSkuModalConfirm() {
-    if (!isCreateMode) {
-      setSkuModalVisible(false);
-      return;
-    }
-
+  function handleSkuModalConfirm(selectedSkuIds: string[]) {
     patchFormValues({
-      selectedSkuIds: draftSelectedSkuIds,
+      selectedSkuIds,
     });
     clearErrors('selectedSkuIds');
     setSkuModalVisible(false);
-  }
-
-  function collectSelectedSkuIds(rows: CouponProductTableItem[]) {
-    const skuIds = new Set<string>();
-
-    function travel(items: CouponProductTableItem[]) {
-      items.forEach((item) => {
-        if (item.rowType === 'sku') {
-          skuIds.add(item.key);
-          return;
-        }
-
-        if (item.children?.length) {
-          travel(item.children);
-        }
-      });
-    }
-
-    travel(rows);
-    return Array.from(skuIds);
   }
 
   function validateCreateForm() {
@@ -461,16 +386,23 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       errors.productScope = '请选择商品范围';
     }
 
-    if (formValues.productScope === 'condition' && !formValues.conditionScopes.length) {
-      errors.conditionScopes = '请至少选择一个类目';
+    if (
+      formValues.productScope === 'condition' &&
+      !formValues.conditionCategoryPaths.length
+    ) {
+      errors.conditionCategoryPaths = '请至少选择一个类目';
     }
 
     if (formValues.productScope === 'specific' && !formValues.selectedSkuIds.length) {
       errors.selectedSkuIds = '请选择至少 1 个 SKU';
     }
 
-    if (!formValues.name.trim()) {
+    const trimmedName = formValues.name.trim();
+
+    if (!trimmedName) {
       errors.name = '请输入券名称';
+    } else if (trimmedName.length > 15) {
+      errors.name = '券名称支持 15 个字以内';
     }
 
     if (
@@ -549,60 +481,6 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     history.push('/marketing/center/coupon/list');
   }
 
-  const productColumns = [
-    {
-      title: '商品名称',
-      dataIndex: 'productName',
-      width: 260,
-      ellipsis: true,
-      render: (value: string, record: CouponProductTableItem) => (
-        <div className={styles.nameCell}>
-          <span className={styles.namePrimary}>{value}</span>
-          <span className={styles.nameMeta}>
-            {record.rowType === 'spu' ? 'SPU' : `SKU：${record.skuId}`}
-          </span>
-        </div>
-      ),
-    },
-    {
-      title: '商品类目',
-      dataIndex: 'productCategory',
-      width: 140,
-    },
-    {
-      title: '商品 ID',
-      dataIndex: 'productId',
-      width: 220,
-    },
-    {
-      title: 'SKU ID',
-      dataIndex: 'skuId',
-      width: 160,
-      render: (value: string, record: CouponProductTableItem) =>
-        record.rowType === 'spu' ? '-' : value,
-    },
-    {
-      title: 'SKU 规格',
-      dataIndex: 'skuSpecText',
-      width: 150,
-    },
-    {
-      title: '商品类型',
-      dataIndex: 'productType',
-      width: 120,
-      render: (value: string) => <Tag>{value}</Tag>,
-    },
-    {
-      title: '售价',
-      dataIndex: 'price',
-      width: 180,
-      render: (_: number, record: CouponProductTableItem) =>
-        record.rowType === 'spu'
-          ? formatCouponPriceRange(record.minPrice, record.maxPrice)
-          : formatCurrency(record.price),
-    },
-  ];
-
   const pageTitle = isCreateMode
     ? '创建优惠券'
     : isEditMode
@@ -617,7 +495,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       </Typography.Title>
 
       <Card className={styles.formCard}>
-        <Form layout="vertical">
+        <Form className={styles.sectionForm} layout="vertical">
           <div className={styles.sectionBlock}>
             <Typography.Title className={styles.sectionTitle} heading={5}>
               优惠信息
@@ -724,21 +602,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
             </Form.Item>
 
             <Form.Item required label="适用校区">
-              <Select
+              <TreeSelect
                 allowClear
-                mode="multiple"
+                multiple
+                treeCheckable
+                treeCheckStrictly={false}
+                treeCheckedStrategy="parent"
+                treeData={COUPON_CAMPUS_TREE_DATA}
+                showSearch
                 className={styles.formControl}
                 placeholder="请选择适用校区"
                 disabled={!isCreateMode}
-                value={formValues.campusIds}
+                value={selectedCampusTreeValue}
                 onChange={handleCampusChange}
-              >
-                {MOCK_CAMPUSES.map((item) => (
-                  <Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
+              />
               {formErrors.campusIds && (
                 <div className={styles.fieldError}>{formErrors.campusIds}</div>
               )}
@@ -762,82 +639,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                   <div className={styles.conditionScopePanel}>
                     <div className={styles.conditionFieldItem}>
                       <span className={styles.conditionFieldLabel}>商品类目</span>
-                      <Select
-                        allowClear
+                      <Cascader
                         mode="multiple"
-                        className={styles.categorySelect}
+                        allowClear
+                        changeOnSelect
+                        expandTrigger="hover"
+                        className={styles.orgCascader}
                         placeholder="请选择适用的商品类目（可多选）"
+                        options={couponCatalogOptions}
+                        showSearch={{ retainInputValueWhileSelect: true }}
                         disabled={!isCreateMode}
-                        value={selectedConditionCategoryIds}
-                        onChange={(values: string[]) => {
-                          if (!isCreateMode) {
-                            return;
-                          }
-                          const next = values || [];
-                          patchConditionScopes((previous) => {
-                            const added = next
-                              .filter(
-                                (id) => !previous.some((item) => item.categoryId === id)
-                              )
-                              .map((id) => ({
-                                categoryId: id,
-                                selectedOrgPaths: [],
-                                selectedSpecValues: [],
-                              }));
-                            return [
-                              ...previous.filter((item) => next.includes(item.categoryId)),
-                              ...added,
-                            ];
-                          });
-                          clearErrors('conditionScopes');
-                        }}
-                      >
-                        {couponCategories.map((category) => (
-                          <Option key={category.id} value={category.id}>
-                            {category.label}
-                          </Option>
-                        ))}
-                      </Select>
+                        value={formValues.conditionCategoryPaths}
+                        onChange={handleConditionCategoryChange}
+                      />
                     </div>
-
-                    {formValues.conditionScopes.map((scope) => {
-                      const catalogItem = couponCategories.find(
-                        (item) => item.id === scope.categoryId
-                      );
-
-                      return (
-                        <div className={styles.categorySection} key={scope.categoryId}>
-                          <div className={styles.categorySectionHeader}>
-                            <Typography.Text bold>
-                              {catalogItem?.label || scope.categoryId}
-                            </Typography.Text>
-                          </div>
-
-                          <div className={styles.conditionFields}>
-                            <div className={styles.conditionFieldItem}>
-                              <span className={styles.conditionFieldLabel}>商品归属</span>
-                              <Cascader
-                                multiple
-                                allowClear
-                                changeOnSelect
-                                expandTrigger="hover"
-                                className={styles.orgCascader}
-                                placeholder="支持级联多选，可选任意层级（事业部 / 课程体系 / 课程项）"
-                                options={couponOwnershipOptions}
-                                disabled={!isCreateMode}
-                                value={scope.selectedOrgPaths}
-                                onChange={(value) =>
-                                  handleOrgPathsChange(
-                                    scope.categoryId,
-                                    (value as string[][]) || []
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
 
@@ -849,7 +664,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       </Button>
                     )}
 
-                    {isDetailMode && (
+                    {!isCreateMode && (
                       <Button
                         type="outline"
                         disabled={!selectedSkuCount}
@@ -868,11 +683,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 )}
               </div>
               {(formErrors.productScope ||
-                formErrors.conditionScopes ||
+                formErrors.conditionCategoryPaths ||
                 formErrors.selectedSkuIds) && (
                 <div className={styles.fieldError}>
                   {formErrors.productScope ||
-                    formErrors.conditionScopes ||
+                    formErrors.conditionCategoryPaths ||
                     formErrors.selectedSkuIds}
                 </div>
               )}
@@ -890,6 +705,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               <Input
                 className={styles.formControl}
                 placeholder="请输入券名称"
+                maxLength={15}
+                showWordLimit
                 disabled={!isCreateMode}
                 value={formValues.name}
                 onChange={(value) => {
@@ -908,7 +725,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 <span className={styles.inlineText}>发放张数</span>
                 <InputNumber
                   className={styles.countInput}
-                  min={1}
+                  min={0}
                   precision={0}
                   disabled={isDetailMode}
                   value={formValues.issueCount}
@@ -1028,74 +845,15 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         </div>
       </Card>
 
-      <Modal
-        title={isCreateMode ? '选择商品' : '查看商品'}
+      <MarketingProductSelector
         visible={skuModalVisible}
-        footer={isCreateMode ? undefined : null}
-        onOk={handleSkuModalConfirm}
+        title={isCreateMode ? '选择商品' : '查看商品'}
+        readonly={!isCreateMode}
+        selectedSkuIds={formValues.selectedSkuIds}
+        data={selectorSpuData}
         onCancel={() => setSkuModalVisible(false)}
-        okText="确定"
-        cancelText="取消"
-        style={{ width: 1180 }}
-      >
-        <div className={styles.modalSearchRow}>
-          <div className={styles.modalFilters}>
-            <Input
-              allowClear
-              className={styles.modalSearchInput}
-              placeholder="请输入商品名称 / 商品ID / SKU ID"
-              value={skuKeyword}
-              onChange={setSkuKeyword}
-            />
-            <Select
-              allowClear
-              className={styles.modalCategorySelect}
-              placeholder="请选择商品类目"
-              value={productCategoryValue}
-              onChange={(value) =>
-                setProductCategoryValue(typeof value === 'string' ? value : undefined)
-              }
-            >
-              {couponProductCategoryOptions.map((item) => (
-                <Option key={item.value} value={item.value}>
-                  {item.label}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          <Typography.Text type="secondary">
-            共 {modalSpuCount} 个 SPU / {modalSkuCount} 条 SKU
-          </Typography.Text>
-        </div>
-
-        <Table
-          rowKey="key"
-          columns={productColumns}
-          data={modalData}
-          noDataElement={isCreateMode ? '暂无可选商品' : '暂无商品范围数据'}
-          defaultExpandAllRows
-          pagination={{
-            pageSize: 6,
-            sizeCanChange: false,
-          }}
-          rowSelection={
-            isCreateMode
-              ? {
-                  selectedRowKeys: draftSelectedSkuIds,
-                  checkStrictly: false,
-                  columnWidth: 48,
-                  preserveSelectedRowKeys: true,
-                  onChange: (_, selectedRows) =>
-                    setDraftSelectedSkuIds(
-                      collectSelectedSkuIds(selectedRows as CouponProductTableItem[])
-                    ),
-                }
-              : undefined
-          }
-          scroll={{ x: 1240 }}
-          tableLayoutFixed
-        />
-      </Modal>
+        onConfirm={handleSkuModalConfirm}
+      />
     </div>
   );
 }

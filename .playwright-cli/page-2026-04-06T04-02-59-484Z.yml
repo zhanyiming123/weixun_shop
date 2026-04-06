@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - img [ref=e5]
+    - generic [ref=e10]: Arco Design Pro
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: 开箱即用的高质量模板
+        - generic [ref=e18]: 丰富的的页面模板，覆盖大多数典型业务场景
+        - img "banner-image" [ref=e19]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 内置了常见问题的解决方案
+        - generic [ref=e23]: 国际化，路由配置，状态管理应有尽有
+        - img [ref=e24]
+      - generic [ref=e26]:
+        - generic [ref=e27]: 接入可视化增强工具AUX
+        - generic [ref=e28]: 实现灵活的区块式开发
+        - img [ref=e29]
+    - generic:
+      - button [ref=e35] [cursor=pointer]:
+        - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+  - generic [ref=e41]:
+    - generic [ref=e43]:
+      - generic [ref=e44]: 登录 Arco Design Pro
+      - generic [ref=e45]: 登录 Arco Design Pro
+      - generic [ref=e47]:
+        - generic [ref=e55]:
+          - img [ref=e57]
+          - textbox "用户名：admin" [ref=e60]: admin
+        - generic [ref=e68]:
+          - img [ref=e70]
+          - textbox "密码：admin" [ref=e73]: admin
+          - img [ref=e75] [cursor=pointer]
+        - generic [ref=e78]:
+          - generic [ref=e80]:
+            - generic [ref=e81] [cursor=pointer]:
+              - checkbox "记住密码"
+              - text: 记住密码
+            - generic [ref=e84] [cursor=pointer]: 忘记密码
+          - button "登录" [active] [ref=e86]:
+            - img [ref=e91]
+            - text: 登录
+          - button "注册账号" [ref=e88] [cursor=pointer]
+    - contentinfo [ref=e90]: Arco Design Pro

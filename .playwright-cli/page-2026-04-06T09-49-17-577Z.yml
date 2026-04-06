@@ -1,0 +1,210 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - generic [ref=e63]:
+                - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                  - generic [ref=e66]: 商品列表
+                - menuitem "商品归属" [ref=e68] [cursor=pointer]:
+                  - generic [ref=e70]: 商品归属
+                - menuitem "商品类目" [ref=e72] [cursor=pointer]:
+                  - generic [ref=e74]: 商品类目
+                - menuitem "类目属性" [ref=e76] [cursor=pointer]:
+                  - generic [ref=e78]: 类目属性
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 订单管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 售后管理
+              - img [ref=e94]
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - text: 营销管理
+              - img [ref=e103]
+        - img [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - list [ref=e111]:
+          - listitem [ref=e112]: 商品管理
+          - img [ref=e114]
+          - listitem [ref=e116]: 添加商品
+        - main [ref=e117]:
+          - generic [ref=e1707]:
+            - button "返回商品列表" [ref=e1709] [cursor=pointer]
+            - generic [ref=e1711]:
+              - heading "基础信息" [level=6] [ref=e1713]
+              - generic [ref=e1715]:
+                - generic [ref=e1716]:
+                  - generic [ref=e1718]: 商品类型
+                  - generic [ref=e1722]:
+                    - combobox [disabled] [ref=e1723]:
+                      - generic "虚拟商品" [ref=e1724]:
+                        - generic [ref=e1725]:
+                          - textbox [disabled]
+                          - generic [ref=e1726]: 虚拟商品
+                        - img [ref=e1729]
+                    - generic [ref=e1731]: 当前默认选择“虚拟商品”，暂不支持修改。
+                - generic [ref=e1732]:
+                  - generic [ref=e1734]: 商品类目
+                  - combobox [ref=e1739] [cursor=pointer]:
+                    - generic [ref=e1740]:
+                      - generic [ref=e1741]:
+                        - textbox "请选择商品类目"
+                        - generic [ref=e1742]: 请选择商品类目
+                      - img [ref=e1745]
+                - generic [ref=e1747]:
+                  - generic [ref=e1749]: 商品归属
+                  - combobox [ref=e1754] [cursor=pointer]:
+                    - generic [ref=e1755]:
+                      - generic [ref=e1756]:
+                        - textbox "请选择商品归属"
+                        - generic [ref=e1757]: 请选择商品归属
+                      - img [ref=e1760]
+                - generic [ref=e1762]:
+                  - generic [ref=e1764]: 商品名称
+                  - generic [ref=e1771]:
+                    - textbox "商品名称" [ref=e1772]:
+                      - /placeholder: 请输入商品名称
+                    - generic:
+                      - generic: 0/15
+                - generic [ref=e1773]:
+                  - generic [ref=e1775]: 商品轮播图
+                  - generic [ref=e1782]:
+                    - generic [ref=e1786] [cursor=pointer]:
+                      - img [ref=e1787]
+                      - generic [ref=e1789]: 上传图片
+                    - generic [ref=e1790]: 建议尺寸 800px × 800px，默认首张图为主图，最多可上传 8 张图。
+                - generic [ref=e1791]:
+                  - generic [ref=e1793]: 上架时间
+                  - radiogroup [ref=e1798]:
+                    - generic [ref=e1799] [cursor=pointer]:
+                      - radio "立即上架" [checked]
+                      - text: 立即上架
+                    - generic [ref=e1802] [cursor=pointer]:
+                      - radio "仓库中"
+                      - text: 仓库中
+                - generic [ref=e1805]:
+                  - generic [ref=e1807]: 是否限购
+                  - generic [ref=e1812]:
+                    - switch [ref=e1813] [cursor=pointer]
+                    - generic [ref=e1815]: 不限购
+            - generic [ref=e1817]:
+              - heading "规格与库存" [level=6] [ref=e1819]
+              - generic [ref=e1821]:
+                - generic [ref=e1822]:
+                  - generic [ref=e1824]: 商品规格
+                  - radiogroup [ref=e1829]:
+                    - generic [ref=e1830] [cursor=pointer]:
+                      - radio "多规格" [checked]
+                      - text: 多规格
+                - generic [ref=e1833]:
+                  - generic [ref=e1835]: 规格信息
+                  - generic [ref=e1840]:
+                    - button "添加新规格" [ref=e1841] [cursor=pointer]
+                    - generic [ref=e1842]: 当前仅支持多规格，可点击“添加新规格”开始配置规格信息。
+                - generic [ref=e1843]:
+                  - generic [ref=e1845]: 商品属性配置项
+                  - generic [ref=e1850]: 请先在规格模块中添加规格信息。添加规格信息后，商品属性才会展示。
+            - generic [ref=e1852]:
+              - heading "商品详情页配置" [level=6] [ref=e1854]
+              - generic [ref=e1857]:
+                - generic [ref=e1859]: 商品详情页
+                - generic [ref=e1864]:
+                  - generic [ref=e1865]:
+                    - generic [ref=e1866]: 详情预览
+                    - generic [ref=e1868]: 请输入商品详细介绍...
+                  - generic [ref=e1869]:
+                    - generic [ref=e1870]:
+                      - generic [ref=e1871]:
+                        - combobox [ref=e1872] [cursor=pointer]:
+                          - generic "正文" [ref=e1873]:
+                            - generic [ref=e1874]:
+                              - textbox
+                              - generic [ref=e1875]: 正文
+                            - img [ref=e1878]
+                        - button [ref=e1880] [cursor=pointer]:
+                          - img [ref=e1881]
+                        - button [ref=e1883] [cursor=pointer]:
+                          - img [ref=e1884]
+                        - button [ref=e1886] [cursor=pointer]:
+                          - img [ref=e1887]
+                        - button [ref=e1889] [cursor=pointer]:
+                          - img [ref=e1890]
+                        - button [ref=e1893] [cursor=pointer]:
+                          - img [ref=e1894]
+                        - button [ref=e1896] [cursor=pointer]:
+                          - img [ref=e1897]
+                        - combobox [ref=e1902] [cursor=pointer]:
+                          - generic "默认字号" [ref=e1903]:
+                            - generic [ref=e1904]:
+                              - textbox
+                              - generic [ref=e1905]: 默认字号
+                            - img [ref=e1908]
+                        - combobox [ref=e1910] [cursor=pointer]:
+                          - generic "默认行高" [ref=e1911]:
+                            - generic [ref=e1912]:
+                              - textbox
+                              - generic [ref=e1913]: 默认行高
+                            - img [ref=e1916]
+                        - button [ref=e1919] [cursor=pointer]:
+                          - img [ref=e1920]
+                        - button [ref=e1922] [cursor=pointer]:
+                          - img [ref=e1923]
+                        - button [ref=e1926] [cursor=pointer]:
+                          - img [ref=e1927]
+                        - button [ref=e1930] [cursor=pointer]:
+                          - img [ref=e1931]
+                        - button [ref=e1933] [cursor=pointer]:
+                          - img [ref=e1934]
+                        - button [ref=e1936] [cursor=pointer]:
+                          - img [ref=e1937]
+                      - generic [ref=e1939]:
+                        - button [ref=e1940] [cursor=pointer]:
+                          - img [ref=e1941]
+                        - button [ref=e1945] [cursor=pointer]:
+                          - img [ref=e1946]
+                        - button [ref=e1948] [cursor=pointer]:
+                          - img [ref=e1949]
+                        - button [ref=e1951] [cursor=pointer]:
+                          - img [ref=e1952]
+                        - button [ref=e1958] [cursor=pointer]:
+                          - img [ref=e1959]
+                        - button [ref=e1961] [cursor=pointer]:
+                          - img [ref=e1962]
+                    - generic [ref=e1964]: 请输入商品详细介绍...
+      - generic [ref=e717]: Arco Design Pro

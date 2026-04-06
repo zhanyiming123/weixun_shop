@@ -1,0 +1,239 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - generic [ref=e63]:
+                - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                  - generic [ref=e66]: 商品列表
+                - menuitem "商品分类" [ref=e68] [cursor=pointer]:
+                  - generic [ref=e70]: 商品分类
+                - menuitem "商品类目" [ref=e72] [cursor=pointer]:
+                  - generic [ref=e74]: 商品类目
+                - menuitem "类目属性" [active] [ref=e76] [cursor=pointer]:
+                  - generic [ref=e78]: 类目属性
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 订单管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 售后管理
+              - img [ref=e94]
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - text: 营销管理
+              - img [ref=e103]
+        - img [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - list [ref=e111]:
+          - listitem [ref=e112]: 商品管理
+          - img [ref=e114]
+          - listitem [ref=e116]: 类目属性
+        - main [ref=e117]:
+          - generic [ref=e2185]:
+            - generic [ref=e2188]:
+              - generic [ref=e2189]:
+                - generic [ref=e2190]: 所属分类
+                - combobox [ref=e2191] [cursor=pointer]:
+                  - generic "男装" [ref=e2192]:
+                    - generic [ref=e2193]:
+                      - textbox:
+                        - /placeholder: 请选择分类
+                      - generic [ref=e2194]: 男装
+                    - img [ref=e2197]
+              - generic [ref=e2199]:
+                - generic [ref=e2200]: 属性名称
+                - textbox "请输入属性名称" [ref=e2202]
+              - generic [ref=e2203]:
+                - generic [ref=e2204]: 状态
+                - combobox [ref=e2205] [cursor=pointer]:
+                  - generic [ref=e2206]:
+                    - generic [ref=e2207]:
+                      - textbox "请选择状态"
+                      - generic [ref=e2208]: 请选择状态
+                    - img [ref=e2211]
+              - generic [ref=e2213]:
+                - button "查询" [ref=e2214] [cursor=pointer]
+                - button "重置" [ref=e2215] [cursor=pointer]
+            - generic [ref=e2217]:
+              - generic [ref=e2218]:
+                - generic [ref=e2220]:
+                  - text: 当前分类：
+                  - generic [ref=e2222]: 男装
+                - button "添加属性" [ref=e2223] [cursor=pointer]:
+                  - img [ref=e2224]
+                  - text: 添加属性
+              - generic [ref=e2228]:
+                - table [ref=e2232]:
+                  - rowgroup [ref=e2242]:
+                    - row "属性名称 属性类型 属性值 是否必填 排序 状态 创建时间 操作" [ref=e2243]:
+                      - columnheader "属性名称" [ref=e2244]:
+                        - generic [ref=e2245]: 属性名称
+                      - columnheader "属性类型" [ref=e2246]:
+                        - generic [ref=e2247]: 属性类型
+                      - columnheader "属性值" [ref=e2248]:
+                        - generic [ref=e2249]: 属性值
+                      - columnheader "是否必填" [ref=e2250]:
+                        - generic [ref=e2251]: 是否必填
+                      - columnheader "排序" [ref=e2252]:
+                        - generic [ref=e2254] [cursor=pointer]:
+                          - text: 排序
+                          - generic [ref=e2255]:
+                            - img [ref=e2257]
+                            - img [ref=e2260]
+                      - columnheader "状态" [ref=e2262]:
+                        - generic [ref=e2263]: 状态
+                      - columnheader "创建时间" [ref=e2264]:
+                        - generic [ref=e2265]: 创建时间
+                      - columnheader "操作" [ref=e2266]:
+                        - generic [ref=e2267]: 操作
+                  - rowgroup [ref=e2268]:
+                    - row "尺码 单选 XS S M L XL XXL 必填 1 启用 启用 2024-02-01 10:00:00 编辑 | 删除" [ref=e2269]:
+                      - cell "尺码" [ref=e2270]:
+                        - generic [ref=e2274]: 尺码
+                      - cell "单选" [ref=e2275]:
+                        - generic [ref=e2279]: 单选
+                      - cell "XS S M L XL XXL" [ref=e2280]:
+                        - generic [ref=e2283]:
+                          - generic [ref=e2285]: XS
+                          - generic [ref=e2287]: S
+                          - generic [ref=e2289]: M
+                          - generic [ref=e2291]: L
+                          - generic [ref=e2293]: XL
+                          - generic [ref=e2295]: XXL
+                      - cell "必填" [ref=e2296]:
+                        - generic [ref=e2300]: 必填
+                      - cell "1" [ref=e2301]:
+                        - generic [ref=e2302]: "1"
+                      - cell "启用 启用" [ref=e2303]:
+                        - switch "启用 启用" [checked] [ref=e2306] [cursor=pointer]:
+                          - generic [ref=e2308]: 启用
+                          - generic [ref=e2309]: 启用
+                      - cell "2024-02-01 10:00:00" [ref=e2310]:
+                        - generic [ref=e2311]: 2024-02-01 10:00:00
+                      - cell "编辑 | 删除" [ref=e2312]:
+                        - generic [ref=e2315]:
+                          - generic [ref=e2316] [cursor=pointer]: 编辑
+                          - generic [ref=e2317]: "|"
+                          - generic [ref=e2318] [cursor=pointer]: 删除
+                    - row "颜色 单选 黑色 白色 灰色 藏青 卡其 必填 2 启用 启用 2024-02-01 10:05:00 编辑 | 删除" [ref=e2319]:
+                      - cell "颜色" [ref=e2320]:
+                        - generic [ref=e2324]: 颜色
+                      - cell "单选" [ref=e2325]:
+                        - generic [ref=e2329]: 单选
+                      - cell "黑色 白色 灰色 藏青 卡其" [ref=e2330]:
+                        - generic [ref=e2333]:
+                          - generic [ref=e2335]: 黑色
+                          - generic [ref=e2337]: 白色
+                          - generic [ref=e2339]: 灰色
+                          - generic [ref=e2341]: 藏青
+                          - generic [ref=e2343]: 卡其
+                      - cell "必填" [ref=e2344]:
+                        - generic [ref=e2348]: 必填
+                      - cell "2" [ref=e2349]:
+                        - generic [ref=e2350]: "2"
+                      - cell "启用 启用" [ref=e2351]:
+                        - switch "启用 启用" [checked] [ref=e2354] [cursor=pointer]:
+                          - generic [ref=e2356]: 启用
+                          - generic [ref=e2357]: 启用
+                      - cell "2024-02-01 10:05:00" [ref=e2358]:
+                        - generic [ref=e2359]: 2024-02-01 10:05:00
+                      - cell "编辑 | 删除" [ref=e2360]:
+                        - generic [ref=e2363]:
+                          - generic [ref=e2364] [cursor=pointer]: 编辑
+                          - generic [ref=e2365]: "|"
+                          - generic [ref=e2366] [cursor=pointer]: 删除
+                    - row "材质 多选 棉 麻 涤纶 羊毛 真丝 选填 3 启用 启用 2024-02-01 10:10:00 编辑 | 删除" [ref=e2367]:
+                      - cell "材质" [ref=e2368]:
+                        - generic [ref=e2372]: 材质
+                      - cell "多选" [ref=e2373]:
+                        - generic [ref=e2377]: 多选
+                      - cell "棉 麻 涤纶 羊毛 真丝" [ref=e2378]:
+                        - generic [ref=e2381]:
+                          - generic [ref=e2383]: 棉
+                          - generic [ref=e2385]: 麻
+                          - generic [ref=e2387]: 涤纶
+                          - generic [ref=e2389]: 羊毛
+                          - generic [ref=e2391]: 真丝
+                      - cell "选填" [ref=e2392]:
+                        - generic [ref=e2396]: 选填
+                      - cell "3" [ref=e2397]:
+                        - generic [ref=e2398]: "3"
+                      - cell "启用 启用" [ref=e2399]:
+                        - switch "启用 启用" [checked] [ref=e2402] [cursor=pointer]:
+                          - generic [ref=e2404]: 启用
+                          - generic [ref=e2405]: 启用
+                      - cell "2024-02-01 10:10:00" [ref=e2406]:
+                        - generic [ref=e2407]: 2024-02-01 10:10:00
+                      - cell "编辑 | 删除" [ref=e2408]:
+                        - generic [ref=e2411]:
+                          - generic [ref=e2412] [cursor=pointer]: 编辑
+                          - generic [ref=e2413]: "|"
+                          - generic [ref=e2414] [cursor=pointer]: 删除
+                    - row "品牌 文本 自由填写 选填 4 启用 启用 2024-02-01 10:15:00 编辑 | 删除" [ref=e2415]:
+                      - cell "品牌" [ref=e2416]:
+                        - generic [ref=e2420]: 品牌
+                      - cell "文本" [ref=e2421]:
+                        - generic [ref=e2425]: 文本
+                      - cell "自由填写" [ref=e2426]:
+                        - generic [ref=e2428]: 自由填写
+                      - cell "选填" [ref=e2429]:
+                        - generic [ref=e2433]: 选填
+                      - cell "4" [ref=e2434]:
+                        - generic [ref=e2435]: "4"
+                      - cell "启用 启用" [ref=e2436]:
+                        - switch "启用 启用" [checked] [ref=e2439] [cursor=pointer]:
+                          - generic [ref=e2441]: 启用
+                          - generic [ref=e2442]: 启用
+                      - cell "2024-02-01 10:15:00" [ref=e2443]:
+                        - generic [ref=e2444]: 2024-02-01 10:15:00
+                      - cell "编辑 | 删除" [ref=e2445]:
+                        - generic [ref=e2448]:
+                          - generic [ref=e2449] [cursor=pointer]: 编辑
+                          - generic [ref=e2450]: "|"
+                          - generic [ref=e2451] [cursor=pointer]: 删除
+                - generic [ref=e2453]:
+                  - generic [ref=e2454]: 共 4 条
+                  - list [ref=e2455]:
+                    - listitem "上一页" [ref=e2456]:
+                      - img [ref=e2457]
+                      - text: .
+                    - listitem "第 1 页" [ref=e2459] [cursor=pointer]: "1"
+                    - listitem "下一页" [ref=e2460]:
+                      - img [ref=e2461]
+                      - text: .
+      - generic [ref=e680]: Arco Design Pro

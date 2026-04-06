@@ -1,5 +1,9 @@
 @import '@arco-themes/react-arco-pro/index.less';
 
+:root {
+  --platform-form-item-spacing: 24px;
+}
+
 html,
 body {
   width: 100%;
@@ -37,5 +41,11 @@ body[arco-theme='dark'] {
       border-radius: 6px;
       box-shadow: none !important;
     }
+  }
+}
+
+.platform-form-spacing {
+  .arco-form-item {
+    margin-bottom: var(--platform-form-item-spacing);
   }
 }

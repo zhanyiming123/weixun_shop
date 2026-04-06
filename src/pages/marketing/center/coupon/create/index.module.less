@@ -14,10 +14,16 @@
   }
 }
 
+.sectionForm {
+  :global(.arco-form-item) {
+    margin-bottom: 0;
+  }
+}
+
 .sectionBlock {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: var(--platform-form-item-spacing);
 }
 
 .sectionTitle {
@@ -79,13 +85,13 @@
 .validityBlock {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--platform-form-item-spacing);
 }
 
 .conditionScopePanel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--platform-form-item-spacing);
 }
 
 .categorySelect {
@@ -114,7 +120,7 @@
 .conditionFields {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--platform-form-item-spacing);
 }
 
 .conditionFieldItem {

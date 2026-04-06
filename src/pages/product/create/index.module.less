@@ -23,10 +23,16 @@
   margin: 0 0 6px;
 }
 
+.sectionForm {
+  :global(.arco-form-item) {
+    margin-bottom: 0;
+  }
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 18px 20px;
+  gap: var(--platform-form-item-spacing) 20px;
 }
 
 .fullWidth {
@@ -82,7 +88,7 @@
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--platform-form-item-spacing);
 }
 
 .specItem {
@@ -109,13 +115,13 @@
 .specInputs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--platform-form-item-spacing) 20px;
 }
 
 .singleSpecGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 240px));
-  gap: 16px 20px;
+  gap: var(--platform-form-item-spacing) 20px;
   align-items: start;
 }
 
@@ -411,15 +417,8 @@
 .attributePanel {
   border: 1px dashed var(--color-border-2);
   border-radius: 4px;
-  padding: 14px 16px;
+  padding: 16px;
   background: var(--color-fill-1);
-}
-
-.attributeSectionLabel {
-  margin-bottom: 8px;
-  color: var(--color-text-1);
-  font-size: 14px;
-  font-weight: 500;
 }
 
 .attributeHint {
@@ -430,7 +429,7 @@
 .attributeFieldList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 520px));
-  gap: 4px 20px;
+  gap: var(--platform-form-item-spacing) 20px;
   align-items: start;
 }
 

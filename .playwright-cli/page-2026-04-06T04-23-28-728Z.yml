@@ -1,0 +1,151 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - generic [ref=e63]:
+                - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                  - generic [ref=e66]: 商品列表
+                - menuitem "商品分类" [active] [ref=e68] [cursor=pointer]:
+                  - generic [ref=e70]: 商品分类
+                - menuitem "商品类目" [ref=e72] [cursor=pointer]:
+                  - generic [ref=e74]: 商品类目
+                - menuitem "类目属性" [ref=e76] [cursor=pointer]:
+                  - generic [ref=e78]: 类目属性
+            - generic [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]:
+                - img [ref=e83]
+                - text: 订单管理
+              - img [ref=e86]
+            - generic [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img [ref=e91]
+                - text: 售后管理
+              - img [ref=e94]
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - text: 营销管理
+              - img [ref=e103]
+        - img [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - list [ref=e111]:
+          - listitem [ref=e112]: 商品管理
+          - img [ref=e114]
+          - listitem [ref=e116]: 商品分类
+        - main [ref=e117]:
+          - generic [ref=e2463]:
+            - generic [ref=e2464]:
+              - button "新增分类" [ref=e2465] [cursor=pointer]:
+                - img [ref=e2466]
+                - text: 新增分类
+              - button "导入分类" [ref=e2468] [cursor=pointer]
+              - button "导出分类" [ref=e2469] [cursor=pointer]
+              - generic [ref=e2470] [cursor=pointer]: 查看已导出列表
+              - generic [ref=e2473]:
+                - img [ref=e2475]
+                - textbox "搜索分类名称" [ref=e2477]
+            - generic [ref=e2478]:
+              - generic [ref=e2479]:
+                - generic [ref=e2480]: 分类
+                - generic [ref=e2481]:
+                  - img [ref=e2482] [cursor=pointer]
+                  - text: 操作
+              - generic [ref=e2484]:
+                - generic [ref=e2485]:
+                  - generic [ref=e2486]:
+                    - img [ref=e2488]
+                    - img [ref=e2492] [cursor=pointer]
+                    - generic [ref=e2494]: 服装
+                    - generic [ref=e2495]:
+                      - generic [ref=e2496] [cursor=pointer]: 新增子分类
+                      - generic [ref=e2497] [cursor=pointer]: 编辑
+                      - generic [ref=e2498] [cursor=pointer]: 删除
+                  - generic [ref=e2499]:
+                    - generic [ref=e2501]:
+                      - img [ref=e2503]
+                      - img [ref=e2507] [cursor=pointer]
+                      - generic [ref=e2509]: 男装
+                      - generic [ref=e2510]:
+                        - generic [ref=e2511] [cursor=pointer]: 新增子分类
+                        - generic [ref=e2512] [cursor=pointer]: 编辑
+                        - generic [ref=e2513] [cursor=pointer]: 删除
+                    - generic [ref=e2515]:
+                      - img [ref=e2517]
+                      - generic [ref=e2520]: 女装
+                      - generic [ref=e2521]:
+                        - generic [ref=e2522] [cursor=pointer]: 新增子分类
+                        - generic [ref=e2523] [cursor=pointer]: 编辑
+                        - generic [ref=e2524] [cursor=pointer]: 删除
+                    - generic [ref=e2526]:
+                      - img [ref=e2528]
+                      - generic [ref=e2531]: 童装
+                      - generic [ref=e2532]:
+                        - generic [ref=e2533] [cursor=pointer]: 新增子分类
+                        - generic [ref=e2534] [cursor=pointer]: 编辑
+                        - generic [ref=e2535] [cursor=pointer]: 删除
+                - generic [ref=e2536]:
+                  - generic [ref=e2537]:
+                    - img [ref=e2539]
+                    - img [ref=e2543] [cursor=pointer]
+                    - generic [ref=e2545]: 数码
+                    - generic [ref=e2546]:
+                      - generic [ref=e2547] [cursor=pointer]: 新增子分类
+                      - generic [ref=e2548] [cursor=pointer]: 编辑
+                      - generic [ref=e2549] [cursor=pointer]: 删除
+                  - generic [ref=e2550]:
+                    - generic [ref=e2552]:
+                      - img [ref=e2554]
+                      - generic [ref=e2557]: 手机
+                      - generic [ref=e2558]:
+                        - generic [ref=e2559] [cursor=pointer]: 新增子分类
+                        - generic [ref=e2560] [cursor=pointer]: 编辑
+                        - generic [ref=e2561] [cursor=pointer]: 删除
+                    - generic [ref=e2563]:
+                      - img [ref=e2565]
+                      - generic [ref=e2568]: 电脑
+                      - generic [ref=e2569]:
+                        - generic [ref=e2570] [cursor=pointer]: 新增子分类
+                        - generic [ref=e2571] [cursor=pointer]: 编辑
+                        - generic [ref=e2572] [cursor=pointer]: 删除
+                - generic [ref=e2574]:
+                  - img [ref=e2576]
+                  - generic [ref=e2579]: 家居
+                  - generic [ref=e2580]:
+                    - generic [ref=e2581] [cursor=pointer]: 新增子分类
+                    - generic [ref=e2582] [cursor=pointer]: 编辑
+                    - generic [ref=e2583] [cursor=pointer]: 删除
+              - generic [ref=e2584]:
+                - generic [ref=e2585]: 未分类
+                - generic [ref=e2586]: 系统预设分类，不可编辑和删除
+      - generic [ref=e680]: Arco Design Pro

@@ -132,6 +132,12 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
 ];
 
 const COPY_PRODUCT_NAME_SUFFIX = '（副本）';
+const PRODUCT_FORM_LAYOUT = {
+  layout: 'horizontal' as const,
+  labelCol: { flex: '120px' },
+  wrapperCol: { flex: '1' },
+  requiredSymbol: true,
+};
 
 function buildCopyProductName(name: string) {
   const maxLength = 15;
@@ -558,10 +564,11 @@ function ProductCreatePage() {
         </div>
 
         <Form
-          layout="vertical"
+          className={styles.sectionForm}
           initialValues={{
             shelfTime: 'immediately',
           }}
+          {...PRODUCT_FORM_LAYOUT}
         >
           <div className={styles.formGrid}>
             <Form.Item label="商品类型">
@@ -575,7 +582,12 @@ function ProductCreatePage() {
               <div className={styles.fieldHelp}>当前默认选择“虚拟商品”，暂不支持修改。</div>
             </Form.Item>
 
-            <Form.Item field="productCategory" label="商品类目">
+            <Form.Item
+              field="productCategory"
+              label="商品类目"
+              required
+              rules={[{ required: true, message: '请选择商品类目' }]}
+            >
               <Cascader
                 allowClear
                 className={styles.singleFieldControl}
@@ -596,13 +608,18 @@ function ProductCreatePage() {
               />
             </Form.Item>
 
-            <Form.Item field="productClassification" label="商品归属">
+            <Form.Item
+              field="productClassification"
+              label="商品分类"
+              required
+              rules={[{ required: true, message: '请选择商品分类' }]}
+            >
               <Cascader
                 allowClear
                 className={styles.singleFieldControl}
                 disabled={isEditMode}
                 options={productOwnershipOptions}
-                placeholder="请选择商品归属"
+                placeholder="请选择商品分类"
                 value={
                   productOwnershipId
                     ? getProductOwnershipPathById(
@@ -618,12 +635,20 @@ function ProductCreatePage() {
                   );
                 }}
               />
+              <div className={styles.fieldHelp}>
+                商品分类用于店铺内部经营管理与财务利润核算。
+              </div>
             </Form.Item>
 
             <Form.Item
               field="productName"
               label="商品名称"
+              required
               rules={[
+                {
+                  required: true,
+                  message: '请输入商品名称',
+                },
                 {
                   max: 15,
                   message: '商品名称支持 15 字以内字符',
@@ -642,8 +667,7 @@ function ProductCreatePage() {
             </Form.Item>
 
             {productCatalogId && currentCatalogAttributes.length > 0 && (
-              <div className={styles.fullWidth}>
-                <div className={styles.attributeSectionLabel}>商品类目属性</div>
+              <Form.Item className={styles.fullWidth} label="商品类目属性">
                 <div className={styles.attributePanel}>
                   <div className={styles.attributeFieldList}>
                     {currentCatalogAttributes.map((attribute) => (
@@ -676,7 +700,7 @@ function ProductCreatePage() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </Form.Item>
             )}
 
             <Form.Item className={styles.fullWidth} label="商品轮播图">
@@ -803,9 +827,9 @@ function ProductCreatePage() {
           </Typography.Title>
         </div>
 
-        <Form layout="vertical">
+        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
-            <Form.Item className={styles.fullWidth} label="商品规格">
+            <Form.Item className={styles.fullWidth} label="商品规格" required>
               <Radio.Group
                 disabled={isEditMode}
                 value={specMode}
@@ -957,7 +981,7 @@ function ProductCreatePage() {
           </Typography.Title>
         </div>
 
-        <Form layout="vertical">
+        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
             <Form.Item className={styles.fullWidth} label="商品详情页">
               <div className={styles.detailLayout}>

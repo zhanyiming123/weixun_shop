@@ -1,0 +1,470 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - generic [ref=e13]: Arco Pro
+    - list [ref=e14]:
+      - listitem [ref=e15]:
+        - generic [ref=e18]:
+          - textbox "输入内容查询" [ref=e19]
+          - img [ref=e21]
+      - listitem [ref=e23]:
+        - button [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+      - listitem [ref=e28]:
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+      - listitem [ref=e34]:
+        - button [ref=e35] [cursor=pointer]:
+          - img [ref=e36]
+      - button [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - listitem [ref=e42]:
+        - img "avatar" [ref=e45] [cursor=pointer]
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - menu [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]:
+                  - img [ref=e55]
+                  - text: 商品管理
+                - img [ref=e61]
+              - menuitem "商品列表" [ref=e64] [cursor=pointer]:
+                - generic [ref=e66]: 商品列表
+            - generic [ref=e69] [cursor=pointer]:
+              - generic [ref=e70]:
+                - img [ref=e71]
+                - text: 订单管理
+              - img [ref=e74]
+            - generic [ref=e77] [cursor=pointer]:
+              - generic [ref=e78]:
+                - img [ref=e79]
+                - text: 售后管理
+              - img [ref=e82]
+            - generic [ref=e85] [cursor=pointer]:
+              - generic [ref=e86]:
+                - img [ref=e87]
+                - text: 营销管理
+              - img [ref=e91]
+        - img [ref=e94] [cursor=pointer]
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - list [ref=e99]:
+          - listitem [ref=e100]: 商品管理
+          - img [ref=e102]
+          - listitem [ref=e104]: 商品列表
+        - main [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - generic [ref=e111]:
+                  - generic [ref=e112]: 商品搜索
+                  - generic [ref=e113]:
+                    - combobox [ref=e114] [cursor=pointer]:
+                      - generic "商品名称" [ref=e115]:
+                        - generic [ref=e116]:
+                          - textbox
+                          - generic [ref=e117]: 商品名称
+                        - img [ref=e120]
+                    - textbox "请输入搜索内容" [ref=e123]
+                - generic [ref=e124]:
+                  - generic [ref=e125]: 商品类型
+                  - combobox [ref=e126] [cursor=pointer]:
+                    - generic [ref=e127]:
+                      - generic [ref=e128]:
+                        - textbox "请选择商品类型"
+                        - generic [ref=e129]: 请选择商品类型
+                      - img [ref=e132]
+                - generic [ref=e134]:
+                  - generic [ref=e135]: 价格区间
+                  - generic [ref=e136]:
+                    - generic [ref=e139]:
+                      - spinbutton "最低价格" [ref=e140]
+                      - generic [ref=e141]:
+                        - img [ref=e143] [cursor=pointer]
+                        - img [ref=e146] [cursor=pointer]
+                    - generic [ref=e148]: 至
+                    - generic [ref=e151]:
+                      - spinbutton "最高价格" [ref=e152]
+                      - generic [ref=e153]:
+                        - img [ref=e155] [cursor=pointer]
+                        - img [ref=e158] [cursor=pointer]
+                - generic [ref=e160]:
+                  - generic [ref=e161]: 创建时间
+                  - generic [ref=e162]:
+                    - textbox "开始日期" [ref=e164]
+                    - generic [ref=e165]: "-"
+                    - textbox "结束日期" [ref=e167]
+                    - img [ref=e170]
+              - generic [ref=e172]:
+                - button "查询" [ref=e173] [cursor=pointer]
+                - button "重置" [ref=e174] [cursor=pointer]
+            - generic [ref=e176]:
+              - generic [ref=e181]:
+                - tab "全部(12)" [selected] [ref=e182] [cursor=pointer]:
+                  - generic [ref=e183]: 全部(12)
+                - tab "销售中(8)" [ref=e184] [cursor=pointer]:
+                  - generic [ref=e185]: 销售中(8)
+                - tab "仓库中(4)" [ref=e186] [cursor=pointer]:
+                  - generic [ref=e187]: 仓库中(4)
+              - generic [ref=e189]:
+                - button "添加商品" [ref=e190] [cursor=pointer]
+                - button "批量上架" [disabled] [ref=e191]
+                - button "批量下架" [disabled] [ref=e192]
+              - table [ref=e200]:
+                - rowgroup [ref=e210]:
+                  - row "商品名称 商品类型 上架状态 商品售价 库存 创建时间 操作" [ref=e211]:
+                    - columnheader [ref=e212]:
+                      - generic [ref=e214] [cursor=pointer]:
+                        - checkbox
+                    - columnheader "商品名称" [ref=e217]:
+                      - generic [ref=e218]: 商品名称
+                    - columnheader "商品类型" [ref=e219]:
+                      - generic [ref=e220]: 商品类型
+                    - columnheader "上架状态" [ref=e221]:
+                      - generic [ref=e222]: 上架状态
+                    - columnheader "商品售价" [ref=e223]:
+                      - generic [ref=e224]: 商品售价
+                    - columnheader "库存" [ref=e225]:
+                      - generic [ref=e227] [cursor=pointer]:
+                        - text: 库存
+                        - generic [ref=e228]:
+                          - img [ref=e230]
+                          - img [ref=e233]
+                    - columnheader "创建时间" [ref=e235]:
+                      - generic [ref=e237] [cursor=pointer]:
+                        - text: 创建时间
+                        - generic [ref=e238]:
+                          - img [ref=e240]
+                          - img [ref=e243]
+                    - columnheader "操作" [ref=e245]:
+                      - generic [ref=e246]: 操作
+                - rowgroup [ref=e247]:
+                  - 'row "唯寻2026年IG&AS大考预测课 id: G_1237036327413878784 虚拟商品 上架 上架 ¥199.00 2998 2026-04-02 11:01:49 详情 | 库存 | 分享" [ref=e248]':
+                    - cell [ref=e249]:
+                      - generic [ref=e250] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "唯寻2026年IG&AS大考预测课 id: G_1237036327413878784" [ref=e253]':
+                      - generic [ref=e256]:
+                        - generic [ref=e257]: 唯寻2026年IG&AS大考预测课
+                        - generic [ref=e258]: "id: G_1237036327413878784"
+                    - cell "虚拟商品" [ref=e259]:
+                      - generic [ref=e260]: 虚拟商品
+                    - cell "上架 上架" [ref=e261]:
+                      - switch "上架 上架" [checked] [ref=e264] [cursor=pointer]:
+                        - generic [ref=e266]: 上架
+                        - generic [ref=e267]: 上架
+                    - cell "¥199.00" [ref=e268]:
+                      - generic [ref=e269]: ¥199.00
+                    - cell "2998" [ref=e270]:
+                      - generic [ref=e271]: "2998"
+                    - cell "2026-04-02 11:01:49" [ref=e272]:
+                      - generic [ref=e273]: 2026-04-02 11:01:49
+                    - cell "详情 | 库存 | 分享" [ref=e274]:
+                      - generic [ref=e277]:
+                        - generic [ref=e278] [cursor=pointer]: 详情
+                        - generic [ref=e279]: "|"
+                        - generic [ref=e280] [cursor=pointer]: 库存
+                        - generic [ref=e281]: "|"
+                        - generic [ref=e282] [cursor=pointer]: 分享
+                  - 'row "[唯寻] 2026年IG&AS大考预测课 id: G_1231319097741021184 课程商品 上架 上架 ¥199.00 29992 2026-03-17 16:23:35 详情 | 库存 | 分享" [ref=e283]':
+                    - cell [ref=e284]:
+                      - generic [ref=e285] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻] 2026年IG&AS大考预测课 id: G_1231319097741021184" [ref=e288]':
+                      - generic [ref=e291]:
+                        - generic [ref=e292]: "[唯寻] 2026年IG&AS大考预测课"
+                        - generic [ref=e293]: "id: G_1231319097741021184"
+                    - cell "课程商品" [ref=e294]:
+                      - generic [ref=e295]: 课程商品
+                    - cell "上架 上架" [ref=e296]:
+                      - switch "上架 上架" [checked] [ref=e299] [cursor=pointer]:
+                        - generic [ref=e301]: 上架
+                        - generic [ref=e302]: 上架
+                    - cell "¥199.00" [ref=e303]:
+                      - generic [ref=e304]: ¥199.00
+                    - cell "29992" [ref=e305]:
+                      - generic [ref=e306]: "29992"
+                    - cell "2026-03-17 16:23:35" [ref=e307]:
+                      - generic [ref=e308]: 2026-03-17 16:23:35
+                    - cell "详情 | 库存 | 分享" [ref=e309]:
+                      - generic [ref=e312]:
+                        - generic [ref=e313] [cursor=pointer]: 详情
+                        - generic [ref=e314]: "|"
+                        - generic [ref=e315] [cursor=pointer]: 库存
+                        - generic [ref=e316]: "|"
+                        - generic [ref=e317] [cursor=pointer]: 分享
+                  - 'row "[唯寻] 2026年IG&AS大考预测课 id: G_1231318174553739264 课程商品 上架 上架 ¥199.00 29980 2026-03-17 16:19:55 详情 | 库存 | 分享" [ref=e318]':
+                    - cell [ref=e319]:
+                      - generic [ref=e320] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻] 2026年IG&AS大考预测课 id: G_1231318174553739264" [ref=e323]':
+                      - generic [ref=e326]:
+                        - generic [ref=e327]: "[唯寻] 2026年IG&AS大考预测课"
+                        - generic [ref=e328]: "id: G_1231318174553739264"
+                    - cell "课程商品" [ref=e329]:
+                      - generic [ref=e330]: 课程商品
+                    - cell "上架 上架" [ref=e331]:
+                      - switch "上架 上架" [checked] [ref=e334] [cursor=pointer]:
+                        - generic [ref=e336]: 上架
+                        - generic [ref=e337]: 上架
+                    - cell "¥199.00" [ref=e338]:
+                      - generic [ref=e339]: ¥199.00
+                    - cell "29980" [ref=e340]:
+                      - generic [ref=e341]: "29980"
+                    - cell "2026-03-17 16:19:55" [ref=e342]:
+                      - generic [ref=e343]: 2026-03-17 16:19:55
+                    - cell "详情 | 库存 | 分享" [ref=e344]:
+                      - generic [ref=e347]:
+                        - generic [ref=e348] [cursor=pointer]: 详情
+                        - generic [ref=e349]: "|"
+                        - generic [ref=e350] [cursor=pointer]: 库存
+                        - generic [ref=e351]: "|"
+                        - generic [ref=e352] [cursor=pointer]: 分享
+                  - 'row "ALEVEL定制学习服务 id: G_1215778084171681792 服务商品 下架 下架 ¥1.00 444 2026-02-02 19:09:09 详情 | 库存 | 分享" [ref=e353]':
+                    - cell [ref=e354]:
+                      - generic [ref=e355] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "ALEVEL定制学习服务 id: G_1215778084171681792" [ref=e358]':
+                      - generic [ref=e361]:
+                        - generic [ref=e362]: ALEVEL定制学习服务
+                        - generic [ref=e363]: "id: G_1215778084171681792"
+                    - cell "服务商品" [ref=e364]:
+                      - generic [ref=e365]: 服务商品
+                    - cell "下架 下架" [ref=e366]:
+                      - switch "下架 下架" [ref=e369] [cursor=pointer]:
+                        - generic [ref=e371]: 下架
+                        - generic [ref=e372]: 下架
+                    - cell "¥1.00" [ref=e373]:
+                      - generic [ref=e374]: ¥1.00
+                    - cell "444" [ref=e375]:
+                      - generic [ref=e376]: "444"
+                    - cell "2026-02-02 19:09:09" [ref=e377]:
+                      - generic [ref=e378]: 2026-02-02 19:09:09
+                    - cell "详情 | 库存 | 分享" [ref=e379]:
+                      - generic [ref=e382]:
+                        - generic [ref=e383] [cursor=pointer]: 详情
+                        - generic [ref=e384]: "|"
+                        - generic [ref=e385] [cursor=pointer]: 库存
+                        - generic [ref=e386]: "|"
+                        - generic [ref=e387] [cursor=pointer]: 分享
+                  - 'row "[唯寻橡沐] AP预测课 id: G_1211793802365374464 课程商品 上架 上架 ¥49.00 1000 2026-01-22 19:17:02 详情 | 库存 | 分享" [ref=e388]':
+                    - cell [ref=e389]:
+                      - generic [ref=e390] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻橡沐] AP预测课 id: G_1211793802365374464" [ref=e393]':
+                      - generic [ref=e396]:
+                        - generic [ref=e397]: "[唯寻橡沐] AP预测课"
+                        - generic [ref=e398]: "id: G_1211793802365374464"
+                    - cell "课程商品" [ref=e399]:
+                      - generic [ref=e400]: 课程商品
+                    - cell "上架 上架" [ref=e401]:
+                      - switch "上架 上架" [checked] [ref=e404] [cursor=pointer]:
+                        - generic [ref=e406]: 上架
+                        - generic [ref=e407]: 上架
+                    - cell "¥49.00" [ref=e408]:
+                      - generic [ref=e409]: ¥49.00
+                    - cell "1000" [ref=e410]:
+                      - generic [ref=e411]: "1000"
+                    - cell "2026-01-22 19:17:02" [ref=e412]:
+                      - generic [ref=e413]: 2026-01-22 19:17:02
+                    - cell "详情 | 库存 | 分享" [ref=e414]:
+                      - generic [ref=e417]:
+                        - generic [ref=e418] [cursor=pointer]: 详情
+                        - generic [ref=e419]: "|"
+                        - generic [ref=e420] [cursor=pointer]: 库存
+                        - generic [ref=e421]: "|"
+                        - generic [ref=e422] [cursor=pointer]: 分享
+                  - 'row "[唯寻橡沐] IB预测课 id: G_1211793279398580224 课程商品 上架 上架 ¥49.00 599 2026-01-22 19:14:57 详情 | 库存 | 分享" [ref=e423]':
+                    - cell [ref=e424]:
+                      - generic [ref=e425] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻橡沐] IB预测课 id: G_1211793279398580224" [ref=e428]':
+                      - generic [ref=e431]:
+                        - generic [ref=e432]: "[唯寻橡沐] IB预测课"
+                        - generic [ref=e433]: "id: G_1211793279398580224"
+                    - cell "课程商品" [ref=e434]:
+                      - generic [ref=e435]: 课程商品
+                    - cell "上架 上架" [ref=e436]:
+                      - switch "上架 上架" [checked] [ref=e439] [cursor=pointer]:
+                        - generic [ref=e441]: 上架
+                        - generic [ref=e442]: 上架
+                    - cell "¥49.00" [ref=e443]:
+                      - generic [ref=e444]: ¥49.00
+                    - cell "599" [ref=e445]:
+                      - generic [ref=e446]: "599"
+                    - cell "2026-01-22 19:14:57" [ref=e447]:
+                      - generic [ref=e448]: 2026-01-22 19:14:57
+                    - cell "详情 | 库存 | 分享" [ref=e449]:
+                      - generic [ref=e452]:
+                        - generic [ref=e453] [cursor=pointer]: 详情
+                        - generic [ref=e454]: "|"
+                        - generic [ref=e455] [cursor=pointer]: 库存
+                        - generic [ref=e456]: "|"
+                        - generic [ref=e457] [cursor=pointer]: 分享
+                  - 'row "[唯寻橡沐] AP冲刺班 id: G_1210999402622266432 服务商品 上架 上架 ¥129.00 998 2026-01-20 14:40:22 详情 | 库存 | 分享" [ref=e458]':
+                    - cell [ref=e459]:
+                      - generic [ref=e460] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻橡沐] AP冲刺班 id: G_1210999402622266432" [ref=e463]':
+                      - generic [ref=e466]:
+                        - generic [ref=e467]: "[唯寻橡沐] AP冲刺班"
+                        - generic [ref=e468]: "id: G_1210999402622266432"
+                    - cell "服务商品" [ref=e469]:
+                      - generic [ref=e470]: 服务商品
+                    - cell "上架 上架" [ref=e471]:
+                      - switch "上架 上架" [checked] [ref=e474] [cursor=pointer]:
+                        - generic [ref=e476]: 上架
+                        - generic [ref=e477]: 上架
+                    - cell "¥129.00" [ref=e478]:
+                      - generic [ref=e479]: ¥129.00
+                    - cell "998" [ref=e480]:
+                      - generic [ref=e481]: "998"
+                    - cell "2026-01-20 14:40:22" [ref=e482]:
+                      - generic [ref=e483]: 2026-01-20 14:40:22
+                    - cell "详情 | 库存 | 分享" [ref=e484]:
+                      - generic [ref=e487]:
+                        - generic [ref=e488] [cursor=pointer]: 详情
+                        - generic [ref=e489]: "|"
+                        - generic [ref=e490] [cursor=pointer]: 库存
+                        - generic [ref=e491]: "|"
+                        - generic [ref=e492] [cursor=pointer]: 分享
+                  - 'row "[唯寻橡沐] IB冲刺班 id: G_1210998727024709632 服务商品 上架 上架 ¥129.00 598 2026-01-20 14:37:41 详情 | 库存 | 分享" [ref=e493]':
+                    - cell [ref=e494]:
+                      - generic [ref=e495] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻橡沐] IB冲刺班 id: G_1210998727024709632" [ref=e498]':
+                      - generic [ref=e501]:
+                        - generic [ref=e502]: "[唯寻橡沐] IB冲刺班"
+                        - generic [ref=e503]: "id: G_1210998727024709632"
+                    - cell "服务商品" [ref=e504]:
+                      - generic [ref=e505]: 服务商品
+                    - cell "上架 上架" [ref=e506]:
+                      - switch "上架 上架" [checked] [ref=e509] [cursor=pointer]:
+                        - generic [ref=e511]: 上架
+                        - generic [ref=e512]: 上架
+                    - cell "¥129.00" [ref=e513]:
+                      - generic [ref=e514]: ¥129.00
+                    - cell "598" [ref=e515]:
+                      - generic [ref=e516]: "598"
+                    - cell "2026-01-20 14:37:41" [ref=e517]:
+                      - generic [ref=e518]: 2026-01-20 14:37:41
+                    - cell "详情 | 库存 | 分享" [ref=e519]:
+                      - generic [ref=e522]:
+                        - generic [ref=e523] [cursor=pointer]: 详情
+                        - generic [ref=e524]: "|"
+                        - generic [ref=e525] [cursor=pointer]: 库存
+                        - generic [ref=e526]: "|"
+                        - generic [ref=e527] [cursor=pointer]: 分享
+                  - 'row "[唯寻橡沐] AP预习课 id: G_1210997383807242240 虚拟商品 下架 下架 ¥49.00 1000 2026-01-20 14:32:21 详情 | 库存 | 分享" [ref=e528]':
+                    - cell [ref=e529]:
+                      - generic [ref=e530] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "[唯寻橡沐] AP预习课 id: G_1210997383807242240" [ref=e533]':
+                      - generic [ref=e536]:
+                        - generic [ref=e537]: "[唯寻橡沐] AP预习课"
+                        - generic [ref=e538]: "id: G_1210997383807242240"
+                    - cell "虚拟商品" [ref=e539]:
+                      - generic [ref=e540]: 虚拟商品
+                    - cell "下架 下架" [ref=e541]:
+                      - switch "下架 下架" [ref=e544] [cursor=pointer]:
+                        - generic [ref=e546]: 下架
+                        - generic [ref=e547]: 下架
+                    - cell "¥49.00" [ref=e548]:
+                      - generic [ref=e549]: ¥49.00
+                    - cell "1000" [ref=e550]:
+                      - generic [ref=e551]: "1000"
+                    - cell "2026-01-20 14:32:21" [ref=e552]:
+                      - generic [ref=e553]: 2026-01-20 14:32:21
+                    - cell "详情 | 库存 | 分享" [ref=e554]:
+                      - generic [ref=e557]:
+                        - generic [ref=e558] [cursor=pointer]: 详情
+                        - generic [ref=e559]: "|"
+                        - generic [ref=e560] [cursor=pointer]: 库存
+                        - generic [ref=e561]: "|"
+                        - generic [ref=e562] [cursor=pointer]: 分享
+                  - 'row "2026年STEP数学冲刺营 id: G_1210876543210987654 课程商品 下架 下架 ¥299.00 88 2026-01-05 09:30:00 详情 | 库存 | 分享" [ref=e563]':
+                    - cell [ref=e564]:
+                      - generic [ref=e565] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "2026年STEP数学冲刺营 id: G_1210876543210987654" [ref=e568]':
+                      - generic [ref=e571]:
+                        - generic [ref=e572]: 2026年STEP数学冲刺营
+                        - generic [ref=e573]: "id: G_1210876543210987654"
+                    - cell "课程商品" [ref=e574]:
+                      - generic [ref=e575]: 课程商品
+                    - cell "下架 下架" [ref=e576]:
+                      - switch "下架 下架" [ref=e579] [cursor=pointer]:
+                        - generic [ref=e581]: 下架
+                        - generic [ref=e582]: 下架
+                    - cell "¥299.00" [ref=e583]:
+                      - generic [ref=e584]: ¥299.00
+                    - cell "88" [ref=e585]:
+                      - generic [ref=e586]: "88"
+                    - cell "2026-01-05 09:30:00" [ref=e587]:
+                      - generic [ref=e588]: 2026-01-05 09:30:00
+                    - cell "详情 | 库存 | 分享" [ref=e589]:
+                      - generic [ref=e592]:
+                        - generic [ref=e593] [cursor=pointer]: 详情
+                        - generic [ref=e594]: "|"
+                        - generic [ref=e595] [cursor=pointer]: 库存
+                        - generic [ref=e596]: "|"
+                        - generic [ref=e597] [cursor=pointer]: 分享
+                  - 'row "雅思一对一提升服务 id: G_1210123456789012345 服务商品 上架 上架 ¥899.00 32 2025-12-28 20:15:18 详情 | 库存 | 分享" [ref=e598]':
+                    - cell [ref=e599]:
+                      - generic [ref=e600] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "雅思一对一提升服务 id: G_1210123456789012345" [ref=e603]':
+                      - generic [ref=e606]:
+                        - generic [ref=e607]: 雅思一对一提升服务
+                        - generic [ref=e608]: "id: G_1210123456789012345"
+                    - cell "服务商品" [ref=e609]:
+                      - generic [ref=e610]: 服务商品
+                    - cell "上架 上架" [ref=e611]:
+                      - switch "上架 上架" [checked] [ref=e614] [cursor=pointer]:
+                        - generic [ref=e616]: 上架
+                        - generic [ref=e617]: 上架
+                    - cell "¥899.00" [ref=e618]:
+                      - generic [ref=e619]: ¥899.00
+                    - cell "32" [ref=e620]:
+                      - generic [ref=e621]: "32"
+                    - cell "2025-12-28 20:15:18" [ref=e622]:
+                      - generic [ref=e623]: 2025-12-28 20:15:18
+                    - cell "详情 | 库存 | 分享" [ref=e624]:
+                      - generic [ref=e627]:
+                        - generic [ref=e628] [cursor=pointer]: 详情
+                        - generic [ref=e629]: "|"
+                        - generic [ref=e630] [cursor=pointer]: 库存
+                        - generic [ref=e631]: "|"
+                        - generic [ref=e632] [cursor=pointer]: 分享
+                  - 'row "牛津面试模考包 id: G_1209988776655443322 虚拟商品 下架 下架 ¥159.00 200 2025-12-18 18:08:42 详情 | 库存 | 分享" [ref=e633]':
+                    - cell [ref=e634]:
+                      - generic [ref=e635] [cursor=pointer]:
+                        - checkbox
+                    - 'cell "牛津面试模考包 id: G_1209988776655443322" [ref=e638]':
+                      - generic [ref=e641]:
+                        - generic [ref=e642]: 牛津面试模考包
+                        - generic [ref=e643]: "id: G_1209988776655443322"
+                    - cell "虚拟商品" [ref=e644]:
+                      - generic [ref=e645]: 虚拟商品
+                    - cell "下架 下架" [ref=e646]:
+                      - switch "下架 下架" [ref=e649] [cursor=pointer]:
+                        - generic [ref=e651]: 下架
+                        - generic [ref=e652]: 下架
+                    - cell "¥159.00" [ref=e653]:
+                      - generic [ref=e654]: ¥159.00
+                    - cell "200" [ref=e655]:
+                      - generic [ref=e656]: "200"
+                    - cell "2025-12-18 18:08:42" [ref=e657]:
+                      - generic [ref=e658]: 2025-12-18 18:08:42
+                    - cell "详情 | 库存 | 分享" [ref=e659]:
+                      - generic [ref=e662]:
+                        - generic [ref=e663] [cursor=pointer]: 详情
+                        - generic [ref=e664]: "|"
+                        - generic [ref=e665] [cursor=pointer]: 库存
+                        - generic [ref=e666]: "|"
+                        - generic [ref=e667] [cursor=pointer]: 分享
+      - generic [ref=e668]: Arco Design Pro
