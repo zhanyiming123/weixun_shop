@@ -20,6 +20,13 @@ export type ProductOwnershipCascaderOption = {
   children?: ProductOwnershipCascaderOption[];
 };
 
+export type ProductOwnershipLeafItem = {
+  id: string;
+  label: string;
+  labelPath: string[];
+  path: string[];
+};
+
 const STORAGE_KEY = 'product-ownership-config-items-v2';
 
 export const DEFAULT_PRODUCT_OWNERSHIP_ITEMS: ProductOwnershipConfigItem[] = [
@@ -146,6 +153,36 @@ export function buildProductOwnershipTree(
   return buildNodes(null);
 }
 
+function flattenProductOwnershipLeaves(
+  nodes: ProductOwnershipTreeNode[],
+  parentPath: string[] = [],
+  parentLabelPath: string[] = []
+): ProductOwnershipLeafItem[] {
+  return nodes.flatMap((node) => {
+    const path = [...parentPath, node.id];
+    const labelPath = [...parentLabelPath, node.label];
+
+    if (!node.children?.length) {
+      return [
+        {
+          id: node.id,
+          label: node.label,
+          labelPath,
+          path,
+        },
+      ];
+    }
+
+    return flattenProductOwnershipLeaves(node.children, path, labelPath);
+  });
+}
+
+export function buildProductOwnershipLeafItems(
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  return flattenProductOwnershipLeaves(buildProductOwnershipTree(items));
+}
+
 function toProductOwnershipCascaderOptions(
   nodes: ProductOwnershipTreeNode[]
 ): ProductOwnershipCascaderOption[] {
@@ -162,4 +199,51 @@ export function buildProductOwnershipCascaderOptions(
   items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
 ) {
   return toProductOwnershipCascaderOptions(buildProductOwnershipTree(items));
+}
+
+export function getProductOwnershipLeafById(
+  id?: string,
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  if (!id) {
+    return undefined;
+  }
+
+  return buildProductOwnershipLeafItems(items).find((item) => item.id === id);
+}
+
+export function getProductOwnershipPathById(
+  id?: string,
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  return getProductOwnershipLeafById(id, items)?.path || [];
+}
+
+export function getProductOwnershipLabelPathById(
+  id?: string,
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  return getProductOwnershipLeafById(id, items)?.labelPath || [];
+}
+
+export function getProductOwnershipFullLabel(
+  id?: string,
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  return getProductOwnershipLabelPathById(id, items).join(' / ');
+}
+
+export function getProductOwnershipIdFromPath(
+  path: string[],
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  if (!path.length) {
+    return undefined;
+  }
+
+  return buildProductOwnershipLeafItems(items).find(
+    (item) =>
+      item.path.length === path.length &&
+      item.path.every((value, index) => value === path[index])
+  )?.id;
 }

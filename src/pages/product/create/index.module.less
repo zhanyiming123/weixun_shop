@@ -112,6 +112,38 @@
   gap: 10px;
 }
 
+.singleSpecGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 240px));
+  gap: 16px 20px;
+  align-items: start;
+}
+
+.singleSpecField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.singleSpecLabel {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.singleSpecUpload {
+  :global(.arco-upload-list-picture-card .arco-upload-list-item),
+  :global(.arco-upload-picture-card) {
+    width: 126px;
+    height: 126px;
+  }
+}
+
+.singleSpecControl {
+  width: 100%;
+}
+
 .specEmpty {
   margin: 10px 0 0;
   color: var(--color-text-3);
@@ -396,9 +428,10 @@
 }
 
 .attributeFieldList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 520px));
+  gap: 4px 20px;
+  align-items: start;
 }
 
 .attributeFieldItem {
@@ -463,11 +496,19 @@
     grid-template-columns: 1fr;
   }
 
+  .singleSpecGrid {
+    grid-template-columns: 1fr;
+  }
+
   .detailLayout {
     grid-template-columns: 1fr;
   }
 
   .limitConfigRow {
     flex-wrap: wrap;
+  }
+
+  .attributeFieldList {
+    grid-template-columns: 1fr;
   }
 }

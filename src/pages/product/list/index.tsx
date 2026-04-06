@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import qs from 'query-string';
 import {
   Button,
   Cascader,
@@ -25,18 +26,23 @@ import {
   readProductCatalogItems,
 } from '../catalog/data';
 import {
+  buildProductOwnershipCascaderOptions,
+  getProductOwnershipFullLabel,
+  getProductOwnershipIdFromPath,
+  getProductOwnershipPathById,
+  readProductOwnershipItems,
+} from '../category/data';
+import {
   DEFAULT_FILTER_VALUES,
   MOCK_PRODUCTS,
-  PRODUCT_TYPE_LABEL_MAP,
-  PRODUCT_TYPE_OPTIONS,
   ProductFilterValues,
   ProductItem,
   ProductSearchType,
   ProductStatus,
-  ProductType,
 } from './data';
 
 type ProductTab = 'all' | 'selling' | 'warehouse';
+type ProductCreateActionMode = 'edit' | 'copy';
 
 const Option = Select.Option;
 const TabPane = Tabs.TabPane;
@@ -101,13 +107,16 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
       }
     }
 
-    if (filters.productType && item.productType !== filters.productType) {
+    if (
+      filters.productCatalogId &&
+      item.productCatalogId !== filters.productCatalogId
+    ) {
       return false;
     }
 
     if (
-      filters.productCatalogId &&
-      item.productCatalogId !== filters.productCatalogId
+      filters.productOwnershipId &&
+      item.productOwnershipId !== filters.productOwnershipId
     ) {
       return false;
     }
@@ -146,9 +155,14 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
 function ProductListPage() {
   const history = useHistory();
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
+  const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const productCatalogOptions = useMemo(
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
+  );
+  const productOwnershipOptions = useMemo(
+    () => buildProductOwnershipCascaderOptions(ownershipItems),
+    [ownershipItems]
   );
   const [products, setProducts] = useState<ProductItem[]>(MOCK_PRODUCTS);
   const [formValues, setFormValues] = useState<ProductFilterValues>(
@@ -202,10 +216,6 @@ function ProductListPage() {
     updateFormValue('searchType', value as ProductSearchType);
   }
 
-  function handleProductTypeChange(value: string) {
-    updateFormValue('productType', (value || undefined) as ProductType | undefined);
-  }
-
   function handleRangeChange(dateString: string[]) {
     const nextRange =
       Array.isArray(dateString) && dateString[0] && dateString[1]
@@ -228,6 +238,20 @@ function ProductListPage() {
     setAppliedFilters(nextValues);
     setActiveTab('all');
     setSelectedRowKeys([]);
+  }
+
+  function goToProductCreate(mode: ProductCreateActionMode, record: ProductItem) {
+    history.push({
+      pathname: '/product/create',
+      search: `?${qs.stringify({
+        mode,
+        sourceId: record.id,
+      })}`,
+      state: {
+        mode,
+        sourceProduct: record,
+      },
+    });
   }
 
   function showPendingMessage(text: string) {
@@ -279,16 +303,16 @@ function ProductListPage() {
       ),
     },
     {
-      title: '商品类型',
-      dataIndex: 'productType',
-      width: 150,
-      render: (value: ProductType) => PRODUCT_TYPE_LABEL_MAP[value],
-    },
-    {
       title: '商品类目',
       dataIndex: 'productCatalogId',
       width: 220,
       render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
+    },
+    {
+      title: '商品归属',
+      dataIndex: 'productOwnershipId',
+      width: 260,
+      render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
     },
     {
       title: '上架状态',
@@ -326,19 +350,38 @@ function ProductListPage() {
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 180,
+      width: 240,
       fixed: 'right' as const,
       render: (_: unknown, record: ProductItem) => (
         <span className={styles.actionLinks}>
-          <Link onClick={() => showPendingMessage(`${record.name}详情暂未实现`)}>
+          <Link
+            className={styles.actionLinkButton}
+            onClick={() => showPendingMessage(`${record.name}详情暂未实现`)}
+          >
             详情
           </Link>
-          <span className={styles.actionDivider}>|</span>
-          <Link onClick={() => showPendingMessage(`${record.name}库存管理暂未实现`)}>
+          <Link
+            className={styles.actionLinkButton}
+            onClick={() => goToProductCreate('edit', record)}
+          >
+            编辑
+          </Link>
+          <Link
+            className={styles.actionLinkButton}
+            onClick={() => goToProductCreate('copy', record)}
+          >
+            复制
+          </Link>
+          <Link
+            className={styles.actionLinkButton}
+            onClick={() => showPendingMessage(`${record.name}库存管理暂未实现`)}
+          >
             库存
           </Link>
-          <span className={styles.actionDivider}>|</span>
-          <Link onClick={() => showPendingMessage(`${record.name}分享功能暂未实现`)}>
+          <Link
+            className={styles.actionLinkButton}
+            onClick={() => showPendingMessage(`${record.name}分享功能暂未实现`)}
+          >
             分享
           </Link>
         </span>
@@ -374,23 +417,6 @@ function ProductListPage() {
             </div>
 
             <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>商品类型</div>
-              <Select
-                allowClear
-                className={styles.typeSelect}
-                placeholder="请选择商品类型"
-                value={formValues.productType}
-                onChange={handleProductTypeChange}
-              >
-                {PRODUCT_TYPE_OPTIONS.map((item) => (
-                  <Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            <div className={styles.filterItem}>
               <div className={styles.filterLabel}>商品类目</div>
               <Cascader
                 allowClear
@@ -407,6 +433,31 @@ function ProductListPage() {
                   updateFormValue(
                     'productCatalogId',
                     getProductCatalogIdFromPath(path, catalogItems)
+                  );
+                }}
+              />
+            </div>
+
+            <div className={styles.filterItem}>
+              <div className={styles.filterLabel}>商品归属</div>
+              <Cascader
+                allowClear
+                className={styles.catalogCascader}
+                options={productOwnershipOptions}
+                placeholder="请选择商品归属"
+                value={
+                  formValues.productOwnershipId
+                    ? getProductOwnershipPathById(
+                        formValues.productOwnershipId,
+                        ownershipItems
+                      )
+                    : undefined
+                }
+                onChange={(value) => {
+                  const path = normalizePath(value);
+                  updateFormValue(
+                    'productOwnershipId',
+                    getProductOwnershipIdFromPath(path, ownershipItems)
                   );
                 }}
               />
@@ -503,7 +554,7 @@ function ProductListPage() {
               columnWidth: 48,
               onChange: (keys) => setSelectedRowKeys(keys),
             }}
-            scroll={{ x: 1460 }}
+            scroll={{ x: 1700 }}
             tableLayoutFixed
           />
         </div>

@@ -6,6 +6,7 @@ export type ProductItem = {
   id: string;
   name: string;
   productCatalogId: string;
+  productOwnershipId: string;
   productType: ProductType;
   status: ProductStatus;
   price: number;
@@ -17,29 +18,17 @@ export type ProductFilterValues = {
   searchType: ProductSearchType;
   keyword: string;
   productCatalogId?: string;
-  productType?: ProductType;
+  productOwnershipId?: string;
   minPrice?: number;
   maxPrice?: number;
   createdAtRange: string[];
-};
-
-export const PRODUCT_TYPE_OPTIONS = [
-  { label: '虚拟商品', value: 'virtual' as ProductType },
-  { label: '课程商品', value: 'course' as ProductType },
-  { label: '服务商品', value: 'service' as ProductType },
-];
-
-export const PRODUCT_TYPE_LABEL_MAP: Record<ProductType, string> = {
-  virtual: '虚拟商品',
-  course: '课程商品',
-  service: '服务商品',
 };
 
 export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
   searchType: 'productName',
   keyword: '',
   productCatalogId: undefined,
-  productType: undefined,
+  productOwnershipId: undefined,
   minPrice: undefined,
   maxPrice: undefined,
   createdAtRange: [],
@@ -50,6 +39,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1237036327413878784',
     name: '唯寻2026年IG&AS大考预测课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
     productType: 'virtual',
     status: 'on',
     price: 199,
@@ -60,6 +50,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1231319097741021184',
     name: '[唯寻] 2026年IG&AS大考预测课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
     productType: 'course',
     status: 'on',
     price: 199,
@@ -70,6 +61,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1231318174553739264',
     name: '[唯寻] 2026年IG&AS大考预测课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
     productType: 'course',
     status: 'on',
     price: 199,
@@ -80,6 +72,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1215778084171681792',
     name: 'ALEVEL定制学习服务',
     productCatalogId: 'service',
+    productOwnershipId: 'item_06_01_01',
     productType: 'service',
     status: 'off',
     price: 1,
@@ -90,6 +83,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1211793802365374464',
     name: '[唯寻橡沐] AP预测课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
     productType: 'course',
     status: 'on',
     price: 49,
@@ -100,6 +94,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1211793279398580224',
     name: '[唯寻橡沐] IB预测课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
     productType: 'course',
     status: 'on',
     price: 49,
@@ -110,6 +105,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1210999402622266432',
     name: '[唯寻橡沐] AP冲刺班',
     productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_08',
     productType: 'service',
     status: 'on',
     price: 129,
@@ -120,6 +116,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1210998727024709632',
     name: '[唯寻橡沐] IB冲刺班',
     productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_08',
     productType: 'service',
     status: 'on',
     price: 129,
@@ -130,6 +127,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1210997383807242240',
     name: '[唯寻橡沐] AP预习课',
     productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
     productType: 'virtual',
     status: 'off',
     price: 49,
@@ -140,6 +138,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1210876543210987654',
     name: '2026年STEP数学冲刺营',
     productCatalogId: 'international',
+    productOwnershipId: 'item_05_02_05',
     productType: 'course',
     status: 'off',
     price: 299,
@@ -150,6 +149,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1210123456789012345',
     name: '雅思一对一提升服务',
     productCatalogId: 'planning',
+    productOwnershipId: 'item_06_03_01',
     productType: 'service',
     status: 'on',
     price: 899,
@@ -160,6 +160,7 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     id: 'G_1209988776655443322',
     name: '牛津面试模考包',
     productCatalogId: 'thesis',
+    productOwnershipId: 'item_05_03_04',
     productType: 'virtual',
     status: 'off',
     price: 159,
@@ -167,3 +168,11 @@ export const MOCK_PRODUCTS: ProductItem[] = [
     createdAt: '2025-12-18 18:08:42',
   },
 ];
+
+export function getMockProductById(id?: string) {
+  if (!id) {
+    return undefined;
+  }
+
+  return MOCK_PRODUCTS.find((item) => item.id === id);
+}

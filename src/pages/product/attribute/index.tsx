@@ -33,7 +33,6 @@ import {
 } from './data';
 
 const { useForm } = Form;
-const MultiCascader = Cascader as any;
 
 function generateId() {
   return `attr_${Date.now()}`;
@@ -45,12 +44,14 @@ function now() {
 
 const TYPE_COLORS: Record<ProductCatalogAttributeType, string> = {
   text: 'gray',
+  number: 'gold',
   single: 'arcoblue',
   multi: 'green',
 };
 
 const TYPE_LABELS: Record<ProductCatalogAttributeType, string> = {
   text: '文本',
+  number: '数字',
   single: '单选',
   multi: '多选',
 };
@@ -93,9 +94,7 @@ function AttributePage() {
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
   );
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>(
-    () => catalogLeafItems[0]?.id || ''
-  );
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string>('');
   const [searchName, setSearchName] = useState('');
   const [filterEnabled, setFilterEnabled] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -181,7 +180,8 @@ function AttributePage() {
         .map((path) => getProductCatalogIdFromPath(path, catalogItems))
         .filter(Boolean) as string[];
       const type = values.type as ProductCatalogAttributeType;
-      const attributeValues = type === 'text' ? [] : values.values || [];
+      const attributeValues =
+        type === 'single' || type === 'multi' ? values.values || [] : [];
 
       if (editingItem) {
         setAttributes((prev) =>
@@ -262,6 +262,10 @@ function AttributePage() {
       render: (values: string[], record: ProductCatalogAttributeItem) => {
         if (record.type === 'text') {
           return <span className={styles.textType}>自由填写</span>;
+        }
+
+        if (record.type === 'number') {
+          return <span className={styles.textType}>数字输入</span>;
         }
 
         if (!values.length) {
@@ -396,7 +400,7 @@ function AttributePage() {
           <div className={styles.toolbarLeft}>
             <Typography.Text className={styles.categoryTitle}>
               当前类目：
-              <Typography.Text bold>{selectedCatalog?.label || '-'}</Typography.Text>
+              <Typography.Text bold>{selectedCatalog?.label || '全部类目'}</Typography.Text>
             </Typography.Text>
           </div>
           <Button icon={<IconPlus />} type="primary" onClick={openAddModal}>
@@ -407,7 +411,7 @@ function AttributePage() {
           rowKey="id"
           columns={columns}
           data={filteredData}
-          noDataElement="暂无属性数据，请先选择类目"
+          noDataElement="暂无属性数据"
           pagination={{ pageSize: 10, showTotal: true }}
           scroll={{ x: 1560 }}
           tableLayoutFixed
@@ -439,11 +443,12 @@ function AttributePage() {
             rules={[{ required: true, message: '请选择类目' }]}
             extra="支持多级级联与多选，一个属性可绑定多个商品类目"
           >
-            <MultiCascader
-              multiple
+            <Cascader
+              mode="multiple"
               allowClear
               options={catalogCascaderOptions}
               placeholder="请选择类目"
+              showSearch={{ retainInputValueWhileSelect: true }}
             />
           </Form.Item>
           <Form.Item
@@ -461,11 +466,12 @@ function AttributePage() {
           >
             <Select placeholder="请选择属性类型">
               <Select.Option value="text">文本（用户自由填写）</Select.Option>
+              <Select.Option value="number">数字（用户填写数字）</Select.Option>
               <Select.Option value="single">单选（从预设值中选一个）</Select.Option>
               <Select.Option value="multi">多选（从预设值中选多个）</Select.Option>
             </Select>
           </Form.Item>
-          {formType !== 'text' && (
+          {(formType === 'single' || formType === 'multi') && (
             <Form.Item
               field="values"
               label="属性值"

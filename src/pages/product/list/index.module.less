@@ -161,13 +161,14 @@
 }
 
 .actionLinks {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 6px 12px;
   align-items: center;
-  gap: 12px;
 }
 
-.actionDivider {
-  color: var(--color-border-2);
+.actionLinkButton {
+  white-space: nowrap;
 }
 
 @media (max-width: 1100px) {
