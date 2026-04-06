@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Cascader,
-  Checkbox,
   DatePicker,
   Divider,
   Form,
@@ -142,27 +141,6 @@ function CouponCreatePage() {
       productScope: nextScope,
     });
     clearErrors('productScope', 'conditionScopes', 'selectedSkuIds');
-  }
-
-  function handleCategoryToggle(categoryId: string, checked: boolean) {
-    patchConditionScopes((previous) => {
-      const exists = previous.some((item) => item.categoryId === categoryId);
-      if (checked) {
-        if (exists) {
-          return previous;
-        }
-        return [
-          ...previous,
-          {
-            categoryId,
-            selectedOrgPaths: [],
-            selectedSpecValues: [],
-          },
-        ];
-      }
-      return previous.filter((item) => item.categoryId !== categoryId);
-    });
-    clearErrors('conditionScopes');
   }
 
   function handleOrgPathsChange(categoryId: string, value: string[][]) {
@@ -580,34 +558,49 @@ function CouponCreatePage() {
 
                 {formValues.productScope === 'condition' && (
                   <div className={styles.conditionScopePanel}>
-                    {/* Step 1: 选择类目 */}
-                    <div className={styles.conditionStepLabel}>
-                      <Typography.Text type="secondary">
-                        第一步：选择适用类目
-                      </Typography.Text>
+                    {/* Step 1: 选择类目（下拉多选） */}
+                    <div className={styles.conditionFieldItem}>
+                      <span className={styles.conditionFieldLabel}>商品分类</span>
+                      <Select
+                        allowClear
+                        mode="multiple"
+                        className={styles.categorySelect}
+                        placeholder="请选择适用的商品分类（可多选）"
+                        value={selectedConditionCategoryIds}
+                        onChange={(values: string[]) => {
+                          const next = values || [];
+                          // 新增的类目追加 scope，去掉的类目移除 scope
+                          patchConditionScopes((previous) => {
+                            const removed = previous.filter(
+                              (s) => !next.includes(s.categoryId)
+                            );
+                            const added = next
+                              .filter(
+                                (id) =>
+                                  !previous.some((s) => s.categoryId === id)
+                              )
+                              .map((id) => ({
+                                categoryId: id,
+                                selectedOrgPaths: [],
+                                selectedSpecValues: [],
+                              }));
+                            return [
+                              ...previous.filter((s) =>
+                                next.includes(s.categoryId)
+                              ),
+                              ...added,
+                            ];
+                          });
+                          clearErrors('conditionScopes');
+                        }}
+                      >
+                        {MOCK_COUPON_CATEGORIES.map((category) => (
+                          <Option key={category.id} value={category.id}>
+                            {category.label}
+                          </Option>
+                        ))}
+                      </Select>
                     </div>
-                    <div className={styles.categoryCheckboxRow}>
-                      {MOCK_COUPON_CATEGORIES.map((category) => (
-                        <Checkbox
-                          key={category.id}
-                          checked={selectedConditionCategoryIds.includes(category.id)}
-                          onChange={(checked) =>
-                            handleCategoryToggle(category.id, checked)
-                          }
-                        >
-                          {category.label}
-                        </Checkbox>
-                      ))}
-                    </div>
-
-                    {/* Step 2: 为每个已选类目配置组织架构范围 */}
-                    {formValues.conditionScopes.length > 0 && (
-                      <div className={styles.conditionStepLabel}>
-                        <Typography.Text type="secondary">
-                          第二步：为每个类目选择适用的事业部 / 课程体系 / 课程项范围
-                        </Typography.Text>
-                      </div>
-                    )}
 
                     {formValues.conditionScopes.map((scope) => {
                       const catalogItem = MOCK_COUPON_CATEGORIES.find(
