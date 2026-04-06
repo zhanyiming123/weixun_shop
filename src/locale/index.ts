@@ -53,7 +53,7 @@ const i18n = {
     'menu.product': '商品管理',
     'menu.product.list': '商品列表',
     'menu.product.create': '添加商品',
-    'menu.product.category': '商品归属',
+    'menu.product.category': '商品分类',
     'menu.product.catalog': '商品类目',
     'menu.product.attribute': '类目属性',
     'menu.order': '订单管理',

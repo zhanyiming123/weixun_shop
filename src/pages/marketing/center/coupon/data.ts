@@ -4,6 +4,8 @@ import {
   ProductType,
 } from '@/pages/product/list/data';
 import { ProductCatalogLeafItem } from '@/pages/product/catalog/data';
+import { ProductOwnershipLeafItem } from '@/pages/product/category/data';
+import { MarketingProductSelectorSpuItem } from '../components/product-selector/types';
 
 export type { ProductCatalogLeafItem };
 
@@ -719,6 +721,61 @@ export const DEFAULT_COUPON_LIST_FILTER_VALUES: CouponListFilterValues = {
   keyword: '',
 };
 
+function resolveProductCatalog(
+  product: ProductItem,
+  categories: ProductCatalogLeafItem[]
+) {
+  const matched = categories.find((item) => item.id === product.productCatalogId);
+  if (matched) {
+    return matched;
+  }
+
+  const fallback = categories[0];
+  return {
+    id: fallback?.id || '',
+    label: fallback?.label || '未配置类目',
+    labelPath: fallback?.labelPath || ['未配置类目'],
+    path: fallback?.path || [],
+    hasSkuSpec: Boolean(fallback?.hasSkuSpec),
+  };
+}
+
+function resolveProductOwnership(
+  product: ProductItem,
+  ownershipItems: ProductOwnershipLeafItem[]
+) {
+  const matched = ownershipItems.find(
+    (item) => item.id === product.productOwnershipId
+  );
+  if (matched) {
+    return matched;
+  }
+
+  const fallback = ownershipItems[0];
+  return {
+    id: fallback?.id || '',
+    label: fallback?.label || '未配置分类',
+    labelPath: fallback?.labelPath || ['未配置分类'],
+    path: fallback?.path || [],
+  };
+}
+
+function getSkuDisabledReason(product: ProductItem, stock: number, status: string) {
+  if (status === 'off') {
+    return '已下架';
+  }
+
+  if (stock <= 0) {
+    return '库存不足';
+  }
+
+  if (product.status === 'off' && product.skus.length === 1) {
+    return '已下架';
+  }
+
+  return '';
+}
+
 function resolveProductCategory(
   product: ProductItem,
   categories: ProductCatalogLeafItem[]
@@ -795,6 +852,53 @@ export function formatCouponPriceRange(minPrice: number, maxPrice: number) {
   }
 
   return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
+}
+
+export function buildMarketingProductSelectorSpus(
+  categories: ProductCatalogLeafItem[],
+  ownershipItems: ProductOwnershipLeafItem[]
+) {
+  return MOCK_PRODUCTS.map((product) => {
+    const catalog = resolveProductCatalog(product, categories);
+    const ownership = resolveProductOwnership(product, ownershipItems);
+    const children = product.skus.map((sku) => {
+      const disabledReason = getSkuDisabledReason(product, sku.stock, sku.status);
+
+      return {
+        key: sku.id,
+        rowType: 'sku' as const,
+        productId: product.id,
+        productName: product.name,
+        productCatalogId: catalog.id,
+        productCatalogLabel: catalog.label,
+        productOwnershipId: ownership.id,
+        productOwnershipLabel: ownership.label,
+        skuId: sku.id,
+        specText: product.specMode === 'multi' ? sku.specText : '',
+        price: sku.price,
+        stock: sku.stock,
+        status: sku.status,
+        selectable: !disabledReason,
+        disabledReason,
+      };
+    });
+
+    const hasSelectableSku = children.some((item) => item.selectable);
+
+    return {
+      key: `spu-${product.id}`,
+      rowType: 'spu' as const,
+      productId: product.id,
+      productName: product.name,
+      productCatalogId: catalog.id,
+      productCatalogLabel: catalog.label,
+      productOwnershipId: ownership.id,
+      productOwnershipLabel: ownership.label,
+      selectable: hasSelectableSku,
+      disabledReason: hasSelectableSku ? '' : '该商品下无可选 SKU',
+      children,
+    } as MarketingProductSelectorSpuItem;
+  });
 }
 
 function matchKeyword(item: CouponProductTableItem, keyword: string) {

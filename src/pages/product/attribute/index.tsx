@@ -428,6 +428,7 @@ function AttributePage() {
         style={{ width: 560 }}
       >
         <Form
+          className="platform-form-spacing"
           form={form}
           layout="vertical"
           autoComplete="off"
