@@ -34,27 +34,30 @@ export type CouponOrgOption = {
   label: string;
 };
 
-/** 组织架构树节点（事业部 → 课程体系 → 课程项，三级） */
-export type OrgTreeNode = {
-  key: string;
+/**
+ * 商品归属级联选择器的选项节点（事业部 → 课程体系 → 课程项，三级）。
+ * 格式与 ArcoDesign Cascader 的 options 保持一致。
+ */
+export type OrgCascaderOption = {
   value: string;
-  title: string;
-  children?: OrgTreeNode[];
+  label: string;
+  children?: OrgCascaderOption[];
 };
 
 /**
  * 按条件圈品 — 单个类目的圈选范围。
  *
  * 字段说明：
- * - selectedOrgNodeIds：从组织架构树中多选的节点 ID，可选任意层级（事业部/课程体系/课程项），
- *   空数组表示该类目下的全部组织架构均适用。
+ * - selectedOrgPaths：商品归属级联多选的路径列表，每条路径为从根到所选节点的 value 数组，
+ *   如 [['xm'], ['wx', 'wx-plan', 'p005']]。可选任意层级（事业部/课程体系/课程项），
+ *   空数组表示该类目下的全部商品归属均适用。
  * - selectedSpecValues：SKU 规格值（如班型），仅对 hasSkuSpec=true 的类目有效，
  *   空数组表示全部规格均适用。是否显示此字段由类目配置（CatalogItem.hasSkuSpec）决定，
  *   不在业务代码中硬编码判断。
  */
 export type CategoryConditionScope = {
   categoryId: string;
-  selectedOrgNodeIds: string[];
+  selectedOrgPaths: string[][];
   selectedSpecValues: string[];
 };
 
@@ -189,81 +192,72 @@ export const MOCK_CAMPUSES: CouponCampusOption[] = [
 export const MOCK_COUPON_CATEGORIES: CatalogItem[] = MOCK_CATALOG_ITEMS;
 
 /**
- * 组织架构树（事业部 → 课程体系 → 课程项），三级结构。
+ * 商品归属级联选择器数据（事业部 → 课程体系 → 课程项，三级）。
  * 真实场景下应从后端 org_node 表动态加载；此处使用 mock 数据。
  */
-export const MOCK_ORG_TREE: OrgTreeNode[] = [
+export const MOCK_ORG_CASCADE_OPTIONS: OrgCascaderOption[] = [
   {
-    key: 'xm',
     value: 'xm',
-    title: '橡沐事业部',
+    label: '橡沐事业部',
     children: [
       {
-        key: 'xm-study',
         value: 'xm-study',
-        title: '橡沐留学',
+        label: '橡沐留学',
         children: [
-          { key: 'p001', value: 'p001', title: '美国升学服务' },
-          { key: 'p002', value: 'p002', title: '英国升学服务' },
+          { value: 'p001', label: '美国升学服务' },
+          { value: 'p002', label: '英国升学服务' },
         ],
       },
       {
-        key: 'xm-lang',
         value: 'xm-lang',
-        title: '橡沐语培',
+        label: '橡沐语培',
         children: [
-          { key: 'p003', value: 'p003', title: '雅思冲刺课' },
-          { key: 'p004', value: 'p004', title: '托福强化课' },
+          { value: 'p003', label: '雅思冲刺课' },
+          { value: 'p004', label: '托福强化课' },
         ],
       },
     ],
   },
   {
-    key: 'wx',
     value: 'wx',
-    title: '维新事业部',
+    label: '维新事业部',
     children: [
       {
-        key: 'wx-plan',
         value: 'wx-plan',
-        title: '维新升学规划',
+        label: '维新升学规划',
         children: [
-          { key: 'p005', value: 'p005', title: '背景提升规划' },
-          { key: 'p006', value: 'p006', title: '择校规划服务' },
+          { value: 'p005', label: '背景提升规划' },
+          { value: 'p006', label: '择校规划服务' },
         ],
       },
       {
-        key: 'wx-thesis',
         value: 'wx-thesis',
-        title: '维新论文文书',
+        label: '维新论文文书',
         children: [
-          { key: 'p007', value: 'p007', title: '文书精修服务' },
-          { key: 'p008', value: 'p008', title: '申请全案服务' },
+          { value: 'p007', label: '文书精修服务' },
+          { value: 'p008', label: '申请全案服务' },
         ],
       },
     ],
   },
   {
-    key: 'hq',
     value: 'hq',
-    title: '海桥事业部',
+    label: '海桥事业部',
     children: [
       {
-        key: 'hq-international',
         value: 'hq-international',
-        title: '海桥国际课程',
+        label: '海桥国际课程',
         children: [
-          { key: 'p009', value: 'p009', title: 'A-Level系统课' },
-          { key: 'p010', value: 'p010', title: 'IB强化课程' },
+          { value: 'p009', label: 'A-Level系统课' },
+          { value: 'p010', label: 'IB强化课程' },
         ],
       },
       {
-        key: 'hq-overseas',
         value: 'hq-overseas',
-        title: '海桥海外课程',
+        label: '海桥海外课程',
         children: [
-          { key: 'p011', value: 'p011', title: 'AP先修课程' },
-          { key: 'p012', value: 'p012', title: 'STEP冲刺课程' },
+          { value: 'p011', label: 'AP先修课程' },
+          { value: 'p012', label: 'STEP冲刺课程' },
         ],
       },
     ],

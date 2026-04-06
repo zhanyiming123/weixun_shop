@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Button,
   Card,
+  Cascader,
   Checkbox,
   DatePicker,
   Divider,
@@ -14,7 +15,6 @@ import {
   Select,
   Table,
   Tag,
-  TreeSelect,
   Typography,
 } from '@arco-design/web-react';
 import { useHistory } from 'react-router-dom';
@@ -35,7 +35,7 @@ import {
   MOCK_CATEGORY_SPEC_OPTIONS,
   MOCK_COUPON_CATEGORIES,
   MOCK_COUPON_SPUS,
-  MOCK_ORG_TREE,
+  MOCK_ORG_CASCADE_OPTIONS,
   MOCK_PRODUCT_CATEGORY_OPTIONS,
   PRODUCT_SCOPE_OPTIONS,
   VALIDITY_TYPE_OPTIONS,
@@ -155,7 +155,7 @@ function CouponCreatePage() {
           ...previous,
           {
             categoryId,
-            selectedOrgNodeIds: [],
+            selectedOrgPaths: [],
             selectedSpecValues: [],
           },
         ];
@@ -165,14 +165,23 @@ function CouponCreatePage() {
     clearErrors('conditionScopes');
   }
 
-  function handleConditionChange(
-    categoryId: string,
-    field: 'selectedOrgNodeIds' | 'selectedSpecValues',
-    value: string[]
-  ) {
+  function handleOrgPathsChange(categoryId: string, value: string[][]) {
     patchConditionScopes((previous) =>
       previous.map((scope) =>
-        scope.categoryId === categoryId ? { ...scope, [field]: value } : scope
+        scope.categoryId === categoryId
+          ? { ...scope, selectedOrgPaths: value }
+          : scope
+      )
+    );
+    clearErrors('conditionScopes');
+  }
+
+  function handleSpecValuesChange(categoryId: string, value: string[]) {
+    patchConditionScopes((previous) =>
+      previous.map((scope) =>
+        scope.categoryId === categoryId
+          ? { ...scope, selectedSpecValues: value }
+          : scope
       )
     );
     clearErrors('conditionScopes');
@@ -619,24 +628,24 @@ function CouponCreatePage() {
                           </div>
 
                           <div className={styles.conditionFields}>
-                            {/* 组织架构多级多选 */}
+                            {/* 商品归属：多选级联选择器，事业部 → 课程体系 → 课程项 */}
                             <div className={styles.conditionFieldItem}>
                               <span className={styles.conditionFieldLabel}>
-                                事业部 / 课程体系 / 课程项
+                                商品归属
                               </span>
-                              <TreeSelect
+                              <Cascader
                                 multiple
-                                treeCheckable
                                 allowClear
-                                className={styles.orgTreeSelect}
-                                placeholder="可选择任意层级，不选则全部适用"
-                                treeData={MOCK_ORG_TREE}
-                                value={scope.selectedOrgNodeIds}
+                                changeOnSelect
+                                expandTrigger="hover"
+                                className={styles.orgCascader}
+                                placeholder="可选任意层级（事业部 / 课程体系 / 课程项），不选则全部适用"
+                                options={MOCK_ORG_CASCADE_OPTIONS}
+                                value={scope.selectedOrgPaths}
                                 onChange={(value) =>
-                                  handleConditionChange(
+                                  handleOrgPathsChange(
                                     scope.categoryId,
-                                    'selectedOrgNodeIds',
-                                    Array.isArray(value) ? (value as string[]) : []
+                                    (value as string[][]) || []
                                   )
                                 }
                               />
@@ -655,12 +664,9 @@ function CouponCreatePage() {
                                   placeholder="可多选，不选则全部班型适用"
                                   value={scope.selectedSpecValues}
                                   onChange={(value) =>
-                                    handleConditionChange(
+                                    handleSpecValuesChange(
                                       scope.categoryId,
-                                      'selectedSpecValues',
-                                      Array.isArray(value)
-                                        ? value.map(String)
-                                        : []
+                                      Array.isArray(value) ? value.map(String) : []
                                     )
                                   }
                                 >
