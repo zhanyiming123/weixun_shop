@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   Link,
+  Message,
   Popconfirm,
   Select,
   Table,
@@ -23,9 +24,7 @@ import {
   CouponListItem,
   CouponListStatus,
   DEFAULT_COUPON_LIST_FILTER_VALUES,
-  deleteCouponById,
-  readCouponListItems,
-  updateCouponStatus,
+  MOCK_COUPON_LIST,
 } from '../data';
 
 const Option = Select.Option;
@@ -61,7 +60,7 @@ function applyFilters(
 
 function CouponListPage() {
   const history = useHistory();
-  const [coupons, setCoupons] = useState<CouponListItem[]>(() => readCouponListItems());
+  const [coupons, setCoupons] = useState<CouponListItem[]>(MOCK_COUPON_LIST);
   const [formValues, setFormValues] = useState<CouponListFilterValues>(
     getDefaultFilterValues()
   );
@@ -107,18 +106,22 @@ function CouponListPage() {
     setCurrentPage(1);
   }
 
-  function refreshCoupons() {
-    setCoupons(readCouponListItems());
+  function showPendingMessage(text: string) {
+    Message.info(text);
   }
 
   function handleVoidCoupon(record: CouponListItem) {
-    updateCouponStatus(record.id, 'voided');
-    refreshCoupons();
+    setCoupons((prev) =>
+      prev.map((item) =>
+        item.id === record.id ? { ...item, status: 'voided' } : item
+      )
+    );
+    Message.success(`${record.name}已作废`);
   }
 
   function handleDeleteCoupon(record: CouponListItem) {
-    deleteCouponById(record.id);
-    refreshCoupons();
+    setCoupons((prev) => prev.filter((item) => item.id !== record.id));
+    Message.success(`${record.name}已删除`);
   }
 
   function renderActionLinks(record: CouponListItem) {
@@ -126,7 +129,9 @@ function CouponListPage() {
       {
         key: 'view',
         node: (
-          <Link onClick={() => history.push(`/marketing/center/coupon/detail?id=${record.id}`)}>查看</Link>
+          <Link onClick={() => showPendingMessage(`${record.name}详情暂未实现`)}>
+            查看
+          </Link>
         ),
       },
     ];
@@ -136,13 +141,17 @@ function CouponListPage() {
         {
           key: 'edit',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/edit?id=${record.id}`)}>修改</Link>
+            <Link onClick={() => showPendingMessage(`${record.name}编辑暂未实现`)}>
+              修改
+            </Link>
           ),
         },
         {
           key: 'copy',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/create?sourceId=${record.id}`)}>复制</Link>
+            <Link onClick={() => showPendingMessage(`${record.name}复制暂未实现`)}>
+              复制
+            </Link>
           ),
         },
         {
@@ -163,7 +172,9 @@ function CouponListPage() {
         {
           key: 'copy',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/create?sourceId=${record.id}`)}>复制</Link>
+            <Link onClick={() => showPendingMessage(`${record.name}复制暂未实现`)}>
+              复制
+            </Link>
           ),
         },
         {
@@ -208,9 +219,20 @@ function CouponListPage() {
               {COUPON_DISCOUNT_LABEL_MAP[record.discountType]}
             </Typography.Text>
             <span className={styles.metaDivider}>|</span>
-            <Typography.Text className={styles.secondaryText}>
-              {COUPON_SCOPE_SUMMARY_LABEL_MAP[record.productScope]}
-            </Typography.Text>
+            {record.productScope === 'partial' ? (
+              <Link
+                className={styles.inlineLink}
+                onClick={() =>
+                  showPendingMessage(`${record.name}适用商品详情暂未实现`)
+                }
+              >
+                {COUPON_SCOPE_SUMMARY_LABEL_MAP[record.productScope]}
+              </Link>
+            ) : (
+              <Typography.Text className={styles.secondaryText}>
+                {COUPON_SCOPE_SUMMARY_LABEL_MAP[record.productScope]}
+              </Typography.Text>
+            )}
           </div>
           <Typography.Text className={styles.secondaryText}>
             ID: {record.id}
@@ -279,11 +301,11 @@ function CouponListPage() {
         <Form className={styles.filterForm}>
           <div className={styles.filterGrid}>
             <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>优惠方式</div>
+              <div className={styles.filterLabel}>券类型</div>
               <Select
                 allowClear
                 className={styles.filterSelect}
-                placeholder="请选择优惠方式"
+                placeholder="请选择券类型"
                 value={formValues.discountType}
                 onChange={(value) =>
                   updateFormValue(

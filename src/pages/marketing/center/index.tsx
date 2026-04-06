@@ -24,22 +24,19 @@ function MarketingCenterPage() {
         </div>
 
         <div className={styles.moduleGrid}>
-          <Card
-            bordered={false}
-            hoverable
+          <button
+            type="button"
             className={styles.moduleCard}
             onClick={() => history.push('/marketing/center/coupon/list')}
           >
-            <div className={styles.moduleCardInner}>
-              <div className={styles.moduleIcon}>
-                <IconTags />
-              </div>
-              <div className={styles.moduleContent}>
-                <div className={styles.moduleTitle}>优惠券</div>
-                <div className={styles.moduleDesc}>通用券（满减、直减、折扣）</div>
-              </div>
+            <div className={styles.moduleIcon}>
+              <IconTags />
             </div>
-          </Card>
+            <div className={styles.moduleContent}>
+              <div className={styles.moduleTitle}>优惠券</div>
+              <div className={styles.moduleDesc}>可选满减券、直减券、折扣券等</div>
+            </div>
+          </button>
         </div>
       </Card>
     </div>

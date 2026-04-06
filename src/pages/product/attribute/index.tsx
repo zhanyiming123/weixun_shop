@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Button,
-  Cascader,
   Card,
   Form,
   Input,
@@ -18,137 +17,108 @@ import {
 } from '@arco-design/web-react';
 import { IconPlus } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
-import {
-  buildProductCatalogCascaderOptions,
-  buildProductCatalogLeafItems,
-  getProductCatalogFullLabel,
-  getProductCatalogIdFromPath,
-  getProductCatalogPathById,
-  useProductCatalogItems,
-} from '../catalog/data';
-import {
-  ProductCatalogAttributeItem,
-  ProductCatalogAttributeType,
-  useProductCatalogAttributes,
-} from './data';
 
 const { useForm } = Form;
 
+type AttributeType = 'text' | 'single' | 'multi';
+
+interface AttributeItem {
+  id: string;
+  categoryId: string;
+  name: string;
+  type: AttributeType;
+  values: string[];
+  required: boolean;
+  sort: number;
+  enabled: boolean;
+  createdAt: string;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  { id: 'C001', name: '服装' },
+  { id: 'C002', name: '男装' },
+  { id: 'C003', name: '女装' },
+  { id: 'C005', name: '数码' },
+  { id: 'C006', name: '手机' },
+  { id: 'C007', name: '电脑' },
+  { id: 'C008', name: '家居' },
+];
+
+const MOCK_ATTRIBUTES: AttributeItem[] = [
+  { id: 'A001', categoryId: 'C002', name: '尺码', type: 'single', values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], required: true, sort: 1, enabled: true, createdAt: '2024-02-01 10:00:00' },
+  { id: 'A002', categoryId: 'C002', name: '颜色', type: 'single', values: ['黑色', '白色', '灰色', '藏青', '卡其'], required: true, sort: 2, enabled: true, createdAt: '2024-02-01 10:05:00' },
+  { id: 'A003', categoryId: 'C002', name: '材质', type: 'multi', values: ['棉', '麻', '涤纶', '羊毛', '真丝'], required: false, sort: 3, enabled: true, createdAt: '2024-02-01 10:10:00' },
+  { id: 'A004', categoryId: 'C002', name: '品牌', type: 'text', values: [], required: false, sort: 4, enabled: true, createdAt: '2024-02-01 10:15:00' },
+  { id: 'A005', categoryId: 'C003', name: '尺码', type: 'single', values: ['XS', 'S', 'M', 'L', 'XL'], required: true, sort: 1, enabled: true, createdAt: '2024-02-02 09:00:00' },
+  { id: 'A006', categoryId: 'C003', name: '颜色', type: 'single', values: ['红色', '粉色', '蓝色', '绿色', '黄色', '紫色', '白色', '黑色'], required: true, sort: 2, enabled: true, createdAt: '2024-02-02 09:05:00' },
+  { id: 'A007', categoryId: 'C006', name: '品牌', type: 'single', values: ['苹果', '华为', '小米', '三星', 'OPPO', 'vivo'], required: true, sort: 1, enabled: true, createdAt: '2024-02-03 08:00:00' },
+  { id: 'A008', categoryId: 'C006', name: '存储容量', type: 'multi', values: ['64G', '128G', '256G', '512G', '1T'], required: false, sort: 2, enabled: true, createdAt: '2024-02-03 08:10:00' },
+  { id: 'A009', categoryId: 'C006', name: '颜色', type: 'single', values: ['黑色', '白色', '金色', '蓝色'], required: false, sort: 3, enabled: true, createdAt: '2024-02-03 08:15:00' },
+  { id: 'A010', categoryId: 'C006', name: '网络制式', type: 'text', values: [], required: false, sort: 4, enabled: false, createdAt: '2024-02-03 08:20:00' },
+];
+
+let nextId = 11;
+
 function generateId() {
-  return `attr_${Date.now()}`;
+  return `A${String(nextId++).padStart(3, '0')}`;
 }
 
 function now() {
   return new Date().toISOString().replace('T', ' ').slice(0, 19);
 }
 
-const TYPE_COLORS: Record<ProductCatalogAttributeType, string> = {
+const TYPE_COLORS: Record<AttributeType, string> = {
   text: 'gray',
-  number: 'gold',
   single: 'arcoblue',
   multi: 'green',
 };
 
-const TYPE_LABELS: Record<ProductCatalogAttributeType, string> = {
+const TYPE_LABELS: Record<AttributeType, string> = {
   text: '文本',
-  number: '数字',
   single: '单选',
   multi: '多选',
 };
 
-function normalizePath(value: (string | string[])[] | undefined): string[] {
-  if (!Array.isArray(value) || !value.length) {
-    return [];
-  }
-
-  const firstValue = value[0];
-  if (Array.isArray(firstValue)) {
-    return firstValue;
-  }
-
-  return value as string[];
-}
-
-function normalizePaths(
-  value: (string | string[])[] | string[][] | undefined
-): string[][] {
-  if (!Array.isArray(value) || !value.length) {
-    return [];
-  }
-
-  if (Array.isArray(value[0])) {
-    return value as string[][];
-  }
-
-  return [value as string[]];
-}
-
 function AttributePage() {
-  const [catalogItems] = useProductCatalogItems();
-  const [attributes, setAttributes] = useProductCatalogAttributes();
-  const catalogLeafItems = useMemo(
-    () => buildProductCatalogLeafItems(catalogItems),
-    [catalogItems]
-  );
-  const catalogCascaderOptions = useMemo(
-    () => buildProductCatalogCascaderOptions(catalogItems),
-    [catalogItems]
-  );
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>('');
+  const [attributes, setAttributes] = useState<AttributeItem[]>(MOCK_ATTRIBUTES);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('C002');
   const [searchName, setSearchName] = useState('');
   const [filterEnabled, setFilterEnabled] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<ProductCatalogAttributeItem | null>(
-    null
-  );
+  const [editingItem, setEditingItem] = useState<AttributeItem | null>(null);
   const [form] = useForm();
-  const [formType, setFormType] = useState<ProductCatalogAttributeType>('text');
+  const [formType, setFormType] = useState<AttributeType>('text');
 
-  const filteredData = useMemo(
-    () =>
-      attributes
-        .filter((item) => {
-          if (selectedCatalogId && !item.catalogIds.includes(selectedCatalogId)) {
-            return false;
-          }
-          if (searchName && !item.name.includes(searchName)) {
-            return false;
-          }
-          if (filterEnabled === 'true' && !item.enabled) {
-            return false;
-          }
-          if (filterEnabled === 'false' && item.enabled) {
-            return false;
-          }
-          return true;
-        })
-        .sort((a, b) => a.sort - b.sort),
-    [attributes, filterEnabled, searchName, selectedCatalogId]
-  );
+  const filteredData = attributes.filter((item) => {
+    if (item.categoryId !== selectedCategoryId) return false;
+    if (searchName && !item.name.includes(searchName)) return false;
+    if (filterEnabled === 'true' && !item.enabled) return false;
+    if (filterEnabled === 'false' && item.enabled) return false;
+    return true;
+  });
 
-  const selectedCatalog = catalogLeafItems.find((item) => item.id === selectedCatalogId);
+  const selectedCategory = CATEGORY_OPTIONS.find((c) => c.id === selectedCategoryId);
 
   function openAddModal() {
     setEditingItem(null);
     setFormType('text');
     form.resetFields();
     form.setFieldsValue({
-      catalogIds: selectedCatalogId ? [getProductCatalogPathById(selectedCatalogId, catalogItems)] : [],
-      required: false,
-      sort: 1,
-      enabled: true,
-      type: 'text',
+      categoryId: selectedCategoryId,
     });
     setModalVisible(true);
   }
 
-  function openEditModal(record: ProductCatalogAttributeItem) {
+  function openEditModal(record: AttributeItem) {
     setEditingItem(record);
     setFormType(record.type);
     form.setFieldsValue({
-      catalogIds: record.catalogIds.map((id) =>
-        getProductCatalogPathById(id, catalogItems)
-      ),
+      categoryId: record.categoryId,
       name: record.name,
       type: record.type,
       values: record.values,
@@ -159,16 +129,14 @@ function AttributePage() {
     setModalVisible(true);
   }
 
-  function handleDelete(record: ProductCatalogAttributeItem) {
-    setAttributes((prev) => prev.filter((item) => item.id !== record.id));
+  function handleDelete(record: AttributeItem) {
+    setAttributes((prev) => prev.filter((a) => a.id !== record.id));
     Message.success('删除成功');
   }
 
-  function handleToggleEnabled(record: ProductCatalogAttributeItem, checked: boolean) {
+  function handleToggleEnabled(record: AttributeItem, checked: boolean) {
     setAttributes((prev) =>
-      prev.map((item) =>
-        item.id === record.id ? { ...item, enabled: checked } : item
-      )
+      prev.map((a) => (a.id === record.id ? { ...a, enabled: checked } : a))
     );
     Message.success(`${record.name}已${checked ? '启用' : '禁用'}`);
   }
@@ -176,47 +144,41 @@ function AttributePage() {
   async function handleModalOk() {
     try {
       const values = await form.validate();
-      const catalogIds = normalizePaths(values.catalogIds)
-        .map((path) => getProductCatalogIdFromPath(path, catalogItems))
-        .filter(Boolean) as string[];
-      const type = values.type as ProductCatalogAttributeType;
-      const attributeValues =
-        type === 'single' || type === 'multi' ? values.values || [] : [];
+      const targetCategoryId = editingItem ? editingItem.categoryId : values.categoryId;
+      const type = values.type as AttributeType;
+      const attrValues = type !== 'text' ? (values.values || []) : [];
 
       if (editingItem) {
         setAttributes((prev) =>
-          prev.map((item) =>
-            item.id === editingItem.id
+          prev.map((a) =>
+            a.id === editingItem.id
               ? {
-                  ...item,
-                  catalogIds,
+                  ...a,
                   name: values.name,
                   type,
-                  values: attributeValues,
+                  values: attrValues,
                   required: values.required ?? false,
                   sort: values.sort,
                   enabled: values.enabled ?? true,
                 }
-              : item
+              : a
           )
         );
         Message.success('修改成功');
       } else {
-        setAttributes((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            catalogIds,
-            name: values.name,
-            type,
-            values: attributeValues,
-            required: values.required ?? false,
-            sort: values.sort,
-            enabled: values.enabled ?? true,
-            createdAt: now(),
-          },
-        ]);
-        setSelectedCatalogId(catalogIds[0] || selectedCatalogId);
+        const newItem: AttributeItem = {
+          id: generateId(),
+          categoryId: targetCategoryId,
+          name: values.name,
+          type,
+          values: attrValues,
+          required: values.required ?? false,
+          sort: values.sort,
+          enabled: values.enabled ?? true,
+          createdAt: now(),
+        };
+        setAttributes((prev) => [...prev, newItem]);
+        setSelectedCategoryId(targetCategoryId);
         Message.success('添加成功');
       }
 
@@ -230,28 +192,16 @@ function AttributePage() {
     {
       title: '属性名称',
       dataIndex: 'name',
-      width: 180,
-      render: (value: string) => <Typography.Text bold>{value}</Typography.Text>,
-    },
-    {
-      title: '商品类目',
-      dataIndex: 'catalogIds',
-      width: 260,
-      render: (catalogIds: string[]) => (
-        <div className={styles.valueList}>
-          {catalogIds.map((id) => (
-            <Tag key={id} size="small">
-              {getProductCatalogFullLabel(id, catalogItems)}
-            </Tag>
-          ))}
-        </div>
+      width: 160,
+      render: (value: string) => (
+        <Typography.Text bold>{value}</Typography.Text>
       ),
     },
     {
       title: '属性类型',
       dataIndex: 'type',
-      width: 120,
-      render: (value: ProductCatalogAttributeType) => (
+      width: 110,
+      render: (value: AttributeType) => (
         <Tag color={TYPE_COLORS[value]}>{TYPE_LABELS[value]}</Tag>
       ),
     },
@@ -259,25 +209,15 @@ function AttributePage() {
       title: '属性值',
       dataIndex: 'values',
       width: 300,
-      render: (values: string[], record: ProductCatalogAttributeItem) => {
+      render: (values: string[], record: AttributeItem) => {
         if (record.type === 'text') {
           return <span className={styles.textType}>自由填写</span>;
         }
-
-        if (record.type === 'number') {
-          return <span className={styles.textType}>数字输入</span>;
-        }
-
-        if (!values.length) {
-          return '-';
-        }
-
+        if (!values.length) return '-';
         return (
           <div className={styles.valueList}>
-            {values.map((value) => (
-              <Tag key={value} size="small">
-                {value}
-              </Tag>
+            {values.map((v) => (
+              <Tag key={v} size="small">{v}</Tag>
             ))}
           </div>
         );
@@ -295,14 +235,13 @@ function AttributePage() {
       title: '排序',
       dataIndex: 'sort',
       width: 90,
-      sorter: (a: ProductCatalogAttributeItem, b: ProductCatalogAttributeItem) =>
-        a.sort - b.sort,
+      sorter: (a: AttributeItem, b: AttributeItem) => a.sort - b.sort,
     },
     {
       title: '状态',
       dataIndex: 'enabled',
       width: 120,
-      render: (value: boolean, record: ProductCatalogAttributeItem) => (
+      render: (value: boolean, record: AttributeItem) => (
         <Switch
           checked={value}
           checkedText="启用"
@@ -314,20 +253,26 @@ function AttributePage() {
     {
       title: '创建时间',
       dataIndex: 'createdAt',
-      width: 180,
+      width: 200,
     },
     {
       title: '操作',
       dataIndex: 'operations',
       width: 140,
       fixed: 'right' as const,
-      render: (_: unknown, record: ProductCatalogAttributeItem) => (
+      render: (_: unknown, record: AttributeItem) => (
         <span className={styles.actionLinks}>
-          <Typography.Text className={styles.actionLink} onClick={() => openEditModal(record)}>
+          <Typography.Text
+            className={styles.actionLink}
+            onClick={() => openEditModal(record)}
+          >
             编辑
           </Typography.Text>
           <span className={styles.actionDivider}>|</span>
-          <Popconfirm title={`确定删除属性「${record.name}」吗？`} onOk={() => handleDelete(record)}>
+          <Popconfirm
+            title={`确定删除属性「${record.name}」吗？`}
+            onOk={() => handleDelete(record)}
+          >
             <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
           </Popconfirm>
         </span>
@@ -340,23 +285,19 @@ function AttributePage() {
       <Card className={styles.filterCard}>
         <div className={styles.filterRow}>
           <div className={styles.filterItem}>
-            <span className={styles.filterLabel}>商品类目</span>
-            <Cascader
-              allowClear
-              className={styles.catalogCascader}
-              options={catalogCascaderOptions}
-              placeholder="请选择商品类目"
-              value={
-                selectedCatalogId
-                  ? getProductCatalogPathById(selectedCatalogId, catalogItems)
-                  : undefined
-              }
-              onChange={(value) =>
-                setSelectedCatalogId(
-                  getProductCatalogIdFromPath(normalizePath(value), catalogItems) || ''
-                )
-              }
-            />
+            <span className={styles.filterLabel}>所属类目</span>
+            <Select
+              placeholder="请选择类目"
+              style={{ width: 200 }}
+              value={selectedCategoryId}
+              onChange={(v) => setSelectedCategoryId(v)}
+            >
+              {CATEGORY_OPTIONS.map((c) => (
+                <Select.Option key={c.id} value={c.id}>
+                  {c.name}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
           <div className={styles.filterItem}>
             <span className={styles.filterLabel}>属性名称</span>
@@ -375,7 +316,7 @@ function AttributePage() {
               placeholder="请选择状态"
               style={{ width: 140 }}
               value={filterEnabled || undefined}
-              onChange={(value) => setFilterEnabled(value || '')}
+              onChange={(v) => setFilterEnabled(v || '')}
             >
               <Select.Option value="true">启用</Select.Option>
               <Select.Option value="false">禁用</Select.Option>
@@ -399,8 +340,7 @@ function AttributePage() {
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
             <Typography.Text className={styles.categoryTitle}>
-              当前类目：
-              <Typography.Text bold>{selectedCatalog?.label || '全部类目'}</Typography.Text>
+              当前类目：<Typography.Text bold>{selectedCategory?.name || '-'}</Typography.Text>
             </Typography.Text>
           </div>
           <Button icon={<IconPlus />} type="primary" onClick={openAddModal}>
@@ -411,9 +351,9 @@ function AttributePage() {
           rowKey="id"
           columns={columns}
           data={filteredData}
-          noDataElement="暂无属性数据"
+          noDataElement="暂无属性数据，请先选择类目"
           pagination={{ pageSize: 10, showTotal: true }}
-          scroll={{ x: 1560 }}
+          scroll={{ x: 1260 }}
           tableLayoutFixed
         />
       </Card>
@@ -438,18 +378,18 @@ function AttributePage() {
           }}
         >
           <Form.Item
-            field="catalogIds"
-            label="选择类目"
+            field="categoryId"
+            label={editingItem ? '所属类目' : '选择类目'}
             rules={[{ required: true, message: '请选择类目' }]}
-            extra="支持多级级联与多选，一个属性可绑定多个商品类目"
+            extra={editingItem ? undefined : '请先选择属性所属类目，再填写属性内容'}
           >
-            <Cascader
-              mode="multiple"
-              allowClear
-              options={catalogCascaderOptions}
-              placeholder="请选择类目"
-              showSearch={{ retainInputValueWhileSelect: true }}
-            />
+            <Select placeholder="请选择类目" disabled={!!editingItem}>
+              {CATEGORY_OPTIONS.map((c) => (
+                <Select.Option key={c.id} value={c.id}>
+                  {c.name}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item
             field="name"
@@ -466,12 +406,11 @@ function AttributePage() {
           >
             <Select placeholder="请选择属性类型">
               <Select.Option value="text">文本（用户自由填写）</Select.Option>
-              <Select.Option value="number">数字（用户填写数字）</Select.Option>
               <Select.Option value="single">单选（从预设值中选一个）</Select.Option>
               <Select.Option value="multi">多选（从预设值中选多个）</Select.Option>
             </Select>
           </Form.Item>
-          {(formType === 'single' || formType === 'multi') && (
+          {formType !== 'text' && (
             <Form.Item
               field="values"
               label="属性值"

@@ -1,19 +1,15 @@
 import {
   MOCK_PRODUCTS,
+  PRODUCT_TYPE_LABEL_MAP,
   ProductItem,
   ProductType,
 } from '@/pages/product/list/data';
-import { ProductCatalogLeafItem } from '@/pages/product/catalog/data';
 
-export type { ProductCatalogLeafItem };
-
-export type CouponPageMode = 'create' | 'detail' | 'edit';
-export type CouponKind = 'general';
 export type CouponDiscountType =
   | 'fullReduction'
   | 'directReduction'
   | 'discount';
-export type CouponProductScope = 'all' | 'condition' | 'specific';
+export type CouponProductScope = 'all' | 'partial';
 export type CouponValidityType =
   | 'sameAsReceive'
   | 'afterReceiveDays'
@@ -30,21 +26,10 @@ export type CouponProductCategoryOption = {
   value: string;
 };
 
-export type CouponOrgOption = {
-  value: string;
+export type CouponBusinessLineOption = {
   label: string;
-};
-
-export type OrgCascaderOption = {
   value: string;
-  label: string;
-  children?: OrgCascaderOption[];
-};
-
-export type CategoryConditionScope = {
-  categoryId: string;
-  selectedOrgPaths: string[][];
-  selectedSpecValues: string[];
+  children?: CouponBusinessLineOption[];
 };
 
 export type CouponSkuItem = {
@@ -85,8 +70,8 @@ export type CouponFormValues = {
   directReductionAmount?: number;
   discountRate?: number;
   campusIds: string[];
+  businessLinePath: string[];
   productScope: CouponProductScope;
-  conditionScopes: CategoryConditionScope[];
   selectedSkuIds: string[];
   name: string;
   issueCount: number;
@@ -105,7 +90,6 @@ export type CouponListFilterValues = {
 
 export type CouponListItem = {
   id: string;
-  couponKind: CouponKind;
   name: string;
   discountType: CouponDiscountType;
   productScope: CouponProductScope;
@@ -121,37 +105,6 @@ export type CouponListItem = {
   status: CouponListStatus;
 };
 
-export type CouponDetailRecord = {
-  id: string;
-  couponKind: CouponKind;
-  name: string;
-  discountType: CouponDiscountType;
-  fullReductionThreshold?: number;
-  fullReductionAmount?: number;
-  directReductionAmount?: number;
-  discountRate?: number;
-  campusIds: string[];
-  productScope: CouponProductScope;
-  conditionScopes: CategoryConditionScope[];
-  selectedSkuIds: string[];
-  promotionScene: string;
-  receivedCount: number;
-  issueCount: number;
-  receiveRate: number;
-  receiveStartAt: string;
-  receiveEndAt: string;
-  useStartAt: string;
-  useEndAt: string;
-  status: CouponListStatus;
-  validityType: CouponValidityType;
-  validDays?: number;
-  customUseTimeRange: string[];
-};
-
-export const COUPON_KIND_LABEL_MAP: Record<CouponKind, string> = {
-  general: '通用券',
-};
-
 export const COUPON_DISCOUNT_OPTIONS = [
   { label: '满减', value: 'fullReduction' as CouponDiscountType },
   { label: '直减', value: 'directReduction' as CouponDiscountType },
@@ -160,8 +113,7 @@ export const COUPON_DISCOUNT_OPTIONS = [
 
 export const PRODUCT_SCOPE_OPTIONS = [
   { label: '全部商品', value: 'all' as CouponProductScope },
-  { label: '按条件圈品', value: 'condition' as CouponProductScope },
-  { label: '指定商品', value: 'specific' as CouponProductScope },
+  { label: '部分商品', value: 'partial' as CouponProductScope },
 ];
 
 export const VALIDITY_TYPE_OPTIONS = [
@@ -192,8 +144,7 @@ export const COUPON_LIST_STATUS_LABEL_MAP: Record<CouponListStatus, string> = {
 
 export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> = {
   all: '全部商品',
-  condition: '按条件圈品',
-  specific: '指定商品',
+  partial: '适用商品',
 };
 
 export const MOCK_CAMPUSES: CouponCampusOption[] = [
@@ -203,13 +154,55 @@ export const MOCK_CAMPUSES: CouponCampusOption[] = [
   { label: '杭州校区', value: 'hangzhou' },
 ];
 
-export const MOCK_CATEGORY_SPEC_OPTIONS: Record<string, CouponOrgOption[]> = {
-  international: [
-    { value: 'vip_1v4', label: '1v4 金牌班' },
-    { value: 'vip_1v1', label: '1v1 旗舰班' },
-    { value: 'standard', label: '标准直播班' },
-  ],
-};
+const PRODUCT_CATEGORY_PRESETS: CouponProductCategoryOption[] = [
+  { label: '预测课', value: 'forecast-course' },
+  { label: '冲刺课程', value: 'sprint-course' },
+  { label: '预习课程', value: 'preview-course' },
+  { label: '服务套餐', value: 'service-package' },
+  { label: '模考产品', value: 'mock-package' },
+];
+
+export const MOCK_BUSINESS_LINES: CouponBusinessLineOption[] = [
+  {
+    label: '留学服务',
+    value: 'overseas',
+    children: [
+      {
+        label: '国际课程',
+        value: 'international-course',
+        children: [
+          { label: 'IGCSE', value: 'igcse' },
+          { label: 'A-Level', value: 'a-level' },
+          { label: 'IB', value: 'ib' },
+        ],
+      },
+      {
+        label: '标化考试',
+        value: 'standardized',
+        children: [
+          { label: '雅思', value: 'ielts' },
+          { label: '托福', value: 'toefl' },
+        ],
+      },
+    ],
+  },
+  {
+    label: '背景提升',
+    value: 'background-boost',
+    children: [
+      {
+        label: '科研项目',
+        value: 'research',
+        children: [{ label: '导师课题', value: 'mentor-project' }],
+      },
+      {
+        label: '竞赛规划',
+        value: 'contest',
+        children: [{ label: '学术竞赛', value: 'academic-contest' }],
+      },
+    ],
+  },
+];
 
 const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
   virtual: ['标准版', 'VIP版'],
@@ -217,454 +210,7 @@ const SKU_SPEC_TEMPLATES: Record<ProductType, string[]> = {
   service: ['基础服务', '进阶服务'],
 };
 
-const COUPON_PRODUCT_TYPE_LABEL_MAP: Record<ProductType, string> = {
-  virtual: '虚拟商品',
-  course: '课程商品',
-  service: '服务商品',
-};
-
-const DEFAULT_SELECTED_SKUS_BY_RECORD: Record<string, string[]> = {
-  '122661783978': ['sku-G_1237036327413878784-1', 'sku-G_1237036327413878784-2'],
-  '122661783979': ['sku-G_1211793802365374464-1', 'sku-G_1211793802365374464-2'],
-  '122661783980': ['sku-G_1210999402622266432-1'],
-  '122661783981': ['sku-G_1231319097741021184-1'],
-  '122661783984': ['sku-G_1210123456789012345-1'],
-  '122661783987': ['sku-G_1210876543210987654-2'],
-  '122661783988': ['sku-G_1209988776655443322-1', 'sku-G_1209988776655443322-2'],
-};
-
-const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
-  {
-    id: '122661783977',
-    couponKind: 'general',
-    name: '遴选计划-减免10000',
-    discountType: 'fullReduction',
-    fullReductionThreshold: 10,
-    fullReductionAmount: 2,
-    campusIds: ['shanghai', 'beijing'],
-    productScope: 'all',
-    conditionScopes: [],
-    selectedSkuIds: [],
-    promotionScene: '全场景',
-    receivedCount: 200,
-    issueCount: 400,
-    receiveRate: 50,
-    receiveStartAt: '2026/10/30 00:00:00',
-    receiveEndAt: '2026/10/30 00:00:00',
-    useStartAt: '2026/10/30 00:00:00',
-    useEndAt: '2026/10/30 00:00:00',
-    status: 'notStarted',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783978',
-    couponKind: 'general',
-    name: '遴选计划-减免8000',
-    discountType: 'fullReduction',
-    fullReductionThreshold: 10,
-    fullReductionAmount: 2,
-    campusIds: ['shanghai', 'shenzhen'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783978'],
-    promotionScene: '全场景',
-    receivedCount: 200,
-    issueCount: 400,
-    receiveRate: 50,
-    receiveStartAt: '2026/03/30 00:00:00',
-    receiveEndAt: '2026/10/30 00:00:00',
-    useStartAt: '2026/03/30 00:00:00',
-    useEndAt: '2026/10/30 00:00:00',
-    status: 'active',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783979',
-    couponKind: 'general',
-    name: '择校季-立减体验券',
-    discountType: 'directReduction',
-    directReductionAmount: 2,
-    campusIds: ['beijing', 'hangzhou'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783979'],
-    promotionScene: '全场景',
-    receivedCount: 200,
-    issueCount: 400,
-    receiveRate: 50,
-    receiveStartAt: '2025/03/30 00:00:00',
-    receiveEndAt: '2025/10/30 00:00:00',
-    useStartAt: '2025/03/30 00:00:00',
-    useEndAt: '2025/10/30 00:00:00',
-    status: 'expired',
-    validityType: 'afterReceiveDays',
-    validDays: 30,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783980',
-    couponKind: 'general',
-    name: '备考季-折扣福利券',
-    discountType: 'discount',
-    discountRate: 9,
-    campusIds: ['shanghai'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783980'],
-    promotionScene: '全场景',
-    receivedCount: 200,
-    issueCount: 400,
-    receiveRate: 50,
-    receiveStartAt: '2024/03/30 00:00:00',
-    receiveEndAt: '2024/10/30 00:00:00',
-    useStartAt: '2024/03/30 00:00:00',
-    useEndAt: '2024/10/30 00:00:00',
-    status: 'voided',
-    validityType: 'custom',
-    validDays: 1,
-    customUseTimeRange: ['2024/03/30 00:00:00', '2024/10/30 00:00:00'],
-  },
-  {
-    id: '122661783981',
-    couponKind: 'general',
-    name: '留学冲刺-满减券',
-    discountType: 'fullReduction',
-    fullReductionThreshold: 20,
-    fullReductionAmount: 5,
-    campusIds: ['shenzhen', 'hangzhou'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783981'],
-    promotionScene: '全场景',
-    receivedCount: 168,
-    issueCount: 300,
-    receiveRate: 56,
-    receiveStartAt: '2026/05/01 00:00:00',
-    receiveEndAt: '2026/06/30 23:59:59',
-    useStartAt: '2026/05/01 00:00:00',
-    useEndAt: '2026/07/15 23:59:59',
-    status: 'active',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783982',
-    couponKind: 'general',
-    name: '雅思班-立减新人券',
-    discountType: 'directReduction',
-    directReductionAmount: 50,
-    campusIds: ['beijing', 'shanghai'],
-    productScope: 'all',
-    conditionScopes: [],
-    selectedSkuIds: [],
-    promotionScene: '全场景',
-    receivedCount: 96,
-    issueCount: 200,
-    receiveRate: 48,
-    receiveStartAt: '2026/08/01 00:00:00',
-    receiveEndAt: '2026/08/31 23:59:59',
-    useStartAt: '2026/08/01 00:00:00',
-    useEndAt: '2026/09/10 23:59:59',
-    status: 'notStarted',
-    validityType: 'afterReceiveDays',
-    validDays: 10,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783983',
-    couponKind: 'general',
-    name: 'A-Level秋季折扣券',
-    discountType: 'discount',
-    discountRate: 8.5,
-    campusIds: ['shanghai', 'hangzhou'],
-    productScope: 'all',
-    conditionScopes: [],
-    selectedSkuIds: [],
-    promotionScene: '全场景',
-    receivedCount: 320,
-    issueCount: 600,
-    receiveRate: 53,
-    receiveStartAt: '2026/02/01 00:00:00',
-    receiveEndAt: '2026/03/31 23:59:59',
-    useStartAt: '2026/02/01 00:00:00',
-    useEndAt: '2026/04/15 23:59:59',
-    status: 'active',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783984',
-    couponKind: 'general',
-    name: '模考包-折扣券',
-    discountType: 'discount',
-    discountRate: 9.5,
-    campusIds: ['beijing'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783984'],
-    promotionScene: '全场景',
-    receivedCount: 88,
-    issueCount: 180,
-    receiveRate: 49,
-    receiveStartAt: '2025/09/01 00:00:00',
-    receiveEndAt: '2025/09/30 23:59:59',
-    useStartAt: '2025/09/01 00:00:00',
-    useEndAt: '2025/10/31 23:59:59',
-    status: 'expired',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783985',
-    couponKind: 'general',
-    name: '服务套餐-减免券',
-    discountType: 'fullReduction',
-    fullReductionThreshold: 100,
-    fullReductionAmount: 20,
-    campusIds: ['shenzhen'],
-    productScope: 'condition',
-    conditionScopes: [
-      {
-        categoryId: 'planning',
-        selectedOrgPaths: [['xm'], ['wx', 'wx-plan']],
-        selectedSpecValues: [],
-      },
-    ],
-    selectedSkuIds: [],
-    promotionScene: '全场景',
-    receivedCount: 58,
-    issueCount: 120,
-    receiveRate: 48,
-    receiveStartAt: '2024/11/01 00:00:00',
-    receiveEndAt: '2024/11/30 23:59:59',
-    useStartAt: '2024/11/01 00:00:00',
-    useEndAt: '2024/12/15 23:59:59',
-    status: 'voided',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783986',
-    couponKind: 'general',
-    name: '申请季-全场通用券',
-    discountType: 'directReduction',
-    directReductionAmount: 30,
-    campusIds: ['shanghai', 'beijing', 'shenzhen'],
-    productScope: 'all',
-    conditionScopes: [],
-    selectedSkuIds: [],
-    promotionScene: '全场景',
-    receivedCount: 260,
-    issueCount: 500,
-    receiveRate: 52,
-    receiveStartAt: '2026/04/01 00:00:00',
-    receiveEndAt: '2026/05/31 23:59:59',
-    useStartAt: '2026/04/01 00:00:00',
-    useEndAt: '2026/06/30 23:59:59',
-    status: 'active',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-  {
-    id: '122661783987',
-    couponKind: 'general',
-    name: '冬令营-早鸟券',
-    discountType: 'discount',
-    discountRate: 8,
-    campusIds: ['hangzhou', 'shenzhen'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783987'],
-    promotionScene: '全场景',
-    receivedCount: 45,
-    issueCount: 150,
-    receiveRate: 30,
-    receiveStartAt: '2026/11/01 00:00:00',
-    receiveEndAt: '2026/11/30 23:59:59',
-    useStartAt: '2026/12/01 00:00:00',
-    useEndAt: '2027/01/15 23:59:59',
-    status: 'notStarted',
-    validityType: 'custom',
-    validDays: 1,
-    customUseTimeRange: ['2026/12/01 00:00:00', '2027/01/15 23:59:59'],
-  },
-  {
-    id: '122661783988',
-    couponKind: 'general',
-    name: '科研项目-专享券',
-    discountType: 'directReduction',
-    directReductionAmount: 100,
-    campusIds: ['beijing'],
-    productScope: 'specific',
-    conditionScopes: [],
-    selectedSkuIds: DEFAULT_SELECTED_SKUS_BY_RECORD['122661783988'],
-    promotionScene: '全场景',
-    receivedCount: 120,
-    issueCount: 180,
-    receiveRate: 67,
-    receiveStartAt: '2024/06/01 00:00:00',
-    receiveEndAt: '2024/07/15 23:59:59',
-    useStartAt: '2024/06/01 00:00:00',
-    useEndAt: '2024/08/31 23:59:59',
-    status: 'voided',
-    validityType: 'sameAsReceive',
-    validDays: 1,
-    customUseTimeRange: [],
-  },
-];
-
-function cloneConditionScopes(scopes: CategoryConditionScope[]) {
-  return scopes.map((scope) => ({
-    categoryId: scope.categoryId,
-    selectedOrgPaths: scope.selectedOrgPaths.map((path) => [...path]),
-    selectedSpecValues: [...scope.selectedSpecValues],
-  }));
-}
-
-function cloneCouponDetailRecord(record: CouponDetailRecord): CouponDetailRecord {
-  return {
-    ...record,
-    campusIds: [...record.campusIds],
-    conditionScopes: cloneConditionScopes(record.conditionScopes),
-    selectedSkuIds: [...record.selectedSkuIds],
-    customUseTimeRange: [...record.customUseTimeRange],
-  };
-}
-
-function formatNumberText(value?: number, fixed = 2) {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '0';
-  }
-  const next = Number(value.toFixed(fixed));
-  return Number.isInteger(next) ? `${next}` : `${next}`;
-}
-
-export function formatCouponDiscountSummary(
-  record: Pick<
-    CouponDetailRecord,
-    | 'discountType'
-    | 'fullReductionThreshold'
-    | 'fullReductionAmount'
-    | 'directReductionAmount'
-    | 'discountRate'
-  >
-) {
-  if (record.discountType === 'fullReduction') {
-    return `满${formatNumberText(record.fullReductionThreshold)}减${formatNumberText(
-      record.fullReductionAmount
-    )}`;
-  }
-  if (record.discountType === 'directReduction') {
-    return `直减${formatNumberText(record.directReductionAmount)}`;
-  }
-  return `打${formatNumberText(record.discountRate, 1)}折`;
-}
-
-function toCouponListItem(record: CouponDetailRecord): CouponListItem {
-  return {
-    id: record.id,
-    couponKind: record.couponKind,
-    name: record.name,
-    discountType: record.discountType,
-    productScope: record.productScope,
-    promotionScene: record.promotionScene,
-    discountSummary: formatCouponDiscountSummary(record),
-    receivedCount: record.receivedCount,
-    issueCount: record.issueCount,
-    receiveRate: record.receiveRate,
-    receiveStartAt: record.receiveStartAt,
-    receiveEndAt: record.receiveEndAt,
-    useStartAt: record.useStartAt,
-    useEndAt: record.useEndAt,
-    status: record.status,
-  };
-}
-
-let couponDetailStore = COUPON_RECORD_SEEDS.map(cloneCouponDetailRecord);
-
-export function readCouponListItems() {
-  return couponDetailStore.map(toCouponListItem);
-}
-
-export function readCouponById(id: string) {
-  const matched = couponDetailStore.find((item) => item.id === id);
-  return matched ? cloneCouponDetailRecord(matched) : undefined;
-}
-
-export function updateCouponStatus(id: string, status: CouponListStatus) {
-  const target = couponDetailStore.find((item) => item.id === id);
-  if (!target) {
-    return undefined;
-  }
-  target.status = status;
-  return cloneCouponDetailRecord(target);
-}
-
-export function deleteCouponById(id: string) {
-  const beforeCount = couponDetailStore.length;
-  couponDetailStore = couponDetailStore.filter((item) => item.id !== id);
-  return couponDetailStore.length < beforeCount;
-}
-
-export function updateCouponQuota(
-  id: string,
-  payload: {
-    issueCount: number;
-    limitPerUser: number;
-  }
-) {
-  const target = couponDetailStore.find((item) => item.id === id);
-  if (!target) {
-    return undefined;
-  }
-  target.issueCount = payload.issueCount;
-  target.limitPerUser = payload.limitPerUser;
-  target.receiveRate = target.issueCount
-    ? Math.round((target.receivedCount / target.issueCount) * 100)
-    : 0;
-  return cloneCouponDetailRecord(target);
-}
-
-export function buildCouponFormValuesFromRecord(record: CouponDetailRecord): CouponFormValues {
-  return {
-    discountType: record.discountType,
-    fullReductionThreshold: record.fullReductionThreshold,
-    fullReductionAmount: record.fullReductionAmount,
-    directReductionAmount: record.directReductionAmount,
-    discountRate: record.discountRate,
-    campusIds: [...record.campusIds],
-    productScope: record.productScope,
-    conditionScopes: cloneConditionScopes(record.conditionScopes),
-    selectedSkuIds: [...record.selectedSkuIds],
-    name: record.name,
-    issueCount: record.issueCount,
-    limitPerUser: record.limitPerUser,
-    receiveTimeRange: [record.receiveStartAt, record.receiveEndAt],
-    validityType: record.validityType,
-    validDays: record.validDays,
-    customUseTimeRange: [...record.customUseTimeRange],
-  };
-}
-
-export function buildCreateValuesFromCoupon(id: string) {
-  const source = readCouponById(id);
-  if (!source) {
-    return undefined;
-  }
-  return {
-    ...buildCouponFormValuesFromRecord(source),
-    name: `${source.name}_副本`,
-  };
-}
+export const MOCK_PRODUCT_CATEGORY_OPTIONS = PRODUCT_CATEGORY_PRESETS;
 
 export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   discountType: 'fullReduction',
@@ -673,8 +219,8 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   directReductionAmount: undefined,
   discountRate: undefined,
   campusIds: [],
+  businessLinePath: [],
   productScope: 'all',
-  conditionScopes: [],
   selectedSkuIds: [],
   name: '',
   issueCount: 0,
@@ -691,51 +237,235 @@ export const DEFAULT_COUPON_LIST_FILTER_VALUES: CouponListFilterValues = {
   keyword: '',
 };
 
-function resolveProductCategory(
-  product: ProductItem,
-  categories: ProductCatalogLeafItem[]
-): CouponProductCategoryOption {
-  const matched = categories.find((item) => item.id === product.productCatalogId);
-  if (matched) {
-    return { label: matched.label, value: matched.id };
+export const MOCK_COUPON_LIST: CouponListItem[] = [
+  {
+    id: '122661783977',
+    name: '遴选计划-减免10000',
+    discountType: 'fullReduction',
+    productScope: 'all',
+    promotionScene: '全场景',
+    discountSummary: '满10减2',
+    receivedCount: 200,
+    issueCount: 400,
+    receiveRate: 50,
+    receiveStartAt: '2026/10/30 00:00:00',
+    receiveEndAt: '2026/10/30 00:00:00',
+    useStartAt: '2026/10/30 00:00:00',
+    useEndAt: '2026/10/30 00:00:00',
+    status: 'notStarted',
+  },
+  {
+    id: '122661783978',
+    name: '遴选计划-减免8000',
+    discountType: 'fullReduction',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '满10减2',
+    receivedCount: 200,
+    issueCount: 400,
+    receiveRate: 50,
+    receiveStartAt: '2026/03/30 00:00:00',
+    receiveEndAt: '2026/10/30 00:00:00',
+    useStartAt: '2023/03/30 00:00:00',
+    useEndAt: '2026/10/30 00:00:00',
+    status: 'active',
+  },
+  {
+    id: '122661783979',
+    name: '择校季-立减体验券',
+    discountType: 'directReduction',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '直减2',
+    receivedCount: 200,
+    issueCount: 400,
+    receiveRate: 50,
+    receiveStartAt: '2025/03/30 00:00:00',
+    receiveEndAt: '2025/10/30 00:00:00',
+    useStartAt: '2025/03/30 00:00:00',
+    useEndAt: '2025/10/30 00:00:00',
+    status: 'expired',
+  },
+  {
+    id: '122661783980',
+    name: '备考季-折扣福利券',
+    discountType: 'discount',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '打9折',
+    receivedCount: 200,
+    issueCount: 400,
+    receiveRate: 50,
+    receiveStartAt: '2024/03/30 00:00:00',
+    receiveEndAt: '2024/10/30 00:00:00',
+    useStartAt: '2024/03/30 00:00:00',
+    useEndAt: '2024/10/30 00:00:00',
+    status: 'voided',
+  },
+  {
+    id: '122661783981',
+    name: '留学冲刺-满减券',
+    discountType: 'fullReduction',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '满20减5',
+    receivedCount: 168,
+    issueCount: 300,
+    receiveRate: 56,
+    receiveStartAt: '2026/05/01 00:00:00',
+    receiveEndAt: '2026/06/30 23:59:59',
+    useStartAt: '2026/05/01 00:00:00',
+    useEndAt: '2026/07/15 23:59:59',
+    status: 'active',
+  },
+  {
+    id: '122661783982',
+    name: '雅思班-立减新人券',
+    discountType: 'directReduction',
+    productScope: 'all',
+    promotionScene: '全场景',
+    discountSummary: '直减50',
+    receivedCount: 96,
+    issueCount: 200,
+    receiveRate: 48,
+    receiveStartAt: '2026/08/01 00:00:00',
+    receiveEndAt: '2026/08/31 23:59:59',
+    useStartAt: '2026/08/01 00:00:00',
+    useEndAt: '2026/09/10 23:59:59',
+    status: 'notStarted',
+  },
+  {
+    id: '122661783983',
+    name: 'A-Level秋季折扣券',
+    discountType: 'discount',
+    productScope: 'all',
+    promotionScene: '全场景',
+    discountSummary: '打8.5折',
+    receivedCount: 320,
+    issueCount: 600,
+    receiveRate: 53,
+    receiveStartAt: '2026/02/01 00:00:00',
+    receiveEndAt: '2026/03/31 23:59:59',
+    useStartAt: '2026/02/01 00:00:00',
+    useEndAt: '2026/04/15 23:59:59',
+    status: 'active',
+  },
+  {
+    id: '122661783984',
+    name: '模考包-折扣券',
+    discountType: 'discount',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '打9.5折',
+    receivedCount: 88,
+    issueCount: 180,
+    receiveRate: 49,
+    receiveStartAt: '2025/09/01 00:00:00',
+    receiveEndAt: '2025/09/30 23:59:59',
+    useStartAt: '2025/09/01 00:00:00',
+    useEndAt: '2025/10/31 23:59:59',
+    status: 'expired',
+  },
+  {
+    id: '122661783985',
+    name: '服务套餐-减免券',
+    discountType: 'fullReduction',
+    productScope: 'all',
+    promotionScene: '全场景',
+    discountSummary: '满100减20',
+    receivedCount: 58,
+    issueCount: 120,
+    receiveRate: 48,
+    receiveStartAt: '2024/11/01 00:00:00',
+    receiveEndAt: '2024/11/30 23:59:59',
+    useStartAt: '2024/11/01 00:00:00',
+    useEndAt: '2024/12/15 23:59:59',
+    status: 'voided',
+  },
+  {
+    id: '122661783986',
+    name: '申请季-全场通用券',
+    discountType: 'directReduction',
+    productScope: 'all',
+    promotionScene: '全场景',
+    discountSummary: '直减30',
+    receivedCount: 260,
+    issueCount: 500,
+    receiveRate: 52,
+    receiveStartAt: '2026/04/01 00:00:00',
+    receiveEndAt: '2026/05/31 23:59:59',
+    useStartAt: '2026/04/01 00:00:00',
+    useEndAt: '2026/06/30 23:59:59',
+    status: 'active',
+  },
+  {
+    id: '122661783987',
+    name: '冬令营-早鸟券',
+    discountType: 'discount',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '打8折',
+    receivedCount: 45,
+    issueCount: 150,
+    receiveRate: 30,
+    receiveStartAt: '2026/11/01 00:00:00',
+    receiveEndAt: '2026/11/30 23:59:59',
+    useStartAt: '2026/12/01 00:00:00',
+    useEndAt: '2027/01/15 23:59:59',
+    status: 'notStarted',
+  },
+  {
+    id: '122661783988',
+    name: '科研项目-专享券',
+    discountType: 'directReduction',
+    productScope: 'partial',
+    promotionScene: '全场景',
+    discountSummary: '直减100',
+    receivedCount: 120,
+    issueCount: 180,
+    receiveRate: 67,
+    receiveStartAt: '2024/06/01 00:00:00',
+    receiveEndAt: '2024/07/15 23:59:59',
+    useStartAt: '2024/06/01 00:00:00',
+    useEndAt: '2024/08/31 23:59:59',
+    status: 'voided',
+  },
+];
+
+function resolveProductCategory(product: ProductItem): CouponProductCategoryOption {
+  if (product.name.includes('预测课')) {
+    return PRODUCT_CATEGORY_PRESETS[0];
   }
-
-  const fallback = categories[0];
-  return {
-    label: fallback?.label || '未配置类目',
-    value: fallback?.id || '',
-  };
+  if (product.name.includes('冲刺')) {
+    return PRODUCT_CATEGORY_PRESETS[1];
+  }
+  if (product.name.includes('预习课')) {
+    return PRODUCT_CATEGORY_PRESETS[2];
+  }
+  if (product.name.includes('模考')) {
+    return PRODUCT_CATEGORY_PRESETS[4];
+  }
+  return PRODUCT_CATEGORY_PRESETS[3];
 }
 
-export function buildCouponProductCategoryOptions(
-  categories: ProductCatalogLeafItem[]
-) {
-  return categories.map((item) => ({
-    label: item.label,
-    value: item.id,
-  }));
-}
-
-export function buildCouponSpus(categories: ProductCatalogLeafItem[]) {
-  return MOCK_PRODUCTS.map((product, productIndex) => {
-    const category = resolveProductCategory(product, categories);
-    const children = SKU_SPEC_TEMPLATES[product.productType].map(
-      (specText, specIndex) => {
-        const surcharge = specIndex === 0 ? 0 : Math.max(product.price * 0.12, 10);
-        return {
-          key: `sku-${product.id}-${specIndex + 1}`,
-          rowType: 'sku' as const,
-          productId: product.id,
-          productName: product.name,
-          productCategory: category.label,
-          productCategoryValue: category.value,
-          skuId: `SKU_${productIndex + 1}_${specIndex + 1}`,
-          skuSpecText: specText,
-          productType: COUPON_PRODUCT_TYPE_LABEL_MAP[product.productType],
-          price: Number((product.price + surcharge).toFixed(2)),
-        };
-      }
-    );
+export const MOCK_COUPON_SPUS: CouponSpuItem[] = MOCK_PRODUCTS.map(
+  (product, productIndex) => {
+    const category = resolveProductCategory(product);
+    const children = SKU_SPEC_TEMPLATES[product.productType].map((specText, specIndex) => {
+      const surcharge = specIndex === 0 ? 0 : Math.max(product.price * 0.12, 10);
+      return {
+        key: `sku-${product.id}-${specIndex + 1}`,
+        rowType: 'sku' as const,
+        productId: product.id,
+        productName: product.name,
+        productCategory: category.label,
+        productCategoryValue: category.value,
+        skuId: `SKU_${productIndex + 1}_${specIndex + 1}`,
+        skuSpecText: specText,
+        productType: PRODUCT_TYPE_LABEL_MAP[product.productType],
+        price: Number((product.price + surcharge).toFixed(2)),
+      };
+    });
 
     const prices = children.map((item) => item.price);
 
@@ -748,13 +478,32 @@ export function buildCouponSpus(categories: ProductCatalogLeafItem[]) {
       productCategoryValue: category.value,
       skuId: '',
       skuSpecText: `共 ${children.length} 个 SKU`,
-      productType: COUPON_PRODUCT_TYPE_LABEL_MAP[product.productType],
+      productType: PRODUCT_TYPE_LABEL_MAP[product.productType],
       price: prices[0],
       minPrice: Math.min(...prices),
       maxPrice: Math.max(...prices),
       children,
     };
-  });
+  }
+);
+
+export const MOCK_COUPON_SKUS: CouponSkuItem[] = MOCK_COUPON_SPUS.flatMap(
+  (item) => item.children
+);
+
+export function normalizeCascaderPath(
+  value: (string | string[])[] | undefined
+): string[] {
+  if (!Array.isArray(value) || !value.length) {
+    return [];
+  }
+
+  const firstValue = value[0];
+  if (Array.isArray(firstValue)) {
+    return firstValue;
+  }
+
+  return value as string[];
 }
 
 export function formatCurrency(price: number) {
