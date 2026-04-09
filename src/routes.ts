@@ -98,6 +98,13 @@ export const routes: IRoute[] = [
       {
         name: 'menu.enterprise.organization',
         key: 'enterprise/organization',
+        children: [
+          {
+            name: 'menu.enterprise.organization.create',
+            key: 'enterprise/organization/create',
+            ignore: true,
+          },
+        ],
       },
       {
         name: 'menu.enterprise.department',
