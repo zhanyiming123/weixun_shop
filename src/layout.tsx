@@ -7,6 +7,7 @@ import {
   IconSettings,
   IconFile,
   IconApps,
+  IconUserGroup,
   IconMenuFold,
   IconMenuUnfold,
 } from '@arco-design/web-react/icon';
@@ -39,6 +40,8 @@ function getIconFromKey(key) {
       return <IconSettings className={styles.icon} />;
     case 'after-sales':
       return <IconFile className={styles.icon} />;
+    case 'enterprise':
+      return <IconUserGroup className={styles.icon} />;
     default:
       return <div className={styles['icon-empty']} />;
   }

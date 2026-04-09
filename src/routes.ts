@@ -91,6 +91,28 @@ export const routes: IRoute[] = [
       },
     ],
   },
+  {
+    name: 'menu.enterprise',
+    key: 'enterprise',
+    children: [
+      {
+        name: 'menu.enterprise.organization',
+        key: 'enterprise/organization',
+      },
+      {
+        name: 'menu.enterprise.department',
+        key: 'enterprise/department',
+      },
+      {
+        name: 'menu.enterprise.employee',
+        key: 'enterprise/employee',
+      },
+      {
+        name: 'menu.enterprise.role',
+        key: 'enterprise/role',
+      },
+    ],
+  },
 ];
 
 export const getName = (path: string, routes) => {
