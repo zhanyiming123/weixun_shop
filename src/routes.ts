@@ -1,9 +1,11 @@
 import auth, { AuthParams } from '@/utils/authentication';
+import { OrganizationScope } from '@/utils/organization';
 import { useEffect, useMemo, useState } from 'react';
 
 export type IRoute = AuthParams & {
   name: string;
   key: string;
+  visibleScopes?: OrganizationScope[];
   // 当前页是否展示面包屑
   breadcrumb?: boolean;
   children?: IRoute[];
@@ -13,29 +15,45 @@ export type IRoute = AuthParams & {
 
 export const routes: IRoute[] = [
   {
+    name: 'menu.dashboard',
+    key: 'dashboard',
+    children: [
+      {
+        name: 'menu.dashboard.workplace',
+        key: 'dashboard/workplace',
+        visibleScopes: ['headquarter', 'region', 'store'],
+      },
+    ],
+  },
+  {
     name: 'menu.product',
     key: 'product',
     children: [
       {
         name: 'menu.product.list',
         key: 'product/list',
+        visibleScopes: ['headquarter', 'region', 'store'],
       },
       {
         name: 'menu.product.create',
         key: 'product/create',
         ignore: true,
+        visibleScopes: ['headquarter', 'region', 'store'],
       },
       {
         name: 'menu.product.category',
         key: 'product/category',
+        visibleScopes: ['headquarter'],
       },
       {
         name: 'menu.product.catalog',
         key: 'product/catalog',
+        visibleScopes: ['headquarter'],
       },
       {
         name: 'menu.product.attribute',
         key: 'product/attribute',
+        visibleScopes: ['headquarter'],
       },
     ],
   },
@@ -46,6 +64,7 @@ export const routes: IRoute[] = [
       {
         name: 'menu.order.list',
         key: 'order/list',
+        visibleScopes: ['headquarter', 'region', 'store'],
       },
     ],
   },
@@ -56,6 +75,7 @@ export const routes: IRoute[] = [
       {
         name: 'menu.afterSales.list',
         key: 'after-sales/list',
+        visibleScopes: ['headquarter', 'region', 'store'],
       },
     ],
   },
@@ -66,26 +86,31 @@ export const routes: IRoute[] = [
       {
         name: 'menu.marketing.center',
         key: 'marketing/center',
+        visibleScopes: ['headquarter', 'region', 'store'],
         children: [
           {
             name: 'menu.marketing.couponList',
             key: 'marketing/center/coupon/list',
             ignore: true,
+            visibleScopes: ['headquarter', 'region', 'store'],
           },
           {
             name: 'menu.marketing.couponCreate',
             key: 'marketing/center/coupon/create',
             ignore: true,
+            visibleScopes: ['headquarter', 'region', 'store'],
           },
           {
             name: 'menu.marketing.couponDetail',
             key: 'marketing/center/coupon/detail',
             ignore: true,
+            visibleScopes: ['headquarter', 'region', 'store'],
           },
           {
             name: 'menu.marketing.couponEdit',
             key: 'marketing/center/coupon/edit',
             ignore: true,
+            visibleScopes: ['headquarter', 'region', 'store'],
           },
         ],
       },
@@ -98,25 +123,58 @@ export const routes: IRoute[] = [
       {
         name: 'menu.enterprise.organization',
         key: 'enterprise/organization',
+        visibleScopes: ['headquarter'],
         children: [
           {
             name: 'menu.enterprise.organization.create',
             key: 'enterprise/organization/create',
             ignore: true,
+            visibleScopes: ['headquarter'],
+          },
+          {
+            name: 'menu.enterprise.organization.edit',
+            key: 'enterprise/organization/edit',
+            ignore: true,
+            visibleScopes: ['headquarter'],
           },
         ],
       },
       {
         name: 'menu.enterprise.department',
         key: 'enterprise/department',
+        visibleScopes: ['headquarter'],
       },
       {
         name: 'menu.enterprise.employee',
         key: 'enterprise/employee',
+        visibleScopes: ['headquarter'],
+        children: [
+          {
+            name: 'menu.enterprise.employee.create',
+            key: 'enterprise/employee/create',
+            ignore: true,
+            visibleScopes: ['headquarter'],
+          },
+        ],
       },
       {
         name: 'menu.enterprise.role',
         key: 'enterprise/role',
+        visibleScopes: ['headquarter'],
+        children: [
+          {
+            name: 'menu.enterprise.role.create',
+            key: 'enterprise/role/create',
+            ignore: true,
+            visibleScopes: ['headquarter'],
+          },
+          {
+            name: 'menu.enterprise.role.edit',
+            key: 'enterprise/role/edit',
+            ignore: true,
+            visibleScopes: ['headquarter'],
+          },
+        ],
       },
     ],
   },
@@ -152,16 +210,36 @@ export const generatePermission = (role: string) => {
   return result;
 };
 
-const useRoute = (userPermission): [IRoute[], string] => {
+function collectRouteKeys(routeItems: IRoute[], keys: string[] = []) {
+  routeItems.forEach((route) => {
+    keys.push(route.key);
+    if (route.children?.length) {
+      collectRouteKeys(route.children, keys);
+    }
+  });
+
+  return keys;
+}
+
+export const ALL_ROUTE_KEYS = collectRouteKeys(routes);
+
+const useRoute = (
+  userPermission,
+  currentScope: OrganizationScope = 'headquarter'
+): [IRoute[], string] => {
   const filterRoute = (routes: IRoute[], arr = []): IRoute[] => {
     if (!routes.length) {
       return [];
     }
     for (const route of routes) {
-      const { requiredPermissions, oneOfPerm } = route;
+      const { requiredPermissions, oneOfPerm, visibleScopes } = route;
       let visible = true;
+      if (visibleScopes?.length) {
+        visible = visibleScopes.includes(currentScope);
+      }
       if (requiredPermissions) {
-        visible = auth({ requiredPermissions, oneOfPerm }, userPermission);
+        visible =
+          visible && auth({ requiredPermissions, oneOfPerm }, userPermission);
       }
 
       if (!visible) {
@@ -181,12 +259,12 @@ const useRoute = (userPermission): [IRoute[], string] => {
     return arr;
   };
 
-  const [permissionRoute, setPermissionRoute] = useState(routes);
+  const [permissionRoute, setPermissionRoute] = useState(() => filterRoute(routes));
 
   useEffect(() => {
     const newRoutes = filterRoute(routes);
     setPermissionRoute(newRoutes);
-  }, [JSON.stringify(userPermission)]);
+  }, [currentScope, JSON.stringify(userPermission)]);
 
   const defaultRoute = useMemo(() => {
     const first = permissionRoute[0];

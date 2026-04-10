@@ -284,10 +284,6 @@ function CategoryPage() {
           )}
         </div>
 
-        <div className={styles.systemNode}>
-          <div className={styles.systemName}>未归属</div>
-          <div className={styles.systemDesc}>系统预设分类，不可编辑和删除</div>
-        </div>
       </div>
 
       <Modal
@@ -299,7 +295,12 @@ function CategoryPage() {
         focusLock
         autoFocus={false}
       >
-        <Form className="platform-form-spacing" form={form} layout="vertical">
+        <Form
+          form={form}
+          className={styles.modalForm}
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 18 }}
+        >
           <Form.Item
             field="name"
             label="分类名称"

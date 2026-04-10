@@ -9,9 +9,12 @@ import {
   Input,
   InputNumber,
   Message,
+  Modal,
   Radio,
   Select,
   Switch,
+  Table,
+  Tag,
   Typography,
   Upload,
 } from '@arco-design/web-react';
@@ -37,6 +40,7 @@ import {
   IconUnorderedList,
   IconVideoCamera,
 } from '@arco-design/web-react/icon';
+import { useSelector } from 'react-redux';
 import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
@@ -58,10 +62,32 @@ import {
 } from '../attribute/data';
 import {
   DEFAULT_INVENTORY_UNIT,
+  filterProductStoreConfigsByStoreIds,
   INVENTORY_UNIT_OPTIONS,
-  getMockProductById,
+  createProductId,
+  createProductSkuId,
+  formatProductCreatedAt,
   ProductItem,
+  ProductSkuItem,
+  useProductItems,
 } from '../list/data';
+import {
+  buildProductStoreDepartmentOptions,
+  createDefaultProductStoreConfig,
+  getProductStoreSummary,
+  normalizeProductStoreConfigs,
+  PRODUCT_STORE_CHANNEL_STATUS_LABEL_MAP,
+  PRODUCT_STORE_SELL_STATUS_LABEL_MAP,
+  PRODUCT_STORE_TYPE_LABEL_MAP,
+  ProductStoreChannelStatus,
+  ProductStoreConfigItem,
+  ProductStoreItem,
+  ProductStoreSellStatus,
+  ProductStoreType,
+  readProductStoreItems,
+} from '../store-config/data';
+import { GlobalState } from '@/store';
+import { filterStoreItemsByIds } from '@/utils/organization';
 
 type CarouselImage = {
   uid: string;
@@ -81,6 +107,10 @@ type ProductCreateLocationState = {
   mode?: Exclude<ProductCreateMode, 'create'>;
   sourceProduct?: ProductItem;
 };
+
+type StoreConfigFilterType = 'all' | ProductStoreType;
+type StoreConfigFilterStatus = 'all' | ProductStoreSellStatus;
+type StoreConfigTableItem = ProductStoreItem & ProductStoreConfigItem;
 
 const PRODUCT_TYPE_OPTIONS = [
   {
@@ -137,6 +167,7 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
 ];
 
 const COPY_PRODUCT_NAME_SUFFIX = '（副本）';
+const STORE_CONFIG_PAGE_SIZE_OPTIONS = [20, 50];
 const PRODUCT_FORM_LAYOUT = {
   layout: 'horizontal' as const,
   labelCol: { flex: '120px' },
@@ -214,9 +245,25 @@ function renderCatalogAttributeField(
 function ProductCreatePage() {
   const history = useHistory();
   const location = useLocation<ProductCreateLocationState>();
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
+  const isHeadquarter = currentOrganization?.scope === 'headquarter';
+  const [productItems, setProductItems] = useProductItems();
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const storeItems = useMemo(() => readProductStoreItems(), []);
+  const visibleStoreIds = currentOrganization?.storeIds || [];
+  const scopedStoreItems = useMemo(
+    () =>
+      isHeadquarter ? storeItems : filterStoreItemsByIds(storeItems, visibleStoreIds),
+    [isHeadquarter, storeItems, visibleStoreIds]
+  );
+  const storeDepartmentOptions = useMemo(
+    () => buildProductStoreDepartmentOptions(scopedStoreItems),
+    [scopedStoreItems]
+  );
   const locationQuery = useMemo(
     () => qs.parse(location.search),
     [location.search]
@@ -227,16 +274,23 @@ function ProductCreatePage() {
     return rawMode === 'edit' || rawMode === 'copy' ? rawMode : 'create';
   }, [location.state, locationQuery.mode]);
   const isEditMode = pageMode === 'edit';
-  const sourceProduct = useMemo(() => {
-    if (location.state?.sourceProduct) {
-      return location.state.sourceProduct;
+  const sourceProductId = useMemo(() => {
+    if (typeof locationQuery.sourceId === 'string') {
+      return locationQuery.sourceId;
     }
 
-    const sourceId =
-      typeof locationQuery.sourceId === 'string' ? locationQuery.sourceId : '';
-
-    return getMockProductById(sourceId);
+    return location.state?.sourceProduct?.id || '';
   }, [location.state, locationQuery.sourceId]);
+  const sourceProduct = useMemo(() => {
+    if (!sourceProductId) {
+      return undefined;
+    }
+
+    return (
+      productItems.find((item) => item.id === sourceProductId) ||
+      location.state?.sourceProduct
+    );
+  }, [location.state, productItems, sourceProductId]);
   const productCatalogOptions = useMemo(
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
@@ -264,6 +318,31 @@ function ProductCreatePage() {
   const [detailBlockType, setDetailBlockType] = useState('p');
   const [detailFontSize, setDetailFontSize] = useState('16');
   const [detailLineHeight, setDetailLineHeight] = useState('1.75');
+  const [productStoreConfigs, setProductStoreConfigs] = useState<
+    ProductStoreConfigItem[]
+  >([]);
+  const [hiddenStoreConfigs, setHiddenStoreConfigs] = useState<
+    ProductStoreConfigItem[]
+  >([]);
+  const [storeConfigModalVisible, setStoreConfigModalVisible] = useState(false);
+  const [selectedStoreKeys, setSelectedStoreKeys] = useState<(string | number)[]>(
+    []
+  );
+  const [draftStoreConfigMap, setDraftStoreConfigMap] = useState<
+    Record<string, ProductStoreConfigItem>
+  >({});
+  const [storeTypeFilter, setStoreTypeFilter] =
+    useState<StoreConfigFilterType>('all');
+  const [storeDepartmentFilter, setStoreDepartmentFilter] = useState('all');
+  const [storeStatusFilter, setStoreStatusFilter] =
+    useState<StoreConfigFilterStatus>('all');
+  const [storeKeyword, setStoreKeyword] = useState('');
+  const [storeConfigPage, setStoreConfigPage] = useState(1);
+  const [storeConfigPageSize, setStoreConfigPageSize] = useState(20);
+  const [storeBatchSellStatus, setStoreBatchSellStatus] =
+    useState<ProductStoreSellStatus>();
+  const [storeBatchChannelStatus, setStoreBatchChannelStatus] =
+    useState<ProductStoreChannelStatus>();
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
 
@@ -276,6 +355,8 @@ function ProductCreatePage() {
   }, []);
 
   useEffect(() => {
+    const visibleStoreIdSet = new Set(scopedStoreItems.map((item) => item.id));
+
     if (!sourceProduct) {
       setProductCatalogId(undefined);
       setProductOwnershipId(undefined);
@@ -287,6 +368,14 @@ function ProductCreatePage() {
       setSingleSpecFileList([]);
       setSingleSpecPrice(undefined);
       setSingleSpecStock(undefined);
+      setProductStoreConfigs(
+        scopedStoreItems.map((item) => ({
+          storeId: item.id,
+          sellStatus: 'sellable' as const,
+          channelStatus: 'off' as const,
+        }))
+      );
+      setHiddenStoreConfigs([]);
       return;
     }
 
@@ -304,7 +393,20 @@ function ProductCreatePage() {
     setSingleSpecFileList([]);
     setSingleSpecPrice(sourceProduct.price);
     setSingleSpecStock(sourceProduct.stock);
-  }, [pageMode, sourceProduct]);
+    setProductStoreConfigs(
+      normalizeProductStoreConfigs(
+        (sourceProduct.storeConfigs || []).filter((item) =>
+          visibleStoreIdSet.has(item.storeId)
+        ),
+        scopedStoreItems
+      )
+    );
+    setHiddenStoreConfigs(
+      (sourceProduct.storeConfigs || []).filter(
+        (item) => !visibleStoreIdSet.has(item.storeId)
+      )
+    );
+  }, [pageMode, scopedStoreItems, sourceProduct]);
 
   function revokeObjectUrl(uid: string) {
     const target = objectUrlMapRef.current.get(uid);
@@ -553,15 +655,390 @@ function ProductCreatePage() {
     setDetailLineHeight(value);
   }
 
+  function resetStoreConfigFilters() {
+    setStoreTypeFilter('all');
+    setStoreDepartmentFilter('all');
+    setStoreStatusFilter('all');
+    setStoreKeyword('');
+    setStoreConfigPage(1);
+    setStoreConfigPageSize(20);
+    setStoreBatchSellStatus(undefined);
+    setStoreBatchChannelStatus(undefined);
+  }
+
+  function openStoreConfigModal() {
+    const nextMap = normalizeProductStoreConfigs(
+      productStoreConfigs,
+      scopedStoreItems
+    ).reduce<Record<string, ProductStoreConfigItem>>((result, item) => {
+        result[item.storeId] = { ...item };
+        return result;
+      }, {});
+
+    setDraftStoreConfigMap(nextMap);
+    setSelectedStoreKeys([]);
+    resetStoreConfigFilters();
+    setStoreConfigModalVisible(true);
+  }
+
+  function handleStoreSelectionChange(keys: (string | number)[]) {
+    setSelectedStoreKeys(keys.map(String));
+  }
+
+  function buildNextStoreConfig(
+    previous: ProductStoreConfigItem | undefined,
+    storeId: string,
+    patch: Partial<Omit<ProductStoreConfigItem, 'storeId'>>
+  ): ProductStoreConfigItem {
+    const base = {
+      ...(previous || createDefaultProductStoreConfig(storeId)),
+      ...patch,
+    };
+
+    if (base.sellStatus !== 'sellable') {
+      return {
+        ...base,
+        channelStatus: 'off',
+      };
+    }
+
+    return base;
+  }
+
+  function handleDraftStoreConfigChange<
+    K extends keyof Omit<ProductStoreConfigItem, 'storeId'>
+  >(storeId: string, field: K, value: ProductStoreConfigItem[K]) {
+    setDraftStoreConfigMap((previous) => ({
+      ...previous,
+      [storeId]: buildNextStoreConfig(previous[storeId], storeId, {
+        [field]: value,
+      } as Partial<Omit<ProductStoreConfigItem, 'storeId'>>),
+    }));
+  }
+
+  function updateSelectedStoreConfigs(
+    field: 'sellStatus' | 'channelStatus',
+    value: ProductStoreSellStatus | ProductStoreChannelStatus
+  ) {
+    if (!selectedStoreKeys.length) {
+      Message.warning('请先选择需要批量设置的店铺');
+      return;
+    }
+
+    setDraftStoreConfigMap((previous) => {
+      const next = { ...previous };
+
+      selectedStoreKeys.map(String).forEach((storeId) => {
+        next[storeId] = buildNextStoreConfig(next[storeId], storeId, {
+          [field]: value,
+        } as Partial<Omit<ProductStoreConfigItem, 'storeId'>>);
+      });
+
+      return next;
+    });
+  }
+
+  function handleBatchSellStatusChange(value?: string) {
+    if (!value) {
+      return;
+    }
+
+    updateSelectedStoreConfigs('sellStatus', value as ProductStoreSellStatus);
+    setStoreBatchSellStatus(undefined);
+  }
+
+  function handleBatchChannelStatusChange(value?: string) {
+    if (!value) {
+      return;
+    }
+
+    updateSelectedStoreConfigs(
+      'channelStatus',
+      value as ProductStoreChannelStatus
+    );
+    setStoreBatchChannelStatus(undefined);
+  }
+
+  function handleStoreConfigConfirm() {
+    const nextStoreConfigs = normalizeProductStoreConfigs(
+      Object.values(draftStoreConfigMap),
+      scopedStoreItems
+    );
+
+    setProductStoreConfigs(nextStoreConfigs);
+    setStoreConfigModalVisible(false);
+  }
+
+  function getSubmitProductSource() {
+    if (isEditMode && sourceProduct) {
+      return {
+        sourceType: sourceProduct.sourceType,
+        sourceStoreId: sourceProduct.sourceStoreId,
+      };
+    }
+
+    if (isHeadquarter) {
+      return {
+        sourceType: 'headquarter' as const,
+        sourceStoreId: undefined,
+      };
+    }
+
+    return {
+      sourceType: 'store' as const,
+      sourceStoreId:
+        currentOrganization?.scope === 'store' || visibleStoreIds.length === 1
+          ? visibleStoreIds[0]
+          : undefined,
+    };
+  }
+
+  function buildSubmitProduct(productId: string, createdAt: string): ProductItem {
+    const nextStatus = shelfTime === 'immediately' ? 'on' : 'off';
+    const nextName = productName.trim() || sourceProduct?.name || '未命名商品';
+    const nextCatalogId = productCatalogId || sourceProduct?.productCatalogId || '';
+    const nextOwnershipId =
+      productOwnershipId || sourceProduct?.productOwnershipId || '';
+    const nextSource = getSubmitProductSource();
+    const nextStoreConfigs = [
+      ...hiddenStoreConfigs.map((item) => ({ ...item })),
+      ...productStoreConfigs.map((item) => ({ ...item })),
+    ];
+
+    if (isEditMode && sourceProduct) {
+      return {
+        ...sourceProduct,
+        name: nextName,
+        productCatalogId: nextCatalogId,
+        productOwnershipId: nextOwnershipId,
+        inventoryUnit,
+        status: nextStatus,
+        createdAt,
+        ...nextSource,
+        storeConfigs: nextStoreConfigs,
+      };
+    }
+
+    let nextSkus: ProductSkuItem[] = [];
+    let nextPrice = 0;
+    let nextStock = 0;
+
+    if (specMode === 'single') {
+      nextPrice = Number(singleSpecPrice ?? sourceProduct?.price ?? 0);
+      nextStock = Number(singleSpecStock ?? sourceProduct?.stock ?? 0);
+      nextSkus = [
+        {
+          id: createProductSkuId(productId, 0),
+          specText: '',
+          price: nextPrice,
+          stock: nextStock,
+          status: nextStatus,
+        },
+      ];
+    } else {
+      nextSkus = specItems.map((item, index) => ({
+        id: createProductSkuId(productId, index),
+        specText:
+          [item.name.trim(), item.value.trim()].filter(Boolean).join('：') ||
+          `规格${index + 1}`,
+        price: 0,
+        stock: 0,
+        status: nextStatus,
+      }));
+      nextPrice = nextSkus.length ? Math.min(...nextSkus.map((item) => item.price)) : 0;
+      nextStock = nextSkus.reduce((total, item) => total + item.stock, 0);
+    }
+
+    return {
+      id: productId,
+      name: nextName,
+      productCatalogId: nextCatalogId,
+      productOwnershipId: nextOwnershipId,
+      productType: sourceProduct?.productType || 'virtual',
+      inventoryUnit,
+      specMode,
+      skus: nextSkus,
+      status: nextStatus,
+      price: nextPrice,
+      stock: nextStock,
+      createdAt,
+      ...nextSource,
+      storeConfigs: nextStoreConfigs,
+    };
+  }
+
+  function handleCancel() {
+    history.push('/product/list');
+  }
+
+  function handleSubmit() {
+    const nextProductId =
+      pageMode === 'edit' && sourceProduct ? sourceProduct.id : createProductId();
+    const nextCreatedAt =
+      pageMode === 'edit' && sourceProduct
+        ? sourceProduct.createdAt
+        : formatProductCreatedAt();
+    const nextProduct = buildSubmitProduct(nextProductId, nextCreatedAt);
+
+    setProductItems((previous) => {
+      if (pageMode === 'edit') {
+        return previous.map((item) =>
+          item.id === nextProductId ? nextProduct : item
+        );
+      }
+
+      return [nextProduct, ...previous];
+    });
+
+    Message.success(pageMode === 'edit' ? '保存成功' : '提交成功');
+    history.push('/product/list');
+  }
+
   const currentCatalogAttributes = useMemo(
     () => getEnabledAttributesByCatalogId(catalogAttributes, productCatalogId),
     [catalogAttributes, productCatalogId]
   );
+  const productStoreSummary = useMemo(
+    () => getProductStoreSummary(productStoreConfigs),
+    [productStoreConfigs]
+  );
+  const isAllStoresSellableButOff = useMemo(
+    () =>
+      Boolean(scopedStoreItems.length) &&
+      productStoreConfigs.length === scopedStoreItems.length &&
+      productStoreConfigs.every(
+        (item) => item.sellStatus === 'sellable' && item.channelStatus === 'off'
+      ),
+    [productStoreConfigs, scopedStoreItems]
+  );
+  const storeConfigTableData = useMemo<StoreConfigTableItem[]>(() => {
+    const keyword = storeKeyword.trim().toLowerCase();
+
+    return scopedStoreItems
+      .filter((item) => {
+        if (storeTypeFilter !== 'all' && item.type !== storeTypeFilter) {
+          return false;
+        }
+
+        if (
+          storeDepartmentFilter !== 'all' &&
+          item.departmentId !== storeDepartmentFilter
+        ) {
+          return false;
+        }
+
+        if (keyword && !item.name.toLowerCase().includes(keyword)) {
+          return false;
+        }
+
+        if (storeStatusFilter !== 'all') {
+          return (
+            (
+              draftStoreConfigMap[item.id] ||
+              createDefaultProductStoreConfig(item.id)
+            ).sellStatus === storeStatusFilter
+          );
+        }
+
+        return true;
+      })
+      .map((item) => {
+        const draftConfig =
+          draftStoreConfigMap[item.id] ||
+          createDefaultProductStoreConfig(item.id);
+
+        return {
+          ...item,
+          ...draftConfig,
+        };
+      });
+  }, [
+    draftStoreConfigMap,
+    storeDepartmentFilter,
+    scopedStoreItems,
+    storeKeyword,
+    storeStatusFilter,
+    storeTypeFilter,
+  ]);
+  const storeConfigColumns = [
+    {
+      title: '店铺名称',
+      dataIndex: 'name',
+      width: 420,
+      render: (_: string, record: StoreConfigTableItem) => (
+        <div className={styles.storeCell}>
+          <Tag
+            className={styles.storeTag}
+            color={record.type === 'store' ? 'arcoblue' : 'orangered'}
+          >
+            {PRODUCT_STORE_TYPE_LABEL_MAP[record.type]}
+          </Tag>
+          <span className={styles.storeName}>{record.name}</span>
+        </div>
+      ),
+    },
+    {
+      title: '是否可售',
+      dataIndex: 'sellStatus',
+      width: 220,
+      render: (value: ProductStoreSellStatus, record: StoreConfigTableItem) => (
+        <Select
+          className={styles.storeStatusSelect}
+          value={value}
+          onChange={(nextValue) =>
+            handleDraftStoreConfigChange(
+              record.id,
+              'sellStatus',
+              nextValue as ProductStoreSellStatus
+            )
+          }
+        >
+          {Object.entries(PRODUCT_STORE_SELL_STATUS_LABEL_MAP).map(
+            ([optionValue, label]) => (
+              <Select.Option key={optionValue} value={optionValue}>
+                {label}
+              </Select.Option>
+            )
+          )}
+        </Select>
+      ),
+    },
+    {
+      title: '网店渠道',
+      dataIndex: 'channelStatus',
+      width: 220,
+      render: (
+        value: ProductStoreChannelStatus,
+        record: StoreConfigTableItem
+      ) => (
+        <Select
+          className={styles.storeStatusSelect}
+          disabled={record.sellStatus !== 'sellable'}
+          value={value}
+          onChange={(nextValue) =>
+            handleDraftStoreConfigChange(
+              record.id,
+              'channelStatus',
+              nextValue as ProductStoreChannelStatus
+            )
+          }
+        >
+          {Object.entries(PRODUCT_STORE_CHANNEL_STATUS_LABEL_MAP).map(
+            ([optionValue, label]) => (
+              <Select.Option key={optionValue} value={optionValue}>
+                {label}
+              </Select.Option>
+            )
+          )}
+        </Select>
+      ),
+    },
+  ];
 
   return (
     <div className={styles.page}>
       <div className={styles.pageActions}>
-        <Button onClick={() => history.push('/product/list')}>返回商品列表</Button>
+        <Button onClick={handleCancel}>返回商品列表</Button>
       </div>
 
       <Card className={styles.sectionCard}>
@@ -1226,6 +1703,183 @@ function ProductCreatePage() {
             </Form.Item>
           </div>
         </Form>
+      </Card>
+
+      <Card className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <Typography.Title className={styles.sectionTitle} heading={6}>
+            店铺配置
+          </Typography.Title>
+        </div>
+
+        <div className={styles.storeSummaryPanel}>
+          {productStoreConfigs.length ? (
+            <div className={styles.storeSummaryContent}>
+              <div className={styles.storeSummaryLine}>
+                <span className={styles.storeSummaryLabel}>店铺配置：</span>
+                <span className={styles.storeSummaryValue}>
+                  {isAllStoresSellableButOff
+                    ? '全部店铺可售但下架'
+                    : `可售店铺：${productStoreSummary.sellable}`}
+                </span>
+                <Button
+                  className={styles.storeSummaryAction}
+                  size="mini"
+                  type="text"
+                  onClick={openStoreConfigModal}
+                >
+                  修改
+                </Button>
+              </div>
+              <Typography.Paragraph className={styles.storeSummaryHint}>
+                不可售店铺会自动下架，仅可售店铺支持上架。
+              </Typography.Paragraph>
+            </div>
+          ) : (
+            <div className={styles.storeSummaryEmpty}>
+              <Typography.Text className={styles.storeSummaryEmptyText}>
+                暂未配置发布门店
+              </Typography.Text>
+              <Button type="primary" onClick={openStoreConfigModal}>
+                新增
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Modal
+        title="修改店铺配置"
+        visible={storeConfigModalVisible}
+        autoFocus={false}
+        focusLock
+        style={{ width: 1280 }}
+        onOk={handleStoreConfigConfirm}
+        onCancel={() => setStoreConfigModalVisible(false)}
+      >
+        <div className={styles.storeConfigModalContent}>
+          <div className={styles.storeConfigFilterRow}>
+            <Select
+              className={styles.storeConfigFilter}
+              value={storeTypeFilter}
+              onChange={(value) => {
+                setStoreTypeFilter(value as StoreConfigFilterType);
+                setStoreConfigPage(1);
+              }}
+            >
+              <Select.Option value="all">全部店铺</Select.Option>
+              <Select.Option value="store">门店</Select.Option>
+              <Select.Option value="mall">商城</Select.Option>
+            </Select>
+
+            <Select
+              className={styles.storeConfigFilter}
+              value={storeDepartmentFilter}
+              onChange={(value) => {
+                setStoreDepartmentFilter(value);
+                setStoreConfigPage(1);
+              }}
+            >
+              <Select.Option value="all">全部部门</Select.Option>
+              {storeDepartmentOptions.map((item) => (
+                <Select.Option key={item.value} value={item.value}>
+                  {item.label}
+                </Select.Option>
+              ))}
+            </Select>
+
+            <Select
+              className={styles.storeConfigFilter}
+              value={storeStatusFilter}
+              onChange={(value) => {
+                setStoreStatusFilter(value as StoreConfigFilterStatus);
+                setStoreConfigPage(1);
+              }}
+            >
+              <Select.Option value="all">全部状态</Select.Option>
+              <Select.Option value="sellable">可售</Select.Option>
+              <Select.Option value="unsellable">不可售</Select.Option>
+            </Select>
+
+            <Input
+              allowClear
+              className={styles.storeConfigSearch}
+              placeholder="搜索店铺名称"
+              value={storeKeyword}
+              onChange={(value) => {
+                setStoreKeyword(value);
+                setStoreConfigPage(1);
+              }}
+            />
+          </div>
+
+          <div className={styles.storeConfigToolbar}>
+            <Typography.Text className={styles.storeConfigToolbarText}>
+              已勾选 {selectedStoreKeys.length} 项
+            </Typography.Text>
+            <Typography.Text className={styles.storeConfigToolbarText}>
+              勾选仅用于批量操作：
+            </Typography.Text>
+            <Select
+              allowClear
+              className={styles.storeConfigBatchSelect}
+              placeholder="是否可售"
+              value={storeBatchSellStatus}
+              onChange={handleBatchSellStatusChange}
+            >
+              <Select.Option value="sellable">可售</Select.Option>
+              <Select.Option value="unsellable">不可售</Select.Option>
+            </Select>
+            <Select
+              allowClear
+              className={styles.storeConfigBatchSelect}
+              placeholder="上/下架"
+              value={storeBatchChannelStatus}
+              onChange={handleBatchChannelStatusChange}
+            >
+              <Select.Option value="on">上架</Select.Option>
+              <Select.Option value="off">下架</Select.Option>
+            </Select>
+          </div>
+
+          <Table
+            rowKey="id"
+            className={styles.storeConfigTable}
+            columns={storeConfigColumns}
+            data={storeConfigTableData}
+            noDataElement="暂无店铺数据"
+            pagination={{
+              current: storeConfigPage,
+              pageSize: storeConfigPageSize,
+              total: storeConfigTableData.length,
+              sizeCanChange: true,
+              sizeOptions: STORE_CONFIG_PAGE_SIZE_OPTIONS,
+              showTotal: true,
+              showJumper: true,
+              onChange: (pageNumber, pageSize) => {
+                setStoreConfigPage(pageNumber);
+                setStoreConfigPageSize(pageSize);
+              },
+            }}
+            rowSelection={{
+              selectedRowKeys: selectedStoreKeys,
+              columnWidth: 48,
+              preserveSelectedRowKeys: true,
+              onChange: handleStoreSelectionChange,
+            }}
+            scroll={{ x: 980, y: 440 }}
+            tableLayoutFixed
+          />
+        </div>
+      </Modal>
+
+      <Card className={styles.actionCard}>
+        <div className={styles.actionRow}>
+          <Button onClick={handleCancel}>取消</Button>
+          <Button type="primary" onClick={handleSubmit}>
+            提交
+          </Button>
+        </div>
       </Card>
     </div>
   );

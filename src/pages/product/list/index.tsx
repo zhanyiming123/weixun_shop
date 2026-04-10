@@ -10,13 +10,16 @@ import {
   InputNumber,
   Link,
   Message,
+  Modal,
   Select,
   Switch,
   Table,
+  Tag,
   Tabs,
   Typography,
 } from '@arco-design/web-react';
 import { useHistory } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import styles from './index.module.less';
 import {
   buildProductCatalogCascaderOptions,
@@ -35,15 +38,33 @@ import {
 import {
   DEFAULT_INVENTORY_UNIT,
   DEFAULT_FILTER_VALUES,
-  MOCK_PRODUCTS,
+  filterProductsByStoreIds,
+  filterProductStoreConfigsByStoreIds,
+  getProductSourceLabel,
   ProductFilterValues,
   ProductItem,
   ProductSearchType,
   ProductStatus,
+  PRODUCT_SOURCE_OPTIONS,
+  useProductItems,
 } from './data';
+import {
+  buildProductStoreDetailItems,
+  getProductStoreById,
+  getProductStoreSummary,
+  maskPhone,
+  PRODUCT_STORE_TYPE_LABEL_MAP,
+  ProductStoreDetailItem,
+  ProductStoreSellStatus,
+  readProductStoreItems,
+} from '../store-config/data';
+import { GlobalState } from '@/store';
+import { filterStoreItemsByIds } from '@/utils/organization';
 
 type ProductTab = 'all' | 'selling' | 'warehouse';
 type ProductCreateActionMode = 'edit' | 'copy';
+
+const STORE_DETAIL_PAGE_SIZE_OPTIONS = [20, 50];
 
 const Option = Select.Option;
 const TabPane = Tabs.TabPane;
@@ -123,6 +144,13 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
     }
 
     if (
+      filters.productSourceType &&
+      item.sourceType !== filters.productSourceType
+    ) {
+      return false;
+    }
+
+    if (
       typeof filters.minPrice === 'number' &&
       Number.isFinite(filters.minPrice) &&
       item.price < filters.minPrice
@@ -155,8 +183,13 @@ function applyFilters(products: ProductItem[], filters: ProductFilterValues) {
 
 function ProductListPage() {
   const history = useHistory();
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
+  const isHeadquarter = currentOrganization?.scope === 'headquarter';
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
+  const allStoreItems = useMemo(() => readProductStoreItems(), []);
   const productCatalogOptions = useMemo(
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
@@ -165,7 +198,7 @@ function ProductListPage() {
     () => buildProductOwnershipCascaderOptions(ownershipItems),
     [ownershipItems]
   );
-  const [products, setProducts] = useState<ProductItem[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useProductItems();
   const [formValues, setFormValues] = useState<ProductFilterValues>(
     getDefaultFilterValues()
   );
@@ -176,10 +209,29 @@ function ProductListPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<(string | number)[]>(
     []
   );
+  const [storeDetailTarget, setStoreDetailTarget] = useState<{
+    product: ProductItem;
+    sellStatus: ProductStoreSellStatus;
+  } | null>(null);
+  const [storeDetailPage, setStoreDetailPage] = useState(1);
+  const [storeDetailPageSize, setStoreDetailPageSize] = useState(20);
+  const visibleStoreIds = currentOrganization?.storeIds || [];
+  const visibleStoreItems = useMemo(
+    () =>
+      isHeadquarter
+        ? allStoreItems
+        : filterStoreItemsByIds(allStoreItems, visibleStoreIds),
+    [allStoreItems, isHeadquarter, visibleStoreIds]
+  );
+  const scopedProducts = useMemo(
+    () =>
+      isHeadquarter ? products : filterProductsByStoreIds(products, visibleStoreIds),
+    [isHeadquarter, products, visibleStoreIds]
+  );
 
   const filteredProducts = useMemo(
-    () => applyFilters(products, appliedFilters),
-    [products, appliedFilters]
+    () => applyFilters(scopedProducts, appliedFilters),
+    [appliedFilters, scopedProducts]
   );
 
   const tabCounts = useMemo(
@@ -195,6 +247,27 @@ function ProductListPage() {
     () => getProductsByTab(filteredProducts, activeTab),
     [filteredProducts, activeTab]
   );
+  const storeDetailItems = useMemo<ProductStoreDetailItem[]>(() => {
+    if (!storeDetailTarget) {
+      return [];
+    }
+
+    const scopedStoreConfigs = isHeadquarter
+      ? storeDetailTarget.product.storeConfigs
+      : filterProductStoreConfigsByStoreIds(
+          storeDetailTarget.product.storeConfigs,
+          visibleStoreIds
+        );
+
+    return buildProductStoreDetailItems(
+      scopedStoreConfigs,
+      visibleStoreItems
+    ).filter((item) => item.sellStatus === storeDetailTarget.sellStatus);
+  }, [isHeadquarter, storeDetailTarget, visibleStoreIds, visibleStoreItems]);
+  const storeDetailTableData = useMemo(
+    () => storeDetailItems.filter((item) => item.type === 'store'),
+    [storeDetailItems]
+  );
 
   useEffect(() => {
     const visibleKeys = new Set(tableData.map((item) => item.id));
@@ -202,6 +275,10 @@ function ProductListPage() {
       prev.filter((key) => visibleKeys.has(String(key)))
     );
   }, [tableData]);
+
+  useEffect(() => {
+    setStoreDetailPage(1);
+  }, [storeDetailTarget]);
 
   function updateFormValue<K extends keyof ProductFilterValues>(
     field: K,
@@ -257,6 +334,18 @@ function ProductListPage() {
 
   function showPendingMessage(text: string) {
     Message.info(text);
+  }
+
+  function openStoreDetailModal(
+    product: ProductItem,
+    sellStatus: ProductStoreSellStatus
+  ) {
+    setStoreDetailTarget({
+      product,
+      sellStatus,
+    });
+    setStoreDetailPage(1);
+    setStoreDetailPageSize(20);
   }
 
   function updateProductStatus(ids: string[], nextStatus: ProductStatus) {
@@ -316,6 +405,18 @@ function ProductListPage() {
       render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
     },
     {
+      title: '商品来源',
+      dataIndex: 'sourceType',
+      width: 220,
+      render: (_: string, record: ProductItem) => {
+        const sourceStore = record.sourceStoreId
+          ? getProductStoreById(record.sourceStoreId, allStoreItems)
+          : undefined;
+
+        return getProductSourceLabel(record.sourceType, sourceStore?.name);
+      },
+    },
+    {
       title: '上架状态',
       dataIndex: 'status',
       width: 170,
@@ -342,6 +443,44 @@ function ProductListPage() {
       render: (value: number, record: ProductItem) =>
         `${value} ${record.inventoryUnit || DEFAULT_INVENTORY_UNIT}`,
       sorter: (a: ProductItem, b: ProductItem) => a.stock - b.stock,
+    },
+    {
+      title: '销售店铺',
+      dataIndex: 'storeConfigs',
+      width: 220,
+      render: (value: ProductItem['storeConfigs'], record: ProductItem) => {
+        const scopedStoreConfigs = isHeadquarter
+          ? value || []
+          : filterProductStoreConfigsByStoreIds(value || [], visibleStoreIds);
+        const summary = getProductStoreSummary(scopedStoreConfigs);
+
+        return (
+          <div className={styles.salesStoreCell}>
+            <span className={styles.salesStoreMetric}>
+              <Typography.Text className={styles.salesStoreLabel}>
+                可售
+              </Typography.Text>
+              <Link
+                className={styles.salesStoreLink}
+                onClick={() => openStoreDetailModal(record, 'sellable')}
+              >
+                {summary.sellable}
+              </Link>
+            </span>
+            <span className={styles.salesStoreMetric}>
+              <Typography.Text className={styles.salesStoreLabel}>
+                不可售
+              </Typography.Text>
+              <Link
+                className={styles.salesStoreLink}
+                onClick={() => openStoreDetailModal(record, 'unsellable')}
+              >
+                {summary.unsellable}
+              </Link>
+            </span>
+          </div>
+        );
+      },
     },
     {
       title: '创建时间',
@@ -388,6 +527,44 @@ function ProductListPage() {
             分享
           </Link>
         </span>
+      ),
+    },
+  ];
+  const storeDetailColumns = [
+    {
+      title: '名称',
+      dataIndex: 'name',
+      width: 220,
+      render: (value: string) => (
+        <Typography.Text className={styles.storeDetailName}>
+          {value}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: '店铺分类',
+      dataIndex: 'type',
+      width: 140,
+      render: (value: ProductStoreDetailItem['type']) => (
+        <Tag color={value === 'store' ? 'arcoblue' : 'orangered'}>
+          {PRODUCT_STORE_TYPE_LABEL_MAP[value]}
+        </Tag>
+      ),
+    },
+    {
+      title: '地址',
+      dataIndex: 'address',
+      width: 320,
+    },
+    {
+      title: '店长/联系方式',
+      dataIndex: 'managerName',
+      width: 220,
+      render: (_: string, record: ProductStoreDetailItem) => (
+        <div className={styles.storeDetailContact}>
+          <span>{record.managerName}</span>
+          <span>{maskPhone(record.phone)}</span>
+        </div>
       ),
     },
   ];
@@ -464,6 +641,25 @@ function ProductListPage() {
                   );
                 }}
               />
+            </div>
+
+            <div className={styles.filterItem}>
+              <div className={styles.filterLabel}>商品来源</div>
+              <Select
+                allowClear
+                className={styles.typeSelect}
+                placeholder="请选择商品来源"
+                value={formValues.productSourceType}
+                onChange={(value) =>
+                  updateFormValue('productSourceType', value || undefined)
+                }
+              >
+                {PRODUCT_SOURCE_OPTIONS.map((item) => (
+                  <Option key={item.value} value={item.value}>
+                    {item.label}
+                  </Option>
+                ))}
+              </Select>
             </div>
 
             <div className={styles.filterItem}>
@@ -557,11 +753,47 @@ function ProductListPage() {
               columnWidth: 48,
               onChange: (keys) => setSelectedRowKeys(keys),
             }}
-            scroll={{ x: 1700 }}
+            scroll={{ x: 1900 }}
             tableLayoutFixed
           />
         </div>
       </Card>
+
+      <Modal
+        title={
+          storeDetailTarget?.sellStatus === 'unsellable' ? '不可售店铺' : '可售店铺'
+        }
+        visible={Boolean(storeDetailTarget)}
+        autoFocus={false}
+        focusLock
+        footer={null}
+        style={{ width: 980 }}
+        onCancel={() => setStoreDetailTarget(null)}
+      >
+        <div className={styles.storeDetailModal}>
+          <Table
+            rowKey="storeId"
+            columns={storeDetailColumns}
+            data={storeDetailTableData}
+            noDataElement="暂无门店数据"
+            pagination={{
+              current: storeDetailPage,
+              pageSize: storeDetailPageSize,
+              total: storeDetailTableData.length,
+              sizeCanChange: true,
+              sizeOptions: STORE_DETAIL_PAGE_SIZE_OPTIONS,
+              showTotal: true,
+              showJumper: true,
+              onChange: (pageNumber, pageSize) => {
+                setStoreDetailPage(pageNumber);
+                setStoreDetailPageSize(pageSize);
+              },
+            }}
+            scroll={{ x: 860 }}
+            tableLayoutFixed
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

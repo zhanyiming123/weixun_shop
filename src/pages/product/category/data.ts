@@ -1,5 +1,6 @@
 import usePersistentState, {
   readPersistentValue,
+  writePersistentValue,
 } from '@/utils/usePersistentState';
 
 export type ProductOwnershipConfigItem = {
@@ -128,6 +129,10 @@ export function useProductOwnershipItems() {
   return usePersistentState(STORAGE_KEY, DEFAULT_PRODUCT_OWNERSHIP_ITEMS);
 }
 
+export function writeProductOwnershipItems(items: ProductOwnershipConfigItem[]) {
+  writePersistentValue(STORAGE_KEY, items);
+}
+
 export function buildProductOwnershipTree(
   items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
 ): ProductOwnershipTreeNode[] {
@@ -199,6 +204,48 @@ export function buildProductOwnershipCascaderOptions(
   items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
 ) {
   return toProductOwnershipCascaderOptions(buildProductOwnershipTree(items));
+}
+
+function filterProductOwnershipTreeByLeafIds(
+  nodes: ProductOwnershipTreeNode[],
+  allowedLeafIds: Set<string>
+): ProductOwnershipTreeNode[] {
+  return nodes.flatMap((node) => {
+    if (!node.children?.length) {
+      return allowedLeafIds.has(node.id) ? [{ ...node }] : [];
+    }
+
+    const children = filterProductOwnershipTreeByLeafIds(
+      node.children,
+      allowedLeafIds
+    );
+
+    return children.length
+      ? [
+          {
+            ...node,
+            children,
+          },
+        ]
+      : [];
+  });
+}
+
+export function buildProductOwnershipCascaderOptionsByLeafIds(
+  leafIds: string[],
+  items: ProductOwnershipConfigItem[] = DEFAULT_PRODUCT_OWNERSHIP_ITEMS
+) {
+  if (!leafIds.length) {
+    return [];
+  }
+
+  const allowedLeafIds = new Set(leafIds);
+  return toProductOwnershipCascaderOptions(
+    filterProductOwnershipTreeByLeafIds(
+      buildProductOwnershipTree(items),
+      allowedLeafIds
+    )
+  );
 }
 
 export function getProductOwnershipLeafById(

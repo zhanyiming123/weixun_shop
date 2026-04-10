@@ -102,6 +102,17 @@
   color: var(--color-border-2);
 }
 
+.modalForm {
+  :global(.arco-form-item),
+  :global(.arco-form-item.arco-form-item-error) {
+    margin-bottom: 24px;
+  }
+
+  :global(.arco-form-item:last-child) {
+    margin-bottom: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .filterActions {
     margin-left: 0;

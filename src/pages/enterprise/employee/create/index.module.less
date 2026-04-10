@@ -1,0 +1,181 @@
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.formCard {
+  min-height: 300px;
+
+  :global(.arco-card-body) {
+    padding: 28px 32px 32px;
+  }
+}
+
+.employeeForm {
+  max-width: 860px;
+}
+
+.employeeForm :global(.arco-form-item) {
+  margin-bottom: 26px;
+}
+
+.employeeForm :global(.arco-form-item-extra) {
+  margin-top: 8px;
+  color: var(--color-text-3);
+  line-height: 20px;
+}
+
+.fieldInput {
+  width: 260px;
+}
+
+.selectorField {
+  width: 360px;
+  max-width: 100%;
+}
+
+.accountGroup {
+  display: inline-flex;
+  width: 260px;
+
+  :global(.arco-select-view) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  :global(.arco-input-wrapper) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
+.areaCodeSelect {
+  width: 110px;
+  flex: none;
+}
+
+.accountInput {
+  flex: 1;
+  width: 150px;
+}
+
+.roleField {
+  margin-bottom: 0;
+}
+
+.roleContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+}
+
+.permissionCard {
+  padding: 16px 18px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f6f8fb 100%);
+}
+
+.permissionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.permissionTitle {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.permissionRoleName {
+  color: rgb(var(--primary-6));
+  font-weight: 500;
+}
+
+.permissionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 16px;
+}
+
+.permissionSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.permissionSectionTitle {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.permissionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--color-bg-2);
+}
+
+.permissionItemTitle {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.permissionItemDescription,
+.permissionDescription,
+.permissionPlaceholder,
+.permissionEmpty {
+  color: var(--color-text-2);
+  line-height: 20px;
+}
+
+.permissionTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permissionPlaceholder {
+  padding-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .formCard {
+    :global(.arco-card-body) {
+      padding: 20px 16px 24px;
+    }
+  }
+
+  .employeeForm :global(.arco-form-item) {
+    margin-bottom: 20px;
+  }
+
+  .employeeForm :global(.arco-form-item-label-col) {
+    flex: none !important;
+  }
+
+  .employeeForm :global(.arco-form-item-wrapper-col) {
+    width: 100%;
+  }
+
+  .fieldInput,
+  .accountGroup,
+  .selectorField {
+    width: 100%;
+  }
+
+  .permissionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

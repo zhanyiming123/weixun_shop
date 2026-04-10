@@ -14,6 +14,7 @@ export type MarketingProductSelectorSkuItem = {
   productOwnershipLabel: string;
   skuId: string;
   specText: string;
+  specSummary: string;
   price: number;
   stock: number;
   status: ProductStatus;
@@ -30,6 +31,10 @@ export type MarketingProductSelectorSpuItem = {
   productCatalogLabel: string;
   productOwnershipId: string;
   productOwnershipLabel: string;
+  specSummary: string;
+  price: number;
+  stock: number;
+  status: ProductStatus;
   selectable: boolean;
   disabledReason: string;
   children: MarketingProductSelectorSkuItem[];

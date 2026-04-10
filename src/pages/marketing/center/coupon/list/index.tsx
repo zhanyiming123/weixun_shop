@@ -11,10 +11,13 @@ import {
   Typography,
 } from '@arco-design/web-react';
 import { useHistory } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import styles from './index.module.less';
 import {
   COUPON_DISCOUNT_LABEL_MAP,
   COUPON_DISCOUNT_OPTIONS,
+  COUPON_OWNERSHIP_OPTIONS,
+  COUPON_OWNERSHIP_SCOPE_LABEL_MAP,
   COUPON_LIST_STATUS_LABEL_MAP,
   COUPON_LIST_STATUS_OPTIONS,
   COUPON_SCOPE_SUMMARY_LABEL_MAP,
@@ -22,11 +25,13 @@ import {
   CouponListFilterValues,
   CouponListItem,
   CouponListStatus,
+  CouponOwnershipScope,
   DEFAULT_COUPON_LIST_FILTER_VALUES,
   deleteCouponById,
   readCouponListItems,
   updateCouponStatus,
 } from '../data';
+import { GlobalState } from '@/store';
 
 const Option = Select.Option;
 
@@ -47,6 +52,10 @@ function applyFilters(
       return false;
     }
 
+    if (filters.ownershipScope && item.ownershipScope !== filters.ownershipScope) {
+      return false;
+    }
+
     if (filters.status && item.status !== filters.status) {
       return false;
     }
@@ -61,7 +70,19 @@ function applyFilters(
 
 function CouponListPage() {
   const history = useHistory();
-  const [coupons, setCoupons] = useState<CouponListItem[]>(() => readCouponListItems());
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
+  const visibleStoreIds = useMemo(
+    () =>
+      currentOrganization?.scope === 'headquarter'
+        ? undefined
+        : currentOrganization?.storeIds || [],
+    [currentOrganization?.scope, currentOrganization?.storeIds]
+  );
+  const [coupons, setCoupons] = useState<CouponListItem[]>(() =>
+    readCouponListItems(visibleStoreIds)
+  );
   const [formValues, setFormValues] = useState<CouponListFilterValues>(
     getDefaultFilterValues()
   );
@@ -82,6 +103,11 @@ function CouponListPage() {
       setCurrentPage(totalPages);
     }
   }, [currentPage, filteredCoupons.length, pageSize]);
+
+  useEffect(() => {
+    setCoupons(readCouponListItems(visibleStoreIds));
+    setCurrentPage(1);
+  }, [currentOrganization?.id, visibleStoreIds]);
 
   function updateFormValue<K extends keyof CouponListFilterValues>(
     field: K,
@@ -108,7 +134,7 @@ function CouponListPage() {
   }
 
   function refreshCoupons() {
-    setCoupons(readCouponListItems());
+    setCoupons(readCouponListItems(visibleStoreIds));
   }
 
   function handleVoidCoupon(record: CouponListItem) {
@@ -224,6 +250,21 @@ function CouponListPage() {
       width: 140,
     },
     {
+      title: '活动归属',
+      dataIndex: 'ownershipLabel',
+      width: 180,
+      render: (_: string, record: CouponListItem) => (
+        <div className={styles.infoCell}>
+          <Typography.Text className={styles.primaryText}>
+            {record.ownershipLabel}
+          </Typography.Text>
+          <Typography.Text className={styles.secondaryText}>
+            {COUPON_OWNERSHIP_SCOPE_LABEL_MAP[record.ownershipScope]}
+          </Typography.Text>
+        </div>
+      ),
+    },
+    {
       title: '领取/发放',
       dataIndex: 'receivedCount',
       width: 160,
@@ -288,6 +329,28 @@ function CouponListPage() {
                 }
               >
                 {COUPON_DISCOUNT_OPTIONS.map((item) => (
+                  <Option key={item.value} value={item.value}>
+                    {item.label}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+
+            <div className={styles.filterItem}>
+              <div className={styles.filterLabel}>活动归属</div>
+              <Select
+                allowClear
+                className={styles.filterSelect}
+                placeholder="请选择活动归属"
+                value={formValues.ownershipScope}
+                onChange={(value) =>
+                  updateFormValue(
+                    'ownershipScope',
+                    (value || undefined) as CouponOwnershipScope | undefined
+                  )
+                }
+              >
+                {COUPON_OWNERSHIP_OPTIONS.map((item) => (
                   <Option key={item.value} value={item.value}>
                     {item.label}
                   </Option>
@@ -367,7 +430,7 @@ function CouponListPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: 1320 }}
+            scroll={{ x: 1500 }}
             tableLayoutFixed
           />
         </div>

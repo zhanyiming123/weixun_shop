@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Button,
   Cascader,
   Checkbox,
+  Drawer,
   Input,
-  Modal,
-  Radio,
+  Select,
   Table,
   Tabs,
   Tag,
@@ -32,6 +33,7 @@ import {
 } from './types';
 
 const TabPane = Tabs.TabPane;
+const Option = Select.Option;
 
 type MarketingProductSelectorProps = {
   visible: boolean;
@@ -49,6 +51,23 @@ const DEFAULT_FILTER_VALUES: MarketingProductSelectorFilterValues = {
   productOwnershipId: undefined,
   status: undefined,
 };
+const TABLE_PAGE_SIZE = 10;
+const PRODUCT_STATUS_OPTIONS: Array<{
+  label: string;
+  value: 'all' | ProductStatus;
+}> = [
+  { label: '全部', value: 'all' },
+  { label: '销售中', value: 'on' },
+  { label: '仓库中', value: 'off' },
+];
+
+function getProductStatusLabel(status: ProductStatus) {
+  return status === 'on' ? '销售中' : '仓库中';
+}
+
+function getProductStatusColor(status: ProductStatus) {
+  return status === 'on' ? 'green' : 'arcoblue';
+}
 
 function normalizePath(value: (string | string[])[] | undefined): string[] {
   if (!Array.isArray(value) || !value.length) {
@@ -65,6 +84,18 @@ function normalizePath(value: (string | string[])[] | undefined): string[] {
 
 function formatCurrency(price: number) {
   return `¥${price.toFixed(2)}`;
+}
+
+function formatPriceRange(prices: number[]) {
+  if (!prices.length) {
+    return '-';
+  }
+
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  return minPrice === maxPrice
+    ? formatCurrency(minPrice)
+    : `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
 }
 
 function filterTreeBySelected(
@@ -175,10 +206,14 @@ export default function MarketingProductSelector({
   const [activeTab, setActiveTab] = useState<MarketingProductSelectorTab>(
     readonly ? 'selected' : 'all'
   );
-  const [filters, setFilters] = useState<MarketingProductSelectorFilterValues>(
+  const [filterFormValues, setFilterFormValues] = useState<MarketingProductSelectorFilterValues>(
+    DEFAULT_FILTER_VALUES
+  );
+  const [appliedFilters, setAppliedFilters] = useState<MarketingProductSelectorFilterValues>(
     DEFAULT_FILTER_VALUES
   );
   const [draftSelectedSkuIds, setDraftSelectedSkuIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!visible) {
@@ -186,7 +221,9 @@ export default function MarketingProductSelector({
     }
 
     setActiveTab(readonly ? 'selected' : 'all');
-    setFilters(DEFAULT_FILTER_VALUES);
+    setFilterFormValues(DEFAULT_FILTER_VALUES);
+    setAppliedFilters(DEFAULT_FILTER_VALUES);
+    setCurrentPage(1);
     setDraftSelectedSkuIds(selectedSkuIds.filter((key) => allSkuKeys.has(key)));
   }, [allSkuKeys, readonly, selectedSkuIds, visible]);
 
@@ -195,24 +232,42 @@ export default function MarketingProductSelector({
     [data, draftSelectedSkuIds]
   );
   const filteredAllData = useMemo(
-    () => filterTreeByConditions(data, filters),
-    [data, filters]
+    () => filterTreeByConditions(data, appliedFilters),
+    [appliedFilters, data]
   );
   const filteredSelectedData = useMemo(
-    () => filterTreeByConditions(selectedData, filters),
-    [filters, selectedData]
+    () => filterTreeByConditions(selectedData, appliedFilters),
+    [appliedFilters, selectedData]
   );
   const tableData = activeTab === 'all' ? filteredAllData : filteredSelectedData;
   const allTabCount = countVisibleSku(filteredAllData);
   const selectedTabCount = countVisibleSku(filteredSelectedData);
 
-  function patchFilters(
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, tableData.length]);
+
+  function patchFilterFormValues(
     patch: Partial<MarketingProductSelectorFilterValues>
   ) {
-    setFilters((previous) => ({
+    setFilterFormValues((previous) => ({
       ...previous,
       ...patch,
     }));
+  }
+
+  function handleQuery() {
+    setAppliedFilters({ ...filterFormValues });
+    setCurrentPage(1);
+  }
+
+  function handleReset() {
+    setFilterFormValues(DEFAULT_FILTER_VALUES);
+    setAppliedFilters(DEFAULT_FILTER_VALUES);
+    setCurrentPage(1);
   }
 
   function getSelectableChildKeys(record: MarketingProductSelectorSpuItem) {
@@ -260,65 +315,61 @@ export default function MarketingProductSelector({
 
   const columns = [
     {
-      title: '商品名称',
-      dataIndex: 'productName',
-      width: 300,
-      ellipsis: true,
+      title: '',
+      dataIndex: 'expandControl',
+      width: 44,
+      className: styles.expandControlColumn,
+      render: () => null,
+    },
+    {
+      title: '商品信息',
+      dataIndex: 'productInfo',
+      width: 520,
       render: (_: string, record: MarketingProductSelectorTableItem) => (
-        <div className={styles.nameCell}>
-          <span className={styles.namePrimary}>{record.productName}</span>
-          <span className={styles.nameMeta}>
-            商品 ID：{record.productId}
-            {record.rowType === 'sku' ? ` / SKU ID：${record.skuId}` : ''}
-          </span>
+        <div
+          className={[
+            styles.productInfoCell,
+            record.rowType === 'sku' ? styles.childProductInfoCell : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <div className={styles.productInfoContent}>
+            <div className={styles.productTitleRow}>
+              <Tag
+                bordered={false}
+                className={styles.statusTag}
+                color={getProductStatusColor(record.status)}
+                size="small"
+              >
+                {getProductStatusLabel(record.status)}
+              </Tag>
+              <div className={styles.productNameText}>{record.productName}</div>
+            </div>
+            <div className={styles.productMetaText}>
+              {record.rowType === 'spu'
+                ? `商品编码：${record.productId}`
+                : `SKU编码：${record.skuId}`}
+            </div>
+            <div className={styles.productMetaText}>{record.specSummary}</div>
+          </div>
         </div>
       ),
     },
     {
-      title: '规格',
-      dataIndex: 'specText',
-      width: 180,
-      render: (value: string, record: MarketingProductSelectorTableItem) =>
-        record.rowType === 'sku' ? (
-          value || <span className={styles.emptyCell}>-</span>
-        ) : (
-          <span className={styles.emptyCell}>-</span>
-        ),
-    },
-    {
       title: '价格',
       dataIndex: 'price',
-      width: 140,
+      width: 180,
       render: (value: number, record: MarketingProductSelectorTableItem) =>
-        record.rowType === 'sku' ? (
-          formatCurrency(value)
-        ) : (
-          <span className={styles.emptyCell}>-</span>
-        ),
+        record.rowType === 'spu'
+          ? formatPriceRange(record.children.map((item) => item.price))
+          : formatCurrency(value),
     },
     {
       title: '库存',
       dataIndex: 'stock',
       width: 120,
-      render: (value: number, record: MarketingProductSelectorTableItem) =>
-        record.rowType === 'sku' ? (
-          value
-        ) : (
-          <span className={styles.emptyCell}>-</span>
-        ),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 120,
-      render: (value: ProductStatus, record: MarketingProductSelectorTableItem) =>
-        record.rowType === 'sku' ? (
-          <Tag color={value === 'on' ? 'green' : 'red'}>
-            {value === 'on' ? '上架' : '下架'}
-          </Tag>
-        ) : (
-          <span className={styles.emptyCell}>-</span>
-        ),
+      render: (value: number) => value,
     },
     {
       title: '不可选原因',
@@ -334,13 +385,15 @@ export default function MarketingProductSelector({
   ];
 
   return (
-    <Modal
+    <Drawer
+      className={styles.selectorDrawer}
+      placement="right"
       title={title}
       visible={visible}
       footer={readonly ? null : undefined}
       okText="确定"
       cancelText="取消"
-      style={{ width: 1180 }}
+      width="min(1280px, calc(100vw - 32px))"
       onCancel={onCancel}
       onOk={() => onConfirm?.(draftSelectedSkuIds)}
     >
@@ -353,8 +406,9 @@ export default function MarketingProductSelector({
                 allowClear
                 className={styles.keywordInput}
                 placeholder="请输入商品名称 / 商品 ID"
-                value={filters.keyword}
-                onChange={(value) => patchFilters({ keyword: value })}
+                value={filterFormValues.keyword}
+                onChange={(value) => patchFilterFormValues({ keyword: value })}
+                onPressEnter={handleQuery}
               />
             </div>
 
@@ -366,13 +420,16 @@ export default function MarketingProductSelector({
                 options={productCatalogOptions}
                 placeholder="请选择商品类目"
                 value={
-                  filters.productCatalogId
-                    ? getProductCatalogPathById(filters.productCatalogId, catalogItems)
+                  filterFormValues.productCatalogId
+                    ? getProductCatalogPathById(
+                        filterFormValues.productCatalogId,
+                        catalogItems
+                      )
                     : undefined
                 }
                 onChange={(value) => {
                   const path = normalizePath(value);
-                  patchFilters({
+                  patchFilterFormValues({
                     productCatalogId: getProductCatalogIdFromPath(path, catalogItems),
                   });
                 }}
@@ -387,16 +444,16 @@ export default function MarketingProductSelector({
                 options={productOwnershipOptions}
                 placeholder="请选择商品分类"
                 value={
-                  filters.productOwnershipId
+                  filterFormValues.productOwnershipId
                     ? getProductOwnershipPathById(
-                        filters.productOwnershipId,
+                        filterFormValues.productOwnershipId,
                         ownershipItems
                       )
                     : undefined
                 }
                 onChange={(value) => {
                   const path = normalizePath(value);
-                  patchFilters({
+                  patchFilterFormValues({
                     productOwnershipId: getProductOwnershipIdFromPath(
                       path,
                       ownershipItems
@@ -408,94 +465,121 @@ export default function MarketingProductSelector({
 
             <div className={styles.filterItem}>
               <span className={styles.filterLabel}>商品状态</span>
-              <Radio.Group
-                className={styles.statusGroup}
-                value={filters.status || 'all'}
+              <Select
+                className={styles.cascaderControl}
+                placeholder="请选择商品状态"
+                value={filterFormValues.status || 'all'}
                 onChange={(value) =>
-                  patchFilters({
-                    status: value === 'all' ? undefined : (value as ProductStatus),
+                  patchFilterFormValues({
+                    status:
+                      value === 'all'
+                        ? undefined
+                        : (value as ProductStatus | undefined),
                   })
                 }
               >
-                <Radio value="all">全部</Radio>
-                <Radio value="on">上架</Radio>
-                <Radio value="off">下架</Radio>
-              </Radio.Group>
+                {PRODUCT_STATUS_OPTIONS.map((item) => (
+                  <Option key={item.label} value={item.value}>
+                    {item.label}
+                  </Option>
+                ))}
+              </Select>
             </div>
+          </div>
+
+          <div className={styles.filterActions}>
+            <Button type="primary" onClick={handleQuery}>
+              查询
+            </Button>
+            <Button onClick={handleReset}>重置</Button>
           </div>
         </div>
 
-        <Tabs
-          activeTab={activeTab}
-          className={styles.tabs}
-          destroyOnHide={false}
-          onChange={(key) => setActiveTab(key as MarketingProductSelectorTab)}
-        >
-          <TabPane key="all" title={`全部商品(${allTabCount})`} />
-          <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
-        </Tabs>
-
-        <div className={styles.tableWrapper}>
-          <Table
-            rowKey="key"
-            columns={columns}
-            data={tableData}
-            defaultExpandAllRows
-            noDataElement={
-              activeTab === 'selected' ? '暂无已选商品' : '暂无可选商品'
-            }
-            pagination={{
-              pageSize: 6,
-              sizeCanChange: false,
+        <div className={styles.tablePanel}>
+          <Tabs
+            activeTab={activeTab}
+            className={styles.tabs}
+            destroyOnHide={false}
+            onChange={(key) => {
+              setActiveTab(key as MarketingProductSelectorTab);
+              setCurrentPage(1);
             }}
-            rowSelection={
-              readonly
-                ? undefined
-                : {
-                    checkAll: false,
-                    checkStrictly: true,
-                    columnWidth: 48,
-                    preserveSelectedRowKeys: true,
-                    selectedRowKeys: draftSelectedSkuIds,
-                    checkboxProps: (record) =>
-                      record.rowType === 'spu'
-                        ? { disabled: true }
-                        : { disabled: !record.selectable },
-                    renderCell: (
-                      originNode: React.ReactNode,
-                      _: boolean,
-                      record: MarketingProductSelectorTableItem
-                    ) =>
-                      record.rowType === 'spu' ? (
-                        <Checkbox
-                          className={styles.parentCheckbox}
-                          checked={isSpuChecked(record)}
-                          disabled={!record.selectable}
-                          indeterminate={isSpuIndeterminate(record)}
-                          onChange={(checked) => handleSpuCheck(record, checked)}
-                        />
-                      ) : (
-                        originNode
-                      ),
-                    onChange: (keys) =>
-                      setDraftSelectedSkuIds(
-                        keys
-                          .map((key) => String(key))
-                          .filter((key) => allSkuKeys.has(key))
-                      ),
-                  }
-            }
-            scroll={{ x: 1080 }}
-            tableLayoutFixed
-          />
+          >
+            <TabPane key="all" title={`全部商品(${allTabCount})`} />
+            <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
+          </Tabs>
+
+          <div className={styles.tableWrapper}>
+            <Table
+              className={styles.treeTable}
+              rowKey="key"
+              columns={columns}
+              data={tableData}
+              indentSize={0}
+              noDataElement={
+                activeTab === 'selected' ? '暂无已选商品' : '暂无可选商品'
+              }
+              expandProps={{
+                strictTreeData: false,
+              }}
+              pagination={{
+                current: currentPage,
+                pageSize: TABLE_PAGE_SIZE,
+                total: tableData.length,
+                sizeCanChange: false,
+                showTotal: true,
+                showJumper: true,
+                onChange: (pageNumber) => setCurrentPage(pageNumber),
+              }}
+              rowSelection={
+                readonly
+                  ? undefined
+                  : {
+                      type: 'checkbox',
+                      checkStrictly: true,
+                      columnWidth: 48,
+                      preserveSelectedRowKeys: true,
+                      selectedRowKeys: draftSelectedSkuIds,
+                      checkboxProps: (record) =>
+                        record.rowType === 'spu'
+                          ? { disabled: !record.selectable }
+                          : { disabled: !record.selectable },
+                      renderCell: (
+                        originNode: React.ReactNode,
+                        _: boolean,
+                        record: MarketingProductSelectorTableItem
+                      ) =>
+                        record.rowType === 'spu' ? (
+                          <Checkbox
+                            checked={isSpuChecked(record)}
+                            className={styles.parentCheckbox}
+                            disabled={!record.selectable}
+                            indeterminate={isSpuIndeterminate(record)}
+                            onChange={(checked) => handleSpuCheck(record, checked)}
+                          />
+                        ) : (
+                          originNode
+                        ),
+                      onChange: (keys) =>
+                        setDraftSelectedSkuIds(
+                          keys
+                            .map((key) => String(key))
+                            .filter((key) => allSkuKeys.has(key))
+                        ),
+                    }
+              }
+              scroll={{ x: 1080 }}
+              tableLayoutFixed
+            />
+          </div>
         </div>
 
         {!readonly && (
-          <Typography.Text type="secondary">
+          <Typography.Text className={styles.selectionSummary} type="secondary">
             已选择 {draftSelectedSkuIds.length} 个 SKU
           </Typography.Text>
         )}
       </div>
-    </Modal>
+    </Drawer>
   );
 }

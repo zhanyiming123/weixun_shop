@@ -3,6 +3,7 @@ import { Switch, Route, Redirect, useHistory } from 'react-router-dom';
 import { Layout, Menu, Breadcrumb, Spin } from '@arco-design/web-react';
 import cs from 'classnames';
 import {
+  IconDashboard,
   IconList,
   IconSettings,
   IconFile,
@@ -16,7 +17,7 @@ import qs from 'query-string';
 import NProgress from 'nprogress';
 import Navbar from './components/NavBar';
 import Footer from './components/Footer';
-import useRoute, { IRoute } from '@/routes';
+import useRoute, { ALL_ROUTE_KEYS, IRoute } from '@/routes';
 import { isArray } from './utils/is';
 import useLocale from './utils/useLocale';
 import getUrlParams from './utils/getUrlParams';
@@ -32,6 +33,8 @@ const Content = Layout.Content;
 
 function getIconFromKey(key) {
   switch (key) {
+    case 'dashboard':
+      return <IconDashboard className={styles.icon} />;
     case 'product':
       return <IconApps className={styles.icon} />;
     case 'order':
@@ -83,8 +86,14 @@ function PageLayout() {
   const { settings, userLoading, userInfo } = useSelector(
     (state: GlobalState) => state
   );
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
 
-  const [routes, defaultRoute] = useRoute(userInfo?.permissions);
+  const [routes, defaultRoute] = useRoute(
+    userInfo?.permissions,
+    currentOrganization?.scope
+  );
   const defaultSelectedKeys = [currentComponent || defaultRoute];
   const paths = (currentComponent || defaultRoute).split('/');
   const defaultOpenKeys = paths.slice(0, paths.length - 1);
@@ -208,6 +217,25 @@ function PageLayout() {
     setBreadCrumb(routeConfig || []);
     updateMenuStatus();
   }, [pathname]);
+
+  useEffect(() => {
+    if (userLoading || !currentComponent || !defaultRoute) {
+      return;
+    }
+
+    const hasAccess = flattenRoutes.some((route) => route.key === currentComponent);
+    const isKnownRoute = ALL_ROUTE_KEYS.includes(currentComponent);
+
+    if (!hasAccess && isKnownRoute) {
+      history.replace(`/${defaultRoute}`);
+    }
+  }, [
+    currentComponent,
+    defaultRoute,
+    flattenRoutes,
+    history,
+    userLoading,
+  ]);
 
   return (
     <Layout className={styles.layout}>

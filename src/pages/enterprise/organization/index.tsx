@@ -6,6 +6,7 @@ import {
   Cascader,
   Form,
   Input,
+  Link,
   Select,
   Table,
   Tabs,
@@ -16,6 +17,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
   DEFAULT_ORGANIZATION_FILTER_VALUES,
+  getOrganizationSelectedStoreSummary,
   ORGANIZATION_REGION_OPTIONS,
   ORGANIZATION_STATUS_LABEL_MAP,
   ORGANIZATION_STATUS_OPTIONS,
@@ -161,74 +163,148 @@ function EnterpriseOrganizationPage() {
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
     [activeTab, appliedFilters, organizationItems]
   );
+  const regionFieldLabel = activeTab === 'partner' ? '区域' : '所属区域';
+  const isRegionTab = activeTab === 'partner';
 
-  const columns = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      width: 180,
-      render: (value: string) => (
-        <Typography.Text className={styles.organizationName}>
-          {value}
-        </Typography.Text>
-      ),
-    },
-    {
-      title: '编号',
-      dataIndex: 'code',
-      width: 170,
-    },
-    {
-      title: '所属区域',
-      dataIndex: 'regionLabel',
-      width: 180,
-    },
-    {
-      title: '详细地址',
-      dataIndex: 'address',
-      width: 280,
-    },
-    {
-      title: '负责人姓名',
-      dataIndex: 'managerName',
-      width: 120,
-    },
-    {
-      title: '联系电话',
-      dataIndex: 'contactPhone',
-      width: 140,
-    },
-    {
-      title: '网店隔离',
-      dataIndex: 'shopIsolation',
-      width: 120,
-      render: renderCapabilityColumn('shopIsolation'),
-    },
-    {
-      title: '网店状态',
-      dataIndex: 'shopStatus',
-      width: 120,
-      render: renderCapabilityColumn('shopStatus'),
-    },
-    {
-      title: '自建商品',
-      dataIndex: 'selfBuiltProduct',
-      width: 120,
-      render: renderCapabilityColumn('selfBuiltProduct'),
-    },
-    {
-      title: '自定义商品信息',
-      dataIndex: 'customProductInfo',
-      width: 150,
-      render: renderCapabilityColumn('customProductInfo'),
-    },
-    {
+  const columns = useMemo(() => {
+    const baseColumns = [
+      {
+        title: '名称',
+        dataIndex: 'name',
+        width: 180,
+        render: (value: string) => (
+          <Typography.Text className={styles.organizationName}>
+            {value}
+          </Typography.Text>
+        ),
+      },
+      {
+        title: '编号',
+        dataIndex: 'code',
+        width: 170,
+      },
+      {
+        title: regionFieldLabel,
+        dataIndex: 'regionLabel',
+        width: 180,
+      },
+      {
+        title: '详细地址',
+        dataIndex: 'address',
+        width: 280,
+      },
+      {
+        title: '负责人姓名',
+        dataIndex: 'managerName',
+        width: 120,
+      },
+      {
+        title: '联系电话',
+        dataIndex: 'contactPhone',
+        width: 140,
+      },
+    ];
+
+    const statusColumn = {
       title: '组织状态',
       dataIndex: 'status',
       width: 120,
       render: (value: OrganizationStatus) => renderStatusTag(value),
-    },
-  ];
+    };
+
+    if (isRegionTab) {
+      return [
+        ...baseColumns,
+        {
+          title: '圈选门店范围',
+          dataIndex: 'selectedStoreIds',
+          width: 320,
+          render: (_: unknown, record: OrganizationItem) => (
+            <Typography.Text className={styles.storeScopeText}>
+              {getOrganizationSelectedStoreSummary(record.selectedStoreIds) || '-'}
+            </Typography.Text>
+          ),
+        },
+        statusColumn,
+        {
+          title: '操作',
+          dataIndex: 'operations',
+          width: 160,
+          fixed: 'right' as const,
+          render: (_: unknown, record: OrganizationItem) => (
+            <div className={styles.actionLinks}>
+              <Link
+                onClick={() =>
+                  history.push(
+                    `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=basic`
+                  )
+                }
+              >
+                编辑基础信息
+              </Link>
+            </div>
+          ),
+        },
+      ];
+    }
+
+    return [
+      ...baseColumns,
+      {
+        title: '网店隔离',
+        dataIndex: 'shopIsolation',
+        width: 120,
+        render: renderCapabilityColumn('shopIsolation'),
+      },
+      {
+        title: '网店状态',
+        dataIndex: 'shopStatus',
+        width: 120,
+        render: renderCapabilityColumn('shopStatus'),
+      },
+      {
+        title: '自建商品',
+        dataIndex: 'selfBuiltProduct',
+        width: 120,
+        render: renderCapabilityColumn('selfBuiltProduct'),
+      },
+      {
+        title: '自定义商品信息',
+        dataIndex: 'customProductInfo',
+        width: 150,
+        render: renderCapabilityColumn('customProductInfo'),
+      },
+      statusColumn,
+      {
+        title: '操作',
+        dataIndex: 'operations',
+        width: 220,
+        fixed: 'right' as const,
+        render: (_: unknown, record: OrganizationItem) => (
+          <div className={styles.actionLinks}>
+            <Link
+              onClick={() =>
+                history.push(
+                  `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=capability`
+                )
+              }
+            >
+              组织能力
+            </Link>
+            <Link
+              onClick={() =>
+                history.push(
+                  `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=basic`
+                )
+              }
+            >
+              编辑基础信息
+            </Link>
+          </div>
+        ),
+      },
+    ];
+  }, [history, isRegionTab, regionFieldLabel]);
 
   const currentTypeLabel = ORGANIZATION_TYPE_LABEL_MAP[activeTab];
 
@@ -260,12 +336,12 @@ function EnterpriseOrganizationPage() {
             </div>
 
             <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>所属区域</div>
+              <div className={styles.filterLabel}>{regionFieldLabel}</div>
               <Cascader
                 allowClear
                 className={styles.filterCascader}
                 options={ORGANIZATION_REGION_OPTIONS}
-                placeholder="请选择所属区域"
+                placeholder={`请选择${regionFieldLabel}`}
                 value={draftFilters.regionPath.length ? draftFilters.regionPath : undefined}
                 onChange={(value) =>
                   updateDraftFilter('regionPath', normalizePath(value))
@@ -317,7 +393,7 @@ function EnterpriseOrganizationPage() {
           }}
         >
           <TabPane key="store" title="门店" />
-          <TabPane key="partner" title="合伙人" />
+          <TabPane key="partner" title="区域" />
         </Tabs>
 
         <div className={styles.toolbar}>
@@ -350,7 +426,7 @@ function EnterpriseOrganizationPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: 1740 }}
+            scroll={{ x: isRegionTab ? 1680 : 1960 }}
             tableLayoutFixed
           />
         </div>

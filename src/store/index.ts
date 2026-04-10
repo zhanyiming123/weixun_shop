@@ -1,4 +1,6 @@
 import defaultSettings from '../settings.json';
+import { CurrentOrganization, readCurrentOrganization } from '@/utils/organization';
+
 export interface GlobalState {
   settings?: typeof defaultSettings;
   userInfo?: {
@@ -10,6 +12,7 @@ export interface GlobalState {
     email?: string;
     permissions: Record<string, string[]>;
   };
+  currentOrganization?: CurrentOrganization;
   userLoading?: boolean;
 }
 
@@ -18,6 +21,7 @@ const initialState: GlobalState = {
   userInfo: {
     permissions: {},
   },
+  currentOrganization: readCurrentOrganization(),
 };
 
 export default function store(state = initialState, action) {
@@ -35,6 +39,13 @@ export default function store(state = initialState, action) {
         ...state,
         userLoading,
         userInfo,
+      };
+    }
+    case 'update-currentOrganization': {
+      const { currentOrganization } = action.payload;
+      return {
+        ...state,
+        currentOrganization,
       };
     }
     default:

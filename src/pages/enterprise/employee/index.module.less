@@ -1,0 +1,237 @@
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel {
+  padding: 20px 24px 16px;
+  border-radius: 4px;
+  background: var(--color-bg-2);
+  box-shadow: 0 0 0 1px var(--color-border-1);
+}
+
+.header {
+  margin-bottom: 18px;
+}
+
+.pageTitle {
+  color: var(--color-text-1);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbarPrimary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filterPanel {
+  margin-bottom: 18px;
+  padding: 18px 20px 16px;
+  background: rgb(247 248 252);
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(340px, 1.5fr) minmax(220px, 0.8fr);
+  gap: 16px 20px;
+}
+
+.filterItem {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.filterLabel {
+  flex: none;
+  margin-right: 12px;
+  color: var(--color-text-1);
+  line-height: 32px;
+  white-space: nowrap;
+}
+
+.filterInput,
+.filterSelect {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.filterActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-left: 112px;
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0 16px;
+}
+
+.batchBarBottom {
+  padding: 16px 0 0;
+  border-top: 1px solid var(--color-border-1);
+}
+
+.batchControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pageSelect {
+  color: var(--color-text-1);
+}
+
+.batchTrigger {
+  padding: 0 !important;
+  color: var(--color-text-1);
+}
+
+.batchTriggerDisabled {
+  color: var(--color-text-3);
+}
+
+.batchDeleteButton {
+  min-width: 64px;
+}
+
+.paginationWrap {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.pagination {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tableWrap {
+  overflow: hidden;
+}
+
+.accountCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.accountText,
+.nameText {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.currentTag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: rgb(var(--arcoblue-1));
+  color: rgb(var(--arcoblue-6));
+  font-size: 12px;
+  line-height: 22px;
+}
+
+.organizationCell,
+.timeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.organizationLine,
+.operatorText,
+.timeText,
+.statusText {
+  color: var(--color-text-1);
+  line-height: 22px;
+}
+
+.organizationLine {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operatorEmpty,
+.statusMuted {
+  color: var(--color-text-3);
+}
+
+.actionLinks {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .filterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filterActions {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .panel {
+    padding: 16px;
+  }
+
+  .toolbar,
+  .batchBar,
+  .batchBarBottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .paginationWrap {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .filterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterItem {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filterLabel {
+    margin-right: 0;
+    line-height: 20px;
+  }
+
+  .filterActions {
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+}

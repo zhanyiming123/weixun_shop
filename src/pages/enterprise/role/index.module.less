@@ -1,0 +1,181 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panelCard {
+  :global(.arco-card-body) {
+    padding-top: 0;
+  }
+}
+
+.tabs {
+  :global(.arco-tabs-header) {
+    margin-bottom: 20px;
+  }
+
+  :global(.arco-tabs-content) {
+    display: none;
+  }
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-2);
+}
+
+.summaryLabel {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.summaryValue {
+  color: var(--color-text-1);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.summaryHelper {
+  color: var(--color-text-2);
+  line-height: 22px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbarInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toolbarTitle {
+  color: var(--color-text-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.toolbarDesc {
+  color: var(--color-text-3);
+  line-height: 20px;
+}
+
+.roleNameCell {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roleName {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.roleDescription {
+  color: var(--color-text-2);
+  line-height: 22px;
+}
+
+.actionLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.actionLink,
+.actionLinkDanger {
+  cursor: pointer;
+  user-select: none;
+}
+
+.actionLink {
+  color: rgb(var(--arcoblue-6));
+}
+
+.actionLinkDanger {
+  color: rgb(var(--red-6));
+}
+
+.actionDivider {
+  color: var(--color-text-4);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.detailItem,
+.detailItemFull {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--color-fill-2);
+}
+
+.detailItemFull {
+  grid-column: 1 / -1;
+}
+
+.detailLabel {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.detailValue {
+  color: var(--color-text-1);
+  line-height: 22px;
+  word-break: break-word;
+}
+
+.detailTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailItemFull {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

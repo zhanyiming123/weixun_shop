@@ -1,19 +1,275 @@
-.banner {
-  background-color: var(--color-bg-2);
-  padding: 20px;
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
 }
 
-.content {
-  padding: 20px;
+.main,
+.sidebar {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
-.right {
-  width: 280px;
+.emptyState {
+  padding: 80px 0;
 }
 
-.panel {
-  background-color: var(--color-bg-2);
-  border-radius: 4px;
-  overflow: auto;
+.loadingPlaceholder {
+  min-height: 720px;
+}
+
+.overviewCard,
+.sectionCard,
+.sideCard {
+  overflow: hidden;
+}
+
+.overviewHeader,
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle,
+.sectionTitle {
+  margin: 0 0 4px;
+}
+
+.headerTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.metricCard {
+  min-width: 0;
+  padding: 18px 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgb(var(--primary-1)) 0, transparent 36%),
+    linear-gradient(180deg, var(--color-bg-2) 0%, var(--color-fill-1) 100%);
+}
+
+.metricLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.metricValue {
+  margin-top: 10px;
+  color: var(--color-text-1);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.metricTrend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.trendValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.trendSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tableWrapper {
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.tablePrimaryText {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.storeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.storeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgb(var(--gray-1)) 0%, var(--color-bg-2) 100%);
+}
+
+.storeCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.storeName {
+  color: var(--color-text-1);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.storeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.storeMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.storeMetricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.storeMetricValue {
+  color: var(--color-text-1);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.storeWarnings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alertGroupList,
+.alertList,
+.todoList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alertGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alertGroupTitle {
+  display: flex;
+  align-items: center;
+}
+
+.alertItem,
+.todoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 10px;
+  background-color: var(--color-fill-1);
+}
+
+.alertTitleRow,
+.todoHeader,
+.todoMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alertTitle,
+.todoTitle {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+@media (max-width: 1280px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    order: 4;
+  }
+}
+
+@media (max-width: 1100px) {
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .overviewHeader,
+  .sectionHeader,
+  .storeCardHeader,
+  .alertTitleRow,
+  .todoHeader,
+  .todoMeta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metricGrid,
+  .storeGrid,
+  .storeMetricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metricValue {
+    font-size: 24px;
+  }
+
+  .storeMetricValue {
+    font-size: 18px;
+  }
 }

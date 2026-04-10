@@ -1,13 +1,29 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import StarterPage from '@/components/StarterPage';
+import { GlobalState } from '@/store';
+import { getOrganizationScopeLabel } from '@/utils/organization';
 
 function AfterSalesListPage() {
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
+  const scopeLabel = getOrganizationScopeLabel(
+    currentOrganization?.scope || 'headquarter'
+  );
+  const scopeName = currentOrganization?.name || '总部';
+
   return (
     <StarterPage
       title="售后列表"
       badge="售后管理"
-      description="这里作为售后管理下的售后列表页占位，后续可以承接退款、退货退款、换货申请和售后处理记录。"
+      description={`当前处于${scopeLabel}视角（${scopeName}），这里作为售后管理下的售后列表页占位，后续可以承接退款、退货退款、换货申请和售后处理记录。`}
       summaries={[
+        {
+          label: '当前视角',
+          value: scopeName,
+          helper: `已按${scopeLabel}范围切换菜单与数据视角。`,
+        },
         {
           label: '页面类型',
           value: '服务工单',
@@ -17,11 +33,6 @@ function AfterSalesListPage() {
           label: '核心动作',
           value: '审核 / 退款',
           helper: '覆盖通过、拒绝、备注和退款执行等关键动作。',
-        },
-        {
-          label: '推荐起步',
-          value: '售后状态',
-          helper: '建议先补齐申请类型、处理状态、订单号和申请时间筛选。',
         },
       ]}
       modules={[

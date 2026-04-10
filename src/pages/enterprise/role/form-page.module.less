@@ -1,0 +1,202 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.scopeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-fill-2);
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sectionCard {
+  :global(.arco-card-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+.sectionHeader {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.sectionTitle {
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  max-width: 360px;
+}
+
+.formLabel {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.fieldHint {
+  display: block;
+  margin-top: 8px;
+  line-height: 20px;
+}
+
+.permissionSection {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.permissionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.permissionLabel {
+  flex: none;
+  min-width: 88px;
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.permissionContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.permissionHelp {
+  line-height: 22px;
+}
+
+.viewScopeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.viewScopeOptionContent {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.viewScopeTitle {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.viewScopeDescription {
+  color: var(--color-text-2);
+  line-height: 20px;
+}
+
+.treeWrapper {
+  overflow: auto;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+
+  :global(.arco-tree-node) {
+    color: #111827;
+  }
+
+  :global(.arco-tree-node-title) {
+    color: #111827;
+    font-weight: 500;
+  }
+
+  :global(.arco-checkbox-label) {
+    color: #111827;
+  }
+
+  :global(.arco-tree-node-switcher) {
+    color: #111827;
+  }
+
+  :global(.arco-tree-node-selected .arco-tree-node-title),
+  :global(.arco-tree-node-selected .arco-tree-node-title:hover) {
+    color: rgb(var(--primary-6));
+  }
+}
+
+.footerCard {
+  position: sticky;
+  bottom: 16px;
+  z-index: 2;
+  box-shadow: 0 8px 24px rgba(15, 35, 95, 0.08);
+
+  :global(.arco-card-body) {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionRow {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .permissionLabel {
+    min-width: 0;
+    line-height: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .footerActions {
+    justify-content: flex-start;
+  }
+}

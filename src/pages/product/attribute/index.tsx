@@ -428,10 +428,11 @@ function AttributePage() {
         style={{ width: 560 }}
       >
         <Form
-          className="platform-form-spacing"
           form={form}
-          layout="vertical"
+          className={styles.modalForm}
           autoComplete="off"
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 18 }}
           onValuesChange={(changed) => {
             if ('type' in changed) {
               setFormType(changed.type);

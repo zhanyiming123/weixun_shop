@@ -8,16 +8,24 @@ function OverviewAreaLine({
   loading,
   name = '总内容量',
   color = '#4080FF',
+  xField = 'date',
+  yField = 'count',
+  yLabelFormatter = (text: string) => `${Number(text) / 1000}k`,
+  valueFormatter = (value: string) => Number(value).toLocaleString(),
 }: {
   data: any[];
   loading: boolean;
   name?: string;
   color?: string;
+  xField?: string;
+  yField?: string;
+  yLabelFormatter?: (text: string) => React.ReactNode;
+  valueFormatter?: (value: string) => React.ReactNode;
 }) {
   return (
     <Spin loading={loading} style={{ width: '100%' }}>
       <Chart
-        scale={{ value: { min: 0 } }}
+        scale={{ [yField]: { min: 0 } }}
         padding={[10, 20, 50, 40]}
         autoFit
         height={300}
@@ -25,7 +33,7 @@ function OverviewAreaLine({
         className={'chart-wrapper'}
       >
         <Axis
-          name="count"
+          name={yField}
           title
           grid={{
             line: {
@@ -36,19 +44,19 @@ function OverviewAreaLine({
           }}
           label={{
             formatter(text) {
-              return `${Number(text) / 1000}k`;
+              return yLabelFormatter(text);
             },
           }}
         />
-        <Axis name="date" grid={{ line: { style: { stroke: '#E5E8EF' } } }} />
+        <Axis name={xField} grid={{ line: { style: { stroke: '#E5E8EF' } } }} />
         <Line
           shape="smooth"
-          position="date*count"
+          position={`${xField}*${yField}`}
           size={3}
           color="l (0) 0:#1EE7FF .57:#249AFF .85:#6F42FB"
         />
         <Area
-          position="date*count"
+          position={`${xField}*${yField}`}
           shape="smooth"
           color="l (90) 0:rgba(17, 126, 255, 0.5)  1:rgba(17, 128, 255, 0)"
         />
@@ -70,7 +78,7 @@ function OverviewAreaLine({
                 data={items}
                 color={color}
                 name={name}
-                formatter={(value) => Number(value).toLocaleString()}
+                formatter={valueFormatter}
               />
             );
           }}

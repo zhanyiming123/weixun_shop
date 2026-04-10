@@ -9,9 +9,23 @@
   justify-content: flex-end;
 }
 
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .sectionCard {
   :global(.arco-card-body) {
     padding-top: 12px;
+  }
+}
+
+.actionCard {
+  :global(.arco-card-body) {
+    padding: 18px 24px;
   }
 }
 
@@ -71,6 +85,58 @@
 .limitConfigUnit {
   color: var(--color-text-1);
   font-size: 13px;
+}
+
+.storeSummaryPanel {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  background: var(--color-bg-2);
+  padding: 28px 32px;
+}
+
+.storeSummaryContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storeSummaryLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.storeSummaryLabel {
+  color: var(--color-text-1);
+}
+
+.storeSummaryValue {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.storeSummaryAction {
+  padding-left: 0;
+}
+
+.storeSummaryHint {
+  margin: 0;
+  color: var(--color-text-3);
+}
+
+.storeSummaryEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.storeSummaryEmptyText {
+  color: var(--color-text-2);
 }
 
 .limitCountInput {
@@ -462,6 +528,66 @@
   line-height: 22px;
 }
 
+.storeConfigModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.storeConfigFilterRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px)) minmax(260px, 1fr);
+  gap: 16px;
+}
+
+.storeConfigFilter,
+.storeConfigSearch {
+  width: 100%;
+}
+
+.storeConfigToolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.storeConfigToolbarText {
+  color: var(--color-text-2);
+}
+
+.storeConfigBatchSelect {
+  width: 140px;
+}
+
+.storeConfigTable {
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.storeCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.storeTag {
+  flex: none;
+}
+
+.storeName {
+  min-width: 0;
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.storeStatusSelect {
+  width: 120px;
+}
+
 .placeholderRows {
   display: flex;
   flex-direction: column;
@@ -520,6 +646,19 @@
   }
 
   .attributeFieldList {
+    grid-template-columns: 1fr;
+  }
+
+  .actionRow {
+    justify-content: flex-start;
+  }
+
+  .storeSummaryEmpty {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .storeConfigFilterRow {
     grid-template-columns: 1fr;
   }
 }

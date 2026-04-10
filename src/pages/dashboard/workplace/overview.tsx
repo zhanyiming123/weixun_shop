@@ -1,153 +1,149 @@
-import React, { useState, useEffect, ReactNode } from 'react';
-import {
-  Grid,
-  Card,
-  Typography,
-  Divider,
-  Skeleton,
-  Link,
-} from '@arco-design/web-react';
-import { useSelector } from 'react-redux';
-import { IconCaretUp } from '@arco-design/web-react/icon';
+import React from 'react';
+import { Card, Divider, Tag, Typography } from '@arco-design/web-react';
+import { IconCaretDown, IconCaretUp } from '@arco-design/web-react/icon';
 import OverviewAreaLine from '@/components/Chart/overview-area-line';
-import axios from 'axios';
 import locale from './locale';
 import useLocale from '@/utils/useLocale';
-import styles from './style/overview.module.less';
-import IconCalendar from './assets/calendar.svg';
-import IconComments from './assets/comments.svg';
-import IconContent from './assets/content.svg';
-import IconIncrease from './assets/increase.svg';
+import {
+  HeadquartersDashboardSummary,
+  HeadquartersDashboardTrendPoint,
+} from './types';
+import {
+  formatCompactCurrency,
+  formatCurrency,
+  formatNumber,
+  formatTrendLabel,
+  getTrendColor,
+} from './utils';
+import styles from './style/index.module.less';
 
-const { Row, Col } = Grid;
+function TrendFlag({
+  direction,
+  value,
+}: {
+  direction: 'up' | 'down' | 'flat';
+  value: string;
+}) {
+  const color = getTrendColor(direction);
+  const icon =
+    direction === 'up' ? (
+      <IconCaretUp />
+    ) : direction === 'down' ? (
+      <IconCaretDown />
+    ) : null;
 
-type StatisticItemType = {
-  icon?: ReactNode;
-  title?: ReactNode;
-  count?: ReactNode;
-  loading?: boolean;
-  unit?: ReactNode;
-};
-
-function StatisticItem(props: StatisticItemType) {
-  const { icon, title, count, loading, unit } = props;
   return (
-    <div className={styles.item}>
-      <div className={styles.icon}>{icon}</div>
-      <div>
-        <Skeleton loading={loading} text={{ rows: 2, width: 60 }} animation>
-          <div className={styles.title}>{title}</div>
-          <div className={styles.count}>
-            {count}
-            <span className={styles.unit}>{unit}</span>
-          </div>
-        </Skeleton>
-      </div>
-    </div>
+    <span className={styles.trendValue} style={{ color }}>
+      {icon}
+      {formatTrendLabel(direction, value)}
+    </span>
   );
 }
 
-type DataType = {
-  allContents?: string;
-  liveContents?: string;
-  increaseComments?: string;
-  growthRate?: string;
-  chartData?: { count?: number; date?: string }[];
-  down?: boolean;
-};
-
-function Overview() {
-  const [data, setData] = useState<DataType>({});
-  const [loading, setLoading] = useState(true);
+function Overview({
+  updatedAt,
+  summary,
+  gmvTrend,
+  loading,
+  title,
+  scopeTag,
+  trendDescription,
+}: {
+  updatedAt: string;
+  summary: HeadquartersDashboardSummary;
+  gmvTrend: HeadquartersDashboardTrendPoint[];
+  loading: boolean;
+  title?: string;
+  scopeTag?: string;
+  trendDescription?: string;
+}) {
   const t = useLocale(locale);
-
-  const userInfo = useSelector((state: any) => state.userInfo || {});
-
-  const fetchData = () => {
-    setLoading(true);
-    axios
-      .get('/api/workplace/overview-content')
-      .then((res) => {
-        setData(res.data);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const metricList = [
+    {
+      key: 'gmv',
+      label: t['workplace.metric.gmv'],
+      value: formatCompactCurrency(summary.gmv.value),
+      trendValue: summary.gmv.trendValue,
+      trendDirection: summary.gmv.trendDirection,
+    },
+    {
+      key: 'orderCount',
+      label: t['workplace.metric.orderCount'],
+      value: formatNumber(summary.orderCount.value),
+      trendValue: summary.orderCount.trendValue,
+      trendDirection: summary.orderCount.trendDirection,
+    },
+    {
+      key: 'customerCount',
+      label: t['workplace.metric.customerCount'],
+      value: formatNumber(summary.customerCount.value),
+      trendValue: summary.customerCount.trendValue,
+      trendDirection: summary.customerCount.trendDirection,
+    },
+    {
+      key: 'averageOrderValue',
+      label: t['workplace.metric.averageOrderValue'],
+      value: formatCurrency(summary.averageOrderValue.value),
+      trendValue: summary.averageOrderValue.trendValue,
+      trendDirection: summary.averageOrderValue.trendDirection,
+    },
+  ];
 
   return (
-    <Card>
-      <Typography.Title heading={5}>
-        {t['workplace.welcomeBack']}
-        {userInfo.name}
-      </Typography.Title>
-      <Divider />
-      <Row>
-        <Col flex={1}>
-          <StatisticItem
-            icon={<IconCalendar />}
-            title={t['workplace.totalOnlyData']}
-            count={data.allContents}
-            loading={loading}
-            unit={t['workplace.pecs']}
-          />
-        </Col>
-        <Divider type="vertical" className={styles.divider} />
-        <Col flex={1}>
-          <StatisticItem
-            icon={<IconContent />}
-            title={t['workplace.contentInMarket']}
-            count={data.liveContents}
-            loading={loading}
-            unit={t['workplace.pecs']}
-          />
-        </Col>
-        <Divider type="vertical" className={styles.divider} />
-        <Col flex={1}>
-          <StatisticItem
-            icon={<IconComments />}
-            title={t['workplace.comments']}
-            count={data.increaseComments}
-            loading={loading}
-            unit={t['workplace.pecs']}
-          />
-        </Col>
-        <Divider type="vertical" className={styles.divider} />
-        <Col flex={1}>
-          <StatisticItem
-            icon={<IconIncrease />}
-            title={t['workplace.growth']}
-            count={
-              <span>
-                {data.growthRate}{' '}
-                <IconCaretUp
-                  style={{ fontSize: 18, color: 'rgb(var(--green-6))' }}
-                />
-              </span>
-            }
-            loading={loading}
-          />
-        </Col>
-      </Row>
-      <Divider />
-      <div>
-        <div className={styles.ctw}>
-          <Typography.Paragraph
-            className={styles['chart-title']}
-            style={{ marginBottom: 0 }}
-          >
-            {t['workplace.contentData']}
-            <span className={styles['chart-sub-title']}>
-              ({t['workplace.1year']})
-            </span>
-          </Typography.Paragraph>
-          <Link>{t['workplace.seeMore']}</Link>
+    <Card className={styles.overviewCard}>
+      <div className={styles.overviewHeader}>
+        <div>
+          <Typography.Title heading={5} className={styles.pageTitle}>
+            {title || t['workplace.title']}
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            {t['workplace.updatedAt']}：{updatedAt}
+          </Typography.Text>
         </div>
-        <OverviewAreaLine data={data.chartData} loading={loading} />
+        <div className={styles.headerTags}>
+          <Tag color="arcoblue">{t['workplace.period']}</Tag>
+          <Tag color="green">{scopeTag || t['workplace.headquartersScope']}</Tag>
+        </div>
+      </div>
+
+      <div className={styles.metricGrid}>
+        {metricList.map((metric) => (
+          <div key={metric.key} className={styles.metricCard}>
+            <div className={styles.metricLabel}>{metric.label}</div>
+            <div className={styles.metricValue}>{metric.value}</div>
+            <div className={styles.metricTrend}>
+              <span>{t['workplace.vsLastPeriod']}</span>
+              <TrendFlag
+                direction={metric.trendDirection}
+                value={metric.trendValue}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Divider />
+      <div className={styles.trendSection}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <Typography.Title heading={6} className={styles.sectionTitle}>
+              {t['workplace.gmvTrend']}
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              {trendDescription || t['workplace.gmvTrend.description']}
+            </Typography.Text>
+          </div>
+        </div>
+        <OverviewAreaLine
+          data={gmvTrend.map((item) => ({
+            date: item.date,
+            count: item.value,
+          }))}
+          loading={loading}
+          name={t['workplace.metric.gmv']}
+          yLabelFormatter={(text) => `¥${Math.round(Number(text) / 1000)}k`}
+          valueFormatter={(value) => formatCurrency(Number(value))}
+        />
       </div>
     </Card>
   );

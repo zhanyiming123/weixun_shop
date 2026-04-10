@@ -10,12 +10,13 @@
 .left {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  width: 200px;
+  width: auto;
   padding-left: 20px;
   box-sizing: border-box;
 }
@@ -23,9 +24,15 @@
 .logo-name {
   color: var(--color-text-1);
   font-weight: 500;
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1;
   margin-left: 10px;
   font-family: 'PingFang SC';
+  white-space: nowrap;
+}
+
+.organizationSelect {
+  width: 260px;
 }
 
 .right {

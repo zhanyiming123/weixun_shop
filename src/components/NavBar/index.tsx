@@ -1,9 +1,10 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useMemo } from 'react';
 import {
   Tooltip,
   Input,
   Avatar,
   Select,
+  TreeSelect,
   Dropdown,
   Menu,
   Divider,
@@ -24,6 +25,7 @@ import {
   IconTag,
 } from '@arco-design/web-react/icon';
 import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import { GlobalState } from '@/store';
 import { GlobalContext } from '@/context';
 import useLocale from '@/utils/useLocale';
@@ -35,11 +37,21 @@ import styles from './style/index.module.less';
 import defaultLocale from '@/locale';
 import useStorage from '@/utils/useStorage';
 import { generatePermission } from '@/routes';
+import {
+  buildCurrentOrganizationOptions,
+  buildCurrentOrganizationTree,
+  getCurrentOrganizationById,
+  writeCurrentOrganizationId,
+} from '@/utils/organization';
 
 function Navbar({ show }: { show: boolean }) {
   const t = useLocale();
   const userInfo = useSelector((state: GlobalState) => state.userInfo);
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
   const dispatch = useDispatch();
+  const location = useLocation();
 
   const [_, setUserStatus] = useStorage('userStatus');
   const [role, setRole] = useStorage('userRole', 'admin');
@@ -69,7 +81,42 @@ function Navbar({ show }: { show: boolean }) {
         },
       },
     });
-  }, [role]);
+  }, [dispatch, role]);
+
+  const organizationOptions = useMemo(
+    () => buildCurrentOrganizationOptions(),
+    [location.pathname]
+  );
+  const organizationTree = useMemo(
+    () => buildCurrentOrganizationTree(),
+    [location.pathname]
+  );
+  const organizationExpandedKeys = useMemo(
+    () =>
+      organizationOptions
+        .filter((item) => item.scope !== 'store')
+        .map((item) => item.id),
+    [organizationOptions]
+  );
+
+  useEffect(() => {
+    const nextOrganization = getCurrentOrganizationById(
+      currentOrganization?.id,
+      organizationOptions
+    );
+
+    if (currentOrganization?.id === nextOrganization.id) {
+      return;
+    }
+
+    writeCurrentOrganizationId(nextOrganization.id);
+    dispatch({
+      type: 'update-currentOrganization',
+      payload: {
+        currentOrganization: nextOrganization,
+      },
+    });
+  }, [currentOrganization?.id, dispatch, organizationOptions]);
 
   if (!show) {
     return (
@@ -86,6 +133,17 @@ function Navbar({ show }: { show: boolean }) {
   const handleChangeRole = () => {
     const newRole = role === 'admin' ? 'user' : 'admin';
     setRole(newRole);
+  };
+
+  const handleOrganizationChange = (value: string) => {
+    const nextOrganization = getCurrentOrganizationById(value, organizationOptions);
+    writeCurrentOrganizationId(nextOrganization.id);
+    dispatch({
+      type: 'update-currentOrganization',
+      payload: {
+        currentOrganization: nextOrganization,
+      },
+    });
   };
 
   const droplist = (
@@ -140,8 +198,23 @@ function Navbar({ show }: { show: boolean }) {
       <div className={styles.left}>
         <div className={styles.logo}>
           <Logo />
-          <div className={styles['logo-name']}>Arco Pro</div>
+          <div className={styles['logo-name']}>上海唯寻教育科技有限公司</div>
         </div>
+        <TreeSelect
+          className={styles.organizationSelect}
+          allowClear={false}
+          treeData={organizationTree}
+          value={currentOrganization?.id}
+          triggerProps={{
+            autoAlignPopupMinWidth: true,
+            position: 'bl',
+          }}
+          treeProps={{
+            defaultExpandedKeys: organizationExpandedKeys,
+            showLine: true,
+          }}
+          onChange={handleOrganizationChange}
+        />
       </div>
       <ul className={styles.right}>
         <li>

@@ -1,0 +1,277 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tabs {
+  :global(.arco-tabs-header) {
+    margin-bottom: 0;
+  }
+
+  :global(.arco-tabs-content) {
+    display: none;
+  }
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.storeFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.storeFilterLabel {
+  color: var(--color-text-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.storeSelector {
+  width: 260px;
+}
+
+.toolbarHint {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.listContainer {
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--color-fill-2);
+  border-bottom: 1px solid var(--color-border-2);
+  font-weight: 500;
+  color: var(--color-text-1);
+}
+
+.headerName {
+  flex: 1;
+}
+
+.headerOps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-2);
+  font-weight: 500;
+}
+
+.headerInfoIcon {
+  color: var(--color-text-3);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border-1);
+  background: var(--color-bg-2);
+  cursor: grab;
+  transition: background-color 0.15s;
+  user-select: none;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--color-fill-1);
+
+    .dragHandle {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &.dragging {
+    opacity: 0.4;
+    background: var(--color-fill-2);
+  }
+
+  &.dropBefore {
+    box-shadow: inset 0 2px 0 0 rgb(var(--primary-6));
+  }
+
+  &.dropAfter {
+    box-shadow: inset 0 -2px 0 0 rgb(var(--primary-6));
+  }
+}
+
+.childrenBg {
+  background: #f7f8fa;
+
+  .row {
+    background: transparent;
+    border-bottom-color: #edf0f2;
+
+    &:hover {
+      background: #f1f3f5;
+    }
+  }
+}
+
+.dragHandle {
+  opacity: 0;
+  margin-right: 6px;
+  color: var(--color-text-3);
+  font-size: 16px;
+  flex: none;
+  transition: opacity 0.15s;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.expandIcon {
+  margin-right: 8px;
+  color: var(--color-text-2);
+  font-size: 12px;
+  flex: none;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover {
+    color: rgb(var(--primary-6));
+  }
+}
+
+.expandPlaceholder {
+  display: inline-block;
+  width: 16px;
+}
+
+.nodeContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nodeName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeMeta {
+  font-size: 12px;
+  color: var(--color-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: none;
+  padding-left: 24px;
+}
+
+.actionLink {
+  color: rgb(var(--primary-6));
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+
+  &:hover {
+    color: rgb(var(--primary-5));
+  }
+}
+
+.actionLinkDanger {
+  color: rgb(var(--danger-6));
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+
+  &:hover {
+    color: rgb(var(--danger-5));
+  }
+}
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-3);
+  font-size: 14px;
+}
+
+.parentTip {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: var(--color-fill-2);
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.modalForm {
+  :global(.arco-form-item),
+  :global(.arco-form-item.arco-form-item-error) {
+    margin-bottom: 24px;
+  }
+
+  :global(.arco-form-item:last-child) {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .storeFilter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .storeSelector {
+    width: 100%;
+  }
+
+  .nodeActions {
+    gap: 12px;
+    padding-left: 12px;
+  }
+}

@@ -14,8 +14,7 @@
   }
 }
 
-.sectionForm,
-.couponForm {
+.sectionForm {
   :global(.arco-form-item) {
     margin-bottom: 0;
   }
@@ -24,13 +23,24 @@
 .sectionBlock {
   display: flex;
   flex-direction: column;
-  gap: var(--platform-form-item-spacing);
+  gap: 0;
 }
 
 .sectionTitle {
-  margin: 0;
+  margin: 0 0 24px;
   font-size: 20px;
   font-weight: 600;
+}
+
+.couponForm {
+  :global(.arco-form-item),
+  :global(.arco-form-item.arco-form-item-error) {
+    margin-bottom: 24px;
+  }
+
+  :global(.arco-form-item:last-child) {
+    margin-bottom: 0;
+  }
 }
 
 .sectionDivider {
@@ -82,6 +92,45 @@
   max-width: 420px;
 }
 
+.storeSelectorTrigger {
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.storeSelectorSummary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.storeSelectorTitle {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.storeSelectorTitleEmpty {
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+
+.storeSelectorDescription {
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 20px;
+  word-break: break-all;
+}
+
 .scopeBlock,
 .validityBlock {
   display: flex;
@@ -96,9 +145,7 @@
 }
 
 .categorySelect {
-  flex: 1;
-  min-width: 0;
-  max-width: 520px;
+  width: 100%;
 }
 
 .categorySection {
@@ -114,14 +161,41 @@
 .categorySectionHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+}
+
+.categorySectionFilters {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.categorySectionField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.categorySectionField:first-child {
+  flex: 2 1 420px;
+}
+
+.categorySectionFieldLabel {
+  flex-shrink: 0;
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 22px;
 }
 
 .conditionFields {
   display: flex;
   flex-direction: column;
   gap: var(--platform-form-item-spacing);
+  flex: 1;
+  min-width: 0;
 }
 
 .conditionFieldItem {
@@ -146,9 +220,7 @@
 }
 
 .specSelect {
-  flex: 1;
-  min-width: 0;
-  max-width: 360px;
+  width: 220px;
 }
 
 .scopeActionRow,
@@ -227,6 +299,11 @@
     }
   }
 
+  .storeSelectorTrigger {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .sectionTitle {
     font-size: 18px;
   }
@@ -254,6 +331,16 @@
 
   .conditionFieldLabel {
     width: auto;
+  }
+
+  .categorySectionFilters,
+  .categorySectionField {
+    width: 100%;
+  }
+
+  .categorySectionField {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .actionRow {

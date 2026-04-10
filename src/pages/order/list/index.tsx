@@ -1,13 +1,29 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import StarterPage from '@/components/StarterPage';
+import { GlobalState } from '@/store';
+import { getOrganizationScopeLabel } from '@/utils/organization';
 
 function OrderListPage() {
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
+  const scopeLabel = getOrganizationScopeLabel(
+    currentOrganization?.scope || 'headquarter'
+  );
+  const scopeName = currentOrganization?.name || '总部';
+
   return (
     <StarterPage
       title="订单列表"
       badge="订单管理"
-      description="这里作为订单管理下的订单列表页占位，后续可以继续承接订单检索、订单详情、发货处理和履约追踪。"
+      description={`当前处于${scopeLabel}视角（${scopeName}），这里作为订单管理下的订单列表页占位，后续可以继续承接订单检索、订单详情、发货处理和履约追踪。`}
       summaries={[
+        {
+          label: '当前视角',
+          value: scopeName,
+          helper: `已按${scopeLabel}范围切换菜单与数据视角。`,
+        },
         {
           label: '页面类型',
           value: '交易列表',
@@ -17,11 +33,6 @@ function OrderListPage() {
           label: '覆盖流程',
           value: '下单到签收',
           helper: '串联支付、发货、物流、签收和完结状态。',
-        },
-        {
-          label: '推荐起步',
-          value: '状态筛选',
-          helper: '建议先补齐订单号、用户、支付状态和发货状态筛选。',
         },
       ]}
       modules={[

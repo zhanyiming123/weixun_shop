@@ -1,0 +1,123 @@
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.modeHint {
+  color: var(--color-text-2);
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: auto 220px 220px minmax(260px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.filterActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filterTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: var(--color-fill-2);
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.filterSelect,
+.searchInput {
+  width: 100%;
+}
+
+.table {
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.storeNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.storeAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f3f5;
+  color: #c9cdd4;
+  font-size: 20px;
+  flex: none;
+}
+
+.storeNameButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgb(var(--arcoblue-6));
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
+  cursor: default;
+}
+
+.contactCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 22px;
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .filterRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .modeRow {
+    align-items: flex-start;
+  }
+
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+
+  .footerActions {
+    justify-content: stretch;
+  }
+
+  .footerActions :global(.arco-btn) {
+    flex: 1;
+  }
+}

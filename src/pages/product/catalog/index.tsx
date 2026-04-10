@@ -285,10 +285,6 @@ function CatalogPage() {
           )}
         </div>
 
-        <div className={styles.systemNode}>
-          <div className={styles.systemName}>未分类</div>
-          <div className={styles.systemDesc}>系统预设类目，不可编辑和删除</div>
-        </div>
       </div>
 
       <Modal
