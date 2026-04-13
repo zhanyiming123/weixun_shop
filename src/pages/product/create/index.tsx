@@ -62,7 +62,6 @@ import {
 } from '../attribute/data';
 import {
   DEFAULT_INVENTORY_UNIT,
-  filterProductStoreConfigsByStoreIds,
   INVENTORY_UNIT_OPTIONS,
   createProductId,
   createProductSkuId,
@@ -86,6 +85,7 @@ import {
   ProductStoreType,
   readProductStoreItems,
 } from '../store-config/data';
+import { getProductStatusByStoreConfigs } from '@/lib/product';
 import { GlobalState } from '@/store';
 import { filterStoreItemsByIds } from '@/utils/organization';
 
@@ -143,6 +143,86 @@ function moveArrayItem<T>(list: T[], fromIndex: number, toIndex: number): T[] {
   return next;
 }
 
+function buildUploadFileListFromCarouselImages(
+  images: { id: string; name: string; url: string }[] = []
+): UploadItem[] {
+  return images.map((item) => ({
+    uid: item.id,
+    name: item.name,
+    url: item.url,
+    status: 'done',
+  }));
+}
+
+function buildCarouselImageState(
+  images: { id: string; name: string; url: string }[] = []
+): CarouselImage[] {
+  return images.map((item) => ({
+    uid: item.id,
+    name: item.name,
+    url: item.url,
+  }));
+}
+
+function buildSubmitCarouselImages(images: CarouselImage[] = []) {
+  return images.flatMap((item, index) => {
+    if (!item.url) {
+      return [];
+    }
+
+    return [
+      {
+        id: item.uid || `carousel_${index + 1}`,
+        name: item.name?.trim() || `图片${index + 1}`,
+        url: item.url,
+      },
+    ];
+  });
+}
+
+function buildDefaultCreateStoreConfigs(
+  items: ProductStoreItem[],
+  ownStoreIds: string[]
+): ProductStoreConfigItem[] {
+  const defaultSellableStoreIds =
+    ownStoreIds.length > 0 ? ownStoreIds : items.map((item) => item.id);
+  const sellableStoreIdSet = new Set(defaultSellableStoreIds);
+
+  return items.map((item) => ({
+    storeId: item.id,
+    sellStatus: sellableStoreIdSet.has(item.id) ? 'sellable' : 'unsellable',
+    channelStatus: 'off',
+  }));
+}
+
+function isCreateStoreConfigDefault(
+  storeConfigs: ProductStoreConfigItem[],
+  items: ProductStoreItem[],
+  ownStoreIds: string[]
+) {
+  if (!items.length || storeConfigs.length !== items.length) {
+    return false;
+  }
+
+  const defaultSellableStoreIds =
+    ownStoreIds.length > 0 ? ownStoreIds : items.map((item) => item.id);
+  const sellableStoreIdSet = new Set(defaultSellableStoreIds);
+  const storeConfigMap = new Map(storeConfigs.map((item) => [item.storeId, item]));
+
+  return items.every((item) => {
+    const config = storeConfigMap.get(item.id);
+    if (!config) {
+      return false;
+    }
+
+    if (sellableStoreIdSet.has(item.id)) {
+      return config.sellStatus === 'sellable' && config.channelStatus === 'off';
+    }
+
+    return config.sellStatus === 'unsellable' && config.channelStatus === 'off';
+  });
+}
+
 const DEFAULT_DETAIL_HTML =
   '';
 
@@ -168,6 +248,7 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
 
 const COPY_PRODUCT_NAME_SUFFIX = '（副本）';
 const STORE_CONFIG_PAGE_SIZE_OPTIONS = [20, 50];
+const EMPTY_STORE_IDS: string[] = [];
 const PRODUCT_FORM_LAYOUT = {
   layout: 'horizontal' as const,
   labelCol: { flex: '120px' },
@@ -254,7 +335,7 @@ function ProductCreatePage() {
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
   const storeItems = useMemo(() => readProductStoreItems(), []);
-  const visibleStoreIds = currentOrganization?.storeIds || [];
+  const visibleStoreIds = currentOrganization?.storeIds || EMPTY_STORE_IDS;
   const scopedStoreItems = useMemo(
     () =>
       isHeadquarter ? storeItems : filterStoreItemsByIds(storeItems, visibleStoreIds),
@@ -302,7 +383,6 @@ function ProductCreatePage() {
   const [productCatalogId, setProductCatalogId] = useState<string>();
   const [productOwnershipId, setProductOwnershipId] = useState<string>();
   const [productName, setProductName] = useState('');
-  const [shelfTime, setShelfTime] = useState('immediately');
   const [uploadFileList, setUploadFileList] = useState<UploadItem[]>([]);
   const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
   const [draggingUid, setDraggingUid] = useState<string>('');
@@ -361,7 +441,8 @@ function ProductCreatePage() {
       setProductCatalogId(undefined);
       setProductOwnershipId(undefined);
       setProductName('');
-      setShelfTime('immediately');
+      setUploadFileList([]);
+      setCarouselImages([]);
       setInventoryUnit(DEFAULT_INVENTORY_UNIT);
       setSpecMode('multi');
       setSpecItems([]);
@@ -369,11 +450,7 @@ function ProductCreatePage() {
       setSingleSpecPrice(undefined);
       setSingleSpecStock(undefined);
       setProductStoreConfigs(
-        scopedStoreItems.map((item) => ({
-          storeId: item.id,
-          sellStatus: 'sellable' as const,
-          channelStatus: 'off' as const,
-        }))
+        buildDefaultCreateStoreConfigs(scopedStoreItems, visibleStoreIds)
       );
       setHiddenStoreConfigs([]);
       return;
@@ -386,7 +463,10 @@ function ProductCreatePage() {
         ? buildCopyProductName(sourceProduct.name)
         : sourceProduct.name
     );
-    setShelfTime(sourceProduct.status === 'on' ? 'immediately' : 'warehouse');
+    setUploadFileList(
+      buildUploadFileListFromCarouselImages(sourceProduct.carouselImages || [])
+    );
+    setCarouselImages(buildCarouselImageState(sourceProduct.carouselImages || []));
     setInventoryUnit(sourceProduct.inventoryUnit || DEFAULT_INVENTORY_UNIT);
     setSpecMode('single');
     setSpecItems([]);
@@ -406,7 +486,7 @@ function ProductCreatePage() {
         (item) => !visibleStoreIdSet.has(item.storeId)
       )
     );
-  }, [pageMode, scopedStoreItems, sourceProduct]);
+  }, [pageMode, scopedStoreItems, sourceProduct, visibleStoreIds]);
 
   function revokeObjectUrl(uid: string) {
     const target = objectUrlMapRef.current.get(uid);
@@ -794,20 +874,31 @@ function ProductCreatePage() {
   }
 
   function buildSubmitProduct(productId: string, createdAt: string): ProductItem {
-    const nextStatus = shelfTime === 'immediately' ? 'on' : 'off';
     const nextName = productName.trim() || sourceProduct?.name || '未命名商品';
     const nextCatalogId = productCatalogId || sourceProduct?.productCatalogId || '';
     const nextOwnershipId =
       productOwnershipId || sourceProduct?.productOwnershipId || '';
     const nextSource = getSubmitProductSource();
+    const nextCarouselImages = buildSubmitCarouselImages(carouselImages);
     const nextStoreConfigs = [
       ...hiddenStoreConfigs.map((item) => ({ ...item })),
       ...productStoreConfigs.map((item) => ({ ...item })),
     ];
+    const nextStatus = getProductStatusByStoreConfigs(nextStoreConfigs);
 
     if (isEditMode && sourceProduct) {
+      const sourceProductBase = {
+        ...(sourceProduct as ProductItem & {
+          storeView?: unknown;
+        }),
+      };
+
+      if ('storeView' in sourceProductBase) {
+        delete sourceProductBase.storeView;
+      }
+
       return {
-        ...sourceProduct,
+        ...sourceProductBase,
         name: nextName,
         productCatalogId: nextCatalogId,
         productOwnershipId: nextOwnershipId,
@@ -815,6 +906,8 @@ function ProductCreatePage() {
         status: nextStatus,
         createdAt,
         ...nextSource,
+        carouselImages: nextCarouselImages,
+        storeOverrides: sourceProduct.storeOverrides || {},
         storeConfigs: nextStoreConfigs,
       };
     }
@@ -863,6 +956,8 @@ function ProductCreatePage() {
       stock: nextStock,
       createdAt,
       ...nextSource,
+      carouselImages: nextCarouselImages,
+      storeOverrides: {},
       storeConfigs: nextStoreConfigs,
     };
   }
@@ -902,14 +997,14 @@ function ProductCreatePage() {
     () => getProductStoreSummary(productStoreConfigs),
     [productStoreConfigs]
   );
-  const isAllStoresSellableButOff = useMemo(
+  const isOwnStoresSellableButOff = useMemo(
     () =>
-      Boolean(scopedStoreItems.length) &&
-      productStoreConfigs.length === scopedStoreItems.length &&
-      productStoreConfigs.every(
-        (item) => item.sellStatus === 'sellable' && item.channelStatus === 'off'
+      isCreateStoreConfigDefault(
+        productStoreConfigs,
+        scopedStoreItems,
+        visibleStoreIds
       ),
-    [productStoreConfigs, scopedStoreItems]
+    [productStoreConfigs, scopedStoreItems, visibleStoreIds]
   );
   const storeConfigTableData = useMemo<StoreConfigTableItem[]>(() => {
     const keyword = storeKeyword.trim().toLowerCase();
@@ -1048,13 +1143,7 @@ function ProductCreatePage() {
           </Typography.Title>
         </div>
 
-        <Form
-          className={styles.sectionForm}
-          initialValues={{
-            shelfTime: 'immediately',
-          }}
-          {...PRODUCT_FORM_LAYOUT}
-        >
+        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
             <Form.Item label="商品类型">
               <Select className={styles.singleFieldControl} value="virtual" disabled>
@@ -1262,17 +1351,6 @@ function ProductCreatePage() {
                   )}
                 </div>
               </div>
-            </Form.Item>
-
-            <Form.Item field="shelfTime" label="上架时间">
-              <Radio.Group
-                disabled={isEditMode}
-                value={shelfTime}
-                onChange={setShelfTime}
-              >
-                <Radio value="immediately">立即上架</Radio>
-                <Radio value="warehouse">仓库中</Radio>
-              </Radio.Group>
             </Form.Item>
 
             <Form.Item className={styles.fullWidth} label="是否限购">
@@ -1718,8 +1796,8 @@ function ProductCreatePage() {
               <div className={styles.storeSummaryLine}>
                 <span className={styles.storeSummaryLabel}>店铺配置：</span>
                 <span className={styles.storeSummaryValue}>
-                  {isAllStoresSellableButOff
-                    ? '全部店铺可售但下架'
+                  {isOwnStoresSellableButOff
+                    ? '自己的门店可售但下架'
                     : `可售店铺：${productStoreSummary.sellable}`}
                 </span>
                 <Button

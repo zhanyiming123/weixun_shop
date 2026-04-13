@@ -13,7 +13,8 @@ import {
   Table,
   Typography,
 } from '@arco-design/web-react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import styles from './index.module.less';
 import {
   DEFAULT_EMPLOYEE_FILTER_VALUES,
@@ -25,6 +26,8 @@ import {
   EmployeeItem,
   EmployeeStatus,
 } from './data';
+import { GlobalState } from '@/store';
+import { getEmployeeCreatePath } from '@/utils/demo-route';
 
 const Option = Select.Option;
 
@@ -67,6 +70,10 @@ function splitDateTime(value: string) {
 
 function EnterpriseEmployeePage() {
   const history = useHistory();
+  const location = useLocation();
+  const currentOrganization = useSelector(
+    (state: GlobalState) => state.currentOrganization
+  );
   const [formValues, setFormValues] = useState<EmployeeFilterValues>({
     ...DEFAULT_EMPLOYEE_FILTER_VALUES,
   });
@@ -93,6 +100,8 @@ function EnterpriseEmployeePage() {
     const start = (currentPage - 1) * pageSize;
     return filteredEmployees.slice(start, start + pageSize);
   }, [currentPage, filteredEmployees, pageSize]);
+  const isStoreConfigPage = location.pathname.startsWith('/store-config/employee');
+  const pageTitle = isStoreConfigPage ? '门店员工' : '商户员工';
 
   const currentPageEmployeeIds = useMemo(
     () => currentPageEmployees.map((item) => item.id),
@@ -381,14 +390,14 @@ function EnterpriseEmployeePage() {
     <div className={styles.page}>
       <div className={styles.panel}>
         <div className={styles.header}>
-          <Typography.Text className={styles.pageTitle}>员工管理</Typography.Text>
+          <Typography.Text className={styles.pageTitle}>{pageTitle}</Typography.Text>
         </div>
 
         <div className={styles.toolbar}>
           <div className={styles.toolbarPrimary}>
             <Button
               type="primary"
-              onClick={() => history.push('/enterprise/employee/create')}
+              onClick={() => history.push(getEmployeeCreatePath(location.pathname))}
             >
               新建员工
             </Button>
@@ -415,9 +424,14 @@ function EnterpriseEmployeePage() {
               <span className={styles.filterLabel}>所属组织：</span>
               <Select
                 allowClear
+                disabled={isStoreConfigPage}
                 showSearch
                 className={styles.filterSelect}
-                placeholder="请选择或搜索店铺名称"
+                placeholder={
+                  isStoreConfigPage
+                    ? `当前门店：${currentOrganization?.name || '门店'}`
+                    : '请选择或搜索店铺名称'
+                }
                 value={formValues.organizationId}
                 onChange={(value) =>
                   updateFormValue('organizationId', value || undefined)

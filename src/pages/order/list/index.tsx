@@ -3,21 +3,25 @@ import { useSelector } from 'react-redux';
 import StarterPage from '@/components/StarterPage';
 import { GlobalState } from '@/store';
 import { getOrganizationScopeLabel } from '@/utils/organization';
+import { scaleMetricByDemoScope } from '@/utils/demo';
 
 function OrderListPage() {
-  const currentOrganization = useSelector(
-    (state: GlobalState) => state.currentOrganization
+  const { currentOrganization, demoContext } = useSelector(
+    (state: GlobalState) => state
   );
   const scopeLabel = getOrganizationScopeLabel(
     currentOrganization?.scope || 'headquarter'
   );
   const scopeName = currentOrganization?.name || '总部';
+  const pendingCount = scaleMetricByDemoScope(36, demoContext);
+  const todayCount = scaleMetricByDemoScope(128, demoContext);
+  const refundRiskCount = scaleMetricByDemoScope(9, demoContext);
 
   return (
     <StarterPage
       title="订单列表"
-      badge="订单管理"
-      description={`当前处于${scopeLabel}视角（${scopeName}），这里作为订单管理下的订单列表页占位，后续可以继续承接订单检索、订单详情、发货处理和履约追踪。`}
+      badge={demoContext?.systemLabel || '订单管理'}
+      description={`当前处于${scopeLabel}视角（${scopeName}），订单列表会继续叠加${demoContext?.dataScopeLabel || '当前权限'}口径，用来演示不同身份看到的交易数据范围。`}
       summaries={[
         {
           label: '当前视角',
@@ -25,14 +29,19 @@ function OrderListPage() {
           helper: `已按${scopeLabel}范围切换菜单与数据视角。`,
         },
         {
-          label: '页面类型',
-          value: '交易列表',
-          helper: '适合做多条件检索、状态切换和详情查看。',
+          label: '今日订单',
+          value: `${todayCount} 单`,
+          helper: '切换演示身份后，这里的数量会随数据权限口径一起变化。',
         },
         {
-          label: '覆盖流程',
-          value: '下单到签收',
-          helper: '串联支付、发货、物流、签收和完结状态。',
+          label: '待跟进订单',
+          value: `${pendingCount} 单`,
+          helper: '用于演示门店员工仅看到部门内需要处理的订单。',
+        },
+        {
+          label: '退款风险',
+          value: `${refundRiskCount} 单`,
+          helper: '可作为商户侧与门店侧差异化看板的占位指标。',
         },
       ]}
       modules={[

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Empty, Spin } from '@arco-design/web-react';
+import { Card, Empty, Space, Spin, Tag, Typography } from '@arco-design/web-react';
 import { useSelector } from 'react-redux';
 import Overview from './overview';
 import RegionPerformance from './region-performance';
@@ -11,11 +11,53 @@ import locale from './locale';
 import useLocale from '@/utils/useLocale';
 import { GlobalState } from '@/store';
 import { buildWorkplaceDashboardData } from './data';
+import { scaleMetricByDemoScope } from '@/utils/demo';
+
+function applyDashboardDemoScope(data: HeadquartersDashboardData, isDepartmentScoped: boolean) {
+  const departmentScopeContext = {
+    currentDemoIdentity: 'store_staff' as const,
+  };
+
+  if (!isDepartmentScoped) {
+    return data;
+  }
+
+  return {
+    ...data,
+    summary: {
+      gmv: {
+        ...data.summary.gmv,
+        value: scaleMetricByDemoScope(data.summary.gmv.value, departmentScopeContext),
+      },
+      orderCount: {
+        ...data.summary.orderCount,
+        value: scaleMetricByDemoScope(
+          data.summary.orderCount.value,
+          departmentScopeContext
+        ),
+      },
+      customerCount: {
+        ...data.summary.customerCount,
+        value: scaleMetricByDemoScope(
+          data.summary.customerCount.value,
+          departmentScopeContext
+        ),
+      },
+      averageOrderValue: data.summary.averageOrderValue,
+    },
+    gmvTrend: data.gmvTrend.map((item) => ({
+      ...item,
+      value: scaleMetricByDemoScope(item.value, departmentScopeContext),
+    })),
+    alerts: data.alerts.slice(0, 2),
+    todos: data.todos.slice(0, 2),
+  };
+}
 
 function Workplace() {
   const t = useLocale(locale);
-  const currentOrganization = useSelector(
-    (state: GlobalState) => state.currentOrganization
+  const { currentOrganization, currentDemoSystem, demoContext } = useSelector(
+    (state: GlobalState) => state
   );
   const [data, setData] = useState<HeadquartersDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,9 +114,15 @@ function Workplace() {
 
   useEffect(() => {
     setLoading(true);
-    setData(buildWorkplaceDashboardData(currentOrganization));
+    const nextData = buildWorkplaceDashboardData(currentOrganization);
+    setData(
+      applyDashboardDemoScope(
+        nextData,
+        demoContext?.currentDemoIdentity === 'store_staff'
+      )
+    );
     setLoading(false);
-  }, [currentOrganization]);
+  }, [currentOrganization, demoContext?.currentDemoIdentity]);
 
   if (!loading && !data) {
     return <Empty className={styles.emptyState} />;
@@ -86,6 +134,33 @@ function Workplace() {
         {data && (
           <div className={styles.page}>
             <div className={styles.main}>
+              <Card className={styles.demoCard}>
+                <Space direction="vertical" size={10} style={{ display: 'flex' }}>
+                  <div className={styles.demoHeader}>
+                    <div>
+                      <Typography.Title heading={5} style={{ margin: 0 }}>
+                        {currentDemoSystem === 'merchant'
+                          ? '商户管理系统首页'
+                          : '门店管理系统首页'}
+                      </Typography.Title>
+                      <Typography.Text type="secondary">
+                        {demoContext?.identityDescription}
+                      </Typography.Text>
+                    </div>
+                    <div className={styles.demoTags}>
+                      <Tag color="arcoblue">{demoContext?.systemLabel}</Tag>
+                      <Tag color="green">{demoContext?.identityLabel}</Tag>
+                      <Tag>{demoContext?.dataScopeLabel}</Tag>
+                    </div>
+                  </div>
+                  <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    当前组织：{currentOrganization?.name || '总部'}
+                    {demoContext?.currentStaffDepartmentName
+                      ? ` · 当前部门：${demoContext.currentStaffDepartmentName}`
+                      : ''}
+                  </Typography.Paragraph>
+                </Space>
+              </Card>
               <Overview
                 updatedAt={data.updatedAt}
                 summary={data.summary}

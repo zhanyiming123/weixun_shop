@@ -13,6 +13,37 @@
   gap: 16px;
 }
 
+.selectorGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selectorField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currentPreset {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 160px;
+}
+
+.currentPresetTitle {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.selectorLabel {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 1;
+}
+
 .logo {
   display: flex;
   align-items: center;
@@ -31,8 +62,8 @@
   white-space: nowrap;
 }
 
-.organizationSelect {
-  width: 260px;
+.systemSelect {
+  width: 172px;
 }
 
 .right {
@@ -70,6 +101,16 @@
   margin-right: 8px;
   font-size: 16px;
   vertical-align: text-bottom;
+}
+
+.menuSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuSummaryTitle {
+  font-weight: 600;
 }
 
 .fixed-settings {

@@ -29,6 +29,13 @@ import {
   OrganizationType,
   useOrganizationItems,
 } from './data';
+import { useSelector } from 'react-redux';
+import { GlobalState } from '@/store';
+import {
+  getOrganizationCreatePath,
+  getOrganizationEditPath,
+  getOrganizationListPath,
+} from '@/utils/demo-route';
 
 const Option = Select.Option;
 const TabPane = Tabs.TabPane;
@@ -73,6 +80,9 @@ function EnterpriseOrganizationPage() {
   const history = useHistory();
   const location = useLocation();
   const [organizationItems] = useOrganizationItems();
+  const { currentDemoIdentity, demoContext } = useSelector(
+    (state: GlobalState) => state
+  );
   const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
   const activeTab = useMemo<OrganizationType>(
     () => (locationQuery.tab === 'partner' ? 'partner' : 'store'),
@@ -90,9 +100,9 @@ function EnterpriseOrganizationPage() {
 
   useEffect(() => {
     if (locationQuery.tab !== activeTab) {
-      history.replace(`/enterprise/organization?tab=${activeTab}`);
+      history.replace(getOrganizationListPath(location.pathname, activeTab));
     }
-  }, [activeTab, history, locationQuery.tab]);
+  }, [activeTab, history, location.pathname, locationQuery.tab]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -130,6 +140,13 @@ function EnterpriseOrganizationPage() {
   const filteredOrganizations = useMemo(
     () =>
       organizationItems
+        .filter((item) => {
+          if (currentDemoIdentity !== 'region_admin') {
+            return true;
+          }
+
+          return demoContext?.allowedOrganizationIds.includes(item.id);
+        })
         .filter((item) => item.type === activeTab)
         .filter((item) => {
           const keyword = appliedFilters.keyword.trim();
@@ -161,7 +178,7 @@ function EnterpriseOrganizationPage() {
           return true;
         })
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
-    [activeTab, appliedFilters, organizationItems]
+    [activeTab, appliedFilters, currentDemoIdentity, demoContext, organizationItems]
   );
   const regionFieldLabel = activeTab === 'partner' ? '区域' : '所属区域';
   const isRegionTab = activeTab === 'partner';
@@ -236,7 +253,12 @@ function EnterpriseOrganizationPage() {
               <Link
                 onClick={() =>
                   history.push(
-                    `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=basic`
+                    getOrganizationEditPath(
+                      location.pathname,
+                      record.id,
+                      record.type,
+                      'basic'
+                    )
                   )
                 }
               >
@@ -284,29 +306,41 @@ function EnterpriseOrganizationPage() {
           <div className={styles.actionLinks}>
             <Link
               onClick={() =>
-                history.push(
-                  `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=capability`
-                )
-              }
-            >
+                  history.push(
+                    getOrganizationEditPath(
+                      location.pathname,
+                      record.id,
+                      record.type,
+                      'capability'
+                    )
+                  )
+                }
+              >
               组织能力
             </Link>
             <Link
               onClick={() =>
-                history.push(
-                  `/enterprise/organization/edit?id=${record.id}&type=${record.type}&section=basic`
-                )
-              }
-            >
+                  history.push(
+                    getOrganizationEditPath(
+                      location.pathname,
+                      record.id,
+                      record.type,
+                      'basic'
+                    )
+                  )
+                }
+              >
               编辑基础信息
             </Link>
           </div>
         ),
       },
     ];
-  }, [history, isRegionTab, regionFieldLabel]);
+  }, [history, isRegionTab, location.pathname, regionFieldLabel]);
 
   const currentTypeLabel = ORGANIZATION_TYPE_LABEL_MAP[activeTab];
+  const canCreateCurrentType =
+    currentDemoIdentity === 'merchant_admin' || activeTab === 'store';
 
   return (
     <div className={styles.page}>
@@ -389,23 +423,27 @@ function EnterpriseOrganizationPage() {
           onChange={(value) => {
             const nextTab = value as OrganizationType;
             setCurrentPage(1);
-            history.replace(`/enterprise/organization?tab=${nextTab}`);
+            history.replace(getOrganizationListPath(location.pathname, nextTab));
           }}
         >
           <TabPane key="store" title="门店" />
           <TabPane key="partner" title="区域" />
         </Tabs>
 
-        <div className={styles.toolbar}>
-          <Button
-            type="primary"
-            onClick={() =>
-              history.push(`/enterprise/organization/create?type=${activeTab}`)
-            }
-          >
-            新建{currentTypeLabel}
-          </Button>
-        </div>
+        {canCreateCurrentType && (
+          <div className={styles.toolbar}>
+            <Button
+              type="primary"
+              onClick={() =>
+                history.push(
+                  getOrganizationCreatePath(location.pathname, activeTab)
+                )
+              }
+            >
+              新建{currentTypeLabel}
+            </Button>
+          </div>
+        )}
 
         <div className={styles.tableWrapper}>
           <Table

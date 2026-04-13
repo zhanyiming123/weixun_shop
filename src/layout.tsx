@@ -32,19 +32,37 @@ const Sider = Layout.Sider;
 const Content = Layout.Content;
 
 function getIconFromKey(key) {
+  if (key.startsWith('dashboard')) {
+    return <IconDashboard className={styles.icon} />;
+  }
+
+  if (key.startsWith('product') || key.startsWith('product-config')) {
+    return <IconApps className={styles.icon} />;
+  }
+
+  if (key.startsWith('order')) {
+    return <IconList className={styles.icon} />;
+  }
+
+  if (key.startsWith('marketing')) {
+    return <IconSettings className={styles.icon} />;
+  }
+
+  if (key.startsWith('after-sales')) {
+    return <IconFile className={styles.icon} />;
+  }
+
+  if (
+    key.startsWith('merchant') ||
+    key.startsWith('store-config') ||
+    key.startsWith('enterprise')
+  ) {
+    return <IconUserGroup className={styles.icon} />;
+  }
+
   switch (key) {
     case 'dashboard':
       return <IconDashboard className={styles.icon} />;
-    case 'product':
-      return <IconApps className={styles.icon} />;
-    case 'order':
-      return <IconList className={styles.icon} />;
-    case 'marketing':
-      return <IconSettings className={styles.icon} />;
-    case 'after-sales':
-      return <IconFile className={styles.icon} />;
-    case 'enterprise':
-      return <IconUserGroup className={styles.icon} />;
     default:
       return <div className={styles['icon-empty']} />;
   }
@@ -77,6 +95,14 @@ function getFlattenRoutes(routes) {
   return res;
 }
 
+function isSameArray<T>(left: T[], right: T[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((item, index) => item === right[index]);
+}
+
 function PageLayout() {
   const urlParams = getUrlParams();
   const history = useHistory();
@@ -86,23 +112,24 @@ function PageLayout() {
   const { settings, userLoading, userInfo } = useSelector(
     (state: GlobalState) => state
   );
-  const currentOrganization = useSelector(
-    (state: GlobalState) => state.currentOrganization
-  );
+  const { currentOrganization, currentDemoSystem, currentDemoIdentity } =
+    useSelector((state: GlobalState) => state);
 
   const [routes, defaultRoute] = useRoute(
     userInfo?.permissions,
-    currentOrganization?.scope
+    currentOrganization?.scope,
+    currentDemoSystem,
+    currentDemoIdentity
   );
-  const defaultSelectedKeys = [currentComponent || defaultRoute];
-  const paths = (currentComponent || defaultRoute).split('/');
+  const activeRouteKey = currentComponent || defaultRoute;
+  const defaultSelectedKeys = activeRouteKey ? [activeRouteKey] : [];
+  const paths = activeRouteKey ? activeRouteKey.split('/') : [];
   const defaultOpenKeys = paths.slice(0, paths.length - 1);
 
-  const [breadcrumb, setBreadCrumb] = useState([]);
+  const [breadcrumb, setBreadCrumb] = useState<React.ReactNode[]>([]);
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] =
     useState<string[]>(defaultSelectedKeys);
-  const [openKeys, setOpenKeys] = useState<string[]>(defaultOpenKeys);
 
   const routeMap = useRef<Map<string, React.ReactNode[]>>(new Map());
   const menuMap = useRef<
@@ -115,6 +142,12 @@ function PageLayout() {
   const showNavbar = settings.navbar && urlParams.navbar !== false;
   const showMenu = settings.menu && urlParams.menu !== false;
   const showFooter = settings.footer && urlParams.footer !== false;
+  const menuRenderKey = [
+    currentDemoSystem,
+    currentDemoIdentity,
+    currentOrganization?.id || '',
+    pathname,
+  ].join(':');
 
   const flattenRoutes = useMemo(() => getFlattenRoutes(routes) || [], [routes]);
 
@@ -148,6 +181,7 @@ function PageLayout() {
 
   function renderRoutes(locale) {
     routeMap.current.clear();
+    menuMap.current.clear();
     return function travel(_routes: IRoute[], level, parentNode = []) {
       return _routes.map((route) => {
         const { breadcrumb = true, ignore } = route;
@@ -192,31 +226,30 @@ function PageLayout() {
     };
   }
 
-  function updateMenuStatus() {
+  useEffect(() => {
+    const routeConfig = routeMap.current.get(pathname) || [];
+    setBreadCrumb((prev) => (
+      isSameArray(prev, routeConfig) ? prev : routeConfig
+    ));
     const pathKeys = pathname.split('/');
-    const newSelectedKeys: string[] = [];
-    const newOpenKeys: string[] = [...openKeys];
+    const nextSelectedKeys: string[] = [];
+
     while (pathKeys.length > 0) {
       const currentRouteKey = pathKeys.join('/');
       const menuKey = currentRouteKey.replace(/^\//, '');
       const menuType = menuMap.current.get(menuKey);
+
       if (menuType && menuType.menuItem) {
-        newSelectedKeys.push(menuKey);
+        nextSelectedKeys.push(menuKey);
       }
-      if (menuType && menuType.subMenu && !openKeys.includes(menuKey)) {
-        newOpenKeys.push(menuKey);
-      }
+
       pathKeys.pop();
     }
-    setSelectedKeys(newSelectedKeys);
-    setOpenKeys(newOpenKeys);
-  }
 
-  useEffect(() => {
-    const routeConfig = routeMap.current.get(pathname);
-    setBreadCrumb(routeConfig || []);
-    updateMenuStatus();
-  }, [pathname]);
+    setSelectedKeys((prev) => (
+      isSameArray(prev, nextSelectedKeys) ? prev : nextSelectedKeys
+    ));
+  }, [pathname, routes]);
 
   useEffect(() => {
     if (userLoading || !currentComponent || !defaultRoute) {
@@ -263,13 +296,12 @@ function PageLayout() {
             >
               <div className={styles['menu-wrapper']}>
                 <Menu
+                  key={menuRenderKey}
                   collapse={collapsed}
+                  selectable={false}
+                  defaultOpenKeys={defaultOpenKeys}
                   onClickMenuItem={onClickMenuItem}
                   selectedKeys={selectedKeys}
-                  openKeys={openKeys}
-                  onClickSubMenu={(_, openKeys) => {
-                    setOpenKeys(openKeys);
-                  }}
                 >
                   {renderRoutes(locale)(routes, 1)}
                 </Menu>

@@ -3,7 +3,23 @@ import usePersistentState, {
   readPersistentValue,
   writePersistentValue,
 } from '@/utils/usePersistentState';
+import {
+  normalizeProductCarouselImages,
+  normalizeProductStoreOverride,
+} from '@/lib/product';
+import type {
+  ProductCarouselImage,
+  ProductStoreOverrideMap,
+} from '@/types/product';
 import { ProductStoreConfigItem } from '../store-config/data';
+
+/**
+ * @deprecated 过渡兼容层。
+ * 新增或改造的商品列表链路请优先使用：
+ * - src/types/product.ts
+ * - src/repositories/ProductRepository.ts
+ * - src/services/ProductService.ts
+ */
 
 export type ProductSearchType = 'productName' | 'productId';
 export type ProductStatus = 'on' | 'off';
@@ -37,6 +53,8 @@ export type ProductItem = {
   sourceType: ProductSourceType;
   sourceStoreId?: string;
   storeConfigs: ProductStoreConfigItem[];
+  carouselImages?: ProductCarouselImage[];
+  storeOverrides?: ProductStoreOverrideMap;
 };
 
 export type ProductFilterValues = {
@@ -757,6 +775,20 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
   const sourceStoreId =
     sourceType === 'store' ? migrateProductStoreId(product.sourceStoreId) : undefined;
   const storeConfigMap = new Map<string, ProductStoreConfigItem>();
+  const storeOverrides = Object.entries(
+    product.storeOverrides && typeof product.storeOverrides === 'object'
+      ? product.storeOverrides
+      : {}
+  ).reduce<NonNullable<ProductItem['storeOverrides']>>((result, [storeId, override]) => {
+    const nextStoreId = migrateProductStoreId(storeId);
+
+    if (!nextStoreId) {
+      return result;
+    }
+
+    result[nextStoreId] = normalizeProductStoreOverride(nextStoreId, override);
+    return result;
+  }, {});
 
   (Array.isArray(product.storeConfigs) ? product.storeConfigs : []).forEach((item) => {
     const nextStoreId = migrateProductStoreId(item.storeId);
@@ -775,7 +807,9 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     ...product,
     sourceType,
     sourceStoreId,
+    carouselImages: normalizeProductCarouselImages(product.carouselImages || []),
     storeConfigs: Array.from(storeConfigMap.values()),
+    storeOverrides,
   };
 }
 

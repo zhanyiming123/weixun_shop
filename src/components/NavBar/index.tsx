@@ -1,31 +1,27 @@
-import React, { useContext, useEffect, useMemo } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo } from 'react';
 import {
   Tooltip,
   Input,
   Avatar,
   Select,
-  TreeSelect,
   Dropdown,
   Menu,
   Divider,
   Message,
   Button,
+  Typography,
 } from '@arco-design/web-react';
 import {
   IconLanguage,
   IconNotification,
   IconSunFill,
   IconMoonFill,
-  IconUser,
   IconSettings,
   IconPoweroff,
   IconExperiment,
   IconDashboard,
-  IconInteraction,
-  IconTag,
 } from '@arco-design/web-react/icon';
 import { useSelector, useDispatch } from 'react-redux';
-import { useLocation } from 'react-router-dom';
 import { GlobalState } from '@/store';
 import { GlobalContext } from '@/context';
 import useLocale from '@/utils/useLocale';
@@ -36,25 +32,25 @@ import Settings from '../Settings';
 import styles from './style/index.module.less';
 import defaultLocale from '@/locale';
 import useStorage from '@/utils/useStorage';
-import { generatePermission } from '@/routes';
 import {
-  buildCurrentOrganizationOptions,
-  buildCurrentOrganizationTree,
-  getCurrentOrganizationById,
-  writeCurrentOrganizationId,
-} from '@/utils/organization';
+  buildDemoUserInfo,
+  getDemoIdentityPreset,
+  persistDemoSelection,
+  resolveDemoSelection,
+  DEMO_SYSTEM_LABEL_MAP,
+  DemoSystemId,
+} from '@/utils/demo';
+import { buildCurrentOrganizationOptions, writeCurrentOrganizationId } from '@/utils/organization';
 
 function Navbar({ show }: { show: boolean }) {
   const t = useLocale();
-  const userInfo = useSelector((state: GlobalState) => state.userInfo);
-  const currentOrganization = useSelector(
-    (state: GlobalState) => state.currentOrganization
-  );
+  const {
+    userInfo,
+    currentDemoSystem,
+    demoContext,
+  } = useSelector((state: GlobalState) => state);
   const dispatch = useDispatch();
-  const location = useLocation();
-
-  const [_, setUserStatus] = useStorage('userStatus');
-  const [role, setRole] = useStorage('userRole', 'admin');
+  const [, setUserStatus] = useStorage('userStatus');
 
   const { setLang, lang, theme, setTheme } = useContext(GlobalContext);
 
@@ -66,57 +62,62 @@ function Navbar({ show }: { show: boolean }) {
   function onMenuItemClick(key) {
     if (key === 'logout') {
       logout();
-    } else {
-      Message.info(`You clicked ${key}`);
-    }
-  }
-
-  useEffect(() => {
-    dispatch({
-      type: 'update-userInfo',
-      payload: {
-        userInfo: {
-          ...userInfo,
-          permissions: generatePermission(role),
-        },
-      },
-    });
-  }, [dispatch, role]);
-
-  const organizationOptions = useMemo(
-    () => buildCurrentOrganizationOptions(),
-    [location.pathname]
-  );
-  const organizationTree = useMemo(
-    () => buildCurrentOrganizationTree(),
-    [location.pathname]
-  );
-  const organizationExpandedKeys = useMemo(
-    () =>
-      organizationOptions
-        .filter((item) => item.scope !== 'store')
-        .map((item) => item.id),
-    [organizationOptions]
-  );
-
-  useEffect(() => {
-    const nextOrganization = getCurrentOrganizationById(
-      currentOrganization?.id,
-      organizationOptions
-    );
-
-    if (currentOrganization?.id === nextOrganization.id) {
       return;
     }
 
-    writeCurrentOrganizationId(nextOrganization.id);
+    Message.info(`You clicked ${key}`);
+  }
+
+  const organizationOptions = useMemo(() => buildCurrentOrganizationOptions(), []);
+  const systemOptions = useMemo(
+    () =>
+      (['merchant', 'store'] as DemoSystemId[]).map((item) => ({
+        label: DEMO_SYSTEM_LABEL_MAP[item],
+        value: item,
+      })),
+    []
+  );
+
+  const applyResolvedSelection = useCallback((
+    nextSelection: ReturnType<typeof resolveDemoSelection>
+  ) => {
+    persistDemoSelection(nextSelection);
+    writeCurrentOrganizationId(nextSelection.currentOrganization.id);
     dispatch({
-      type: 'update-currentOrganization',
+      type: 'update-demo-selection',
       payload: {
-        currentOrganization: nextOrganization,
+        ...nextSelection,
+        userInfo: buildDemoUserInfo(
+          nextSelection.currentDemoIdentity,
+          nextSelection.currentOrganization
+        ),
       },
     });
-  }, [currentOrganization?.id, dispatch, organizationOptions]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    const expectedIdentity = currentDemoSystem === 'store' ? 'store_staff' : 'merchant_admin';
+    const expectedPreset = getDemoIdentityPreset(expectedIdentity);
+    const resolvedSelection = resolveDemoSelection({
+      currentDemoSystem,
+      currentDemoIdentity: expectedIdentity,
+      currentOrganizationId: expectedPreset.defaultOrganizationId,
+      organizationOptions,
+    });
+
+    const shouldSync =
+      resolvedSelection.currentDemoSystem !== currentDemoSystem ||
+      resolvedSelection.currentDemoIdentity !== expectedIdentity ||
+      resolvedSelection.currentOrganization.id !== expectedPreset.defaultOrganizationId;
+
+    if (shouldSync) {
+      applyResolvedSelection(resolvedSelection);
+    }
+  }, [
+    currentDemoSystem,
+    applyResolvedSelection,
+    organizationOptions,
+  ]);
 
   if (!show) {
     return (
@@ -130,42 +131,31 @@ function Navbar({ show }: { show: boolean }) {
     );
   }
 
-  const handleChangeRole = () => {
-    const newRole = role === 'admin' ? 'user' : 'admin';
-    setRole(newRole);
-  };
-
-  const handleOrganizationChange = (value: string) => {
-    const nextOrganization = getCurrentOrganizationById(value, organizationOptions);
-    writeCurrentOrganizationId(nextOrganization.id);
-    dispatch({
-      type: 'update-currentOrganization',
-      payload: {
-        currentOrganization: nextOrganization,
-      },
+  const handleSystemChange = (value: string) => {
+    const targetSystem = value as DemoSystemId;
+    const targetIdentity = targetSystem === 'store' ? 'store_staff' : 'merchant_admin';
+    const targetPreset = getDemoIdentityPreset(targetIdentity);
+    const resolvedSelection = resolveDemoSelection({
+      currentDemoSystem: targetSystem,
+      currentDemoIdentity: targetIdentity,
+      currentOrganizationId: targetPreset.defaultOrganizationId,
+      organizationOptions,
     });
+    applyResolvedSelection(resolvedSelection);
   };
 
   const droplist = (
     <Menu onClickMenuItem={onMenuItemClick}>
-      <Menu.SubMenu
-        key="role"
-        title={
-          <>
-            <IconUser className={styles['dropdown-icon']} />
-            <span className={styles['user-role']}>
-              {role === 'admin'
-                ? t['menu.user.role.admin']
-                : t['menu.user.role.user']}
-            </span>
-          </>
-        }
-      >
-        <Menu.Item onClick={handleChangeRole} key="switch role">
-          <IconTag className={styles['dropdown-icon']} />
-          {t['menu.user.switchRoles']}
-        </Menu.Item>
-      </Menu.SubMenu>
+      <Menu.Item key="current-demo" disabled>
+        <div className={styles.menuSummary}>
+          <Typography.Text className={styles.menuSummaryTitle}>
+            {demoContext?.systemLabel || DEMO_SYSTEM_LABEL_MAP.merchant}
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            {demoContext?.identityLabel || '商户管理员'}
+          </Typography.Text>
+        </div>
+      </Menu.Item>
       <Menu.Item key="setting">
         <IconSettings className={styles['dropdown-icon']} />
         {t['menu.user.setting']}
@@ -173,7 +163,7 @@ function Navbar({ show }: { show: boolean }) {
       <Menu.SubMenu
         key="more"
         title={
-          <div style={{ width: 80 }}>
+          <div style={{ width: 88 }}>
             <IconExperiment className={styles['dropdown-icon']} />
             {t['message.seeMore']}
           </div>
@@ -181,7 +171,7 @@ function Navbar({ show }: { show: boolean }) {
       >
         <Menu.Item key="workplace">
           <IconDashboard className={styles['dropdown-icon']} />
-          {t['menu.dashboard.workplace']}
+          {t['menu.home']}
         </Menu.Item>
       </Menu.SubMenu>
 
@@ -200,21 +190,25 @@ function Navbar({ show }: { show: boolean }) {
           <Logo />
           <div className={styles['logo-name']}>上海唯寻教育科技有限公司</div>
         </div>
-        <TreeSelect
-          className={styles.organizationSelect}
-          allowClear={false}
-          treeData={organizationTree}
-          value={currentOrganization?.id}
-          triggerProps={{
-            autoAlignPopupMinWidth: true,
-            position: 'bl',
-          }}
-          treeProps={{
-            defaultExpandedKeys: organizationExpandedKeys,
-            showLine: true,
-          }}
-          onChange={handleOrganizationChange}
-        />
+        <div className={styles.selectorGroup}>
+          <div className={styles.selectorField}>
+            <span className={styles.selectorLabel}>{t['navbar.demo.system']}</span>
+            <Select
+              className={styles.systemSelect}
+              options={systemOptions}
+              value={currentDemoSystem}
+              onChange={handleSystemChange}
+            />
+          </div>
+          <div className={styles.currentPreset}>
+            <Typography.Text className={styles.currentPresetTitle}>
+              {demoContext?.identityLabel}
+            </Typography.Text>
+            <Typography.Text type="secondary">
+              {userInfo?.organization}
+            </Typography.Text>
+          </div>
+        </div>
       </div>
       <ul className={styles.right}>
         <li>

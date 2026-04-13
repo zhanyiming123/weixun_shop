@@ -1,214 +1,264 @@
 import auth, { AuthParams } from '@/utils/authentication';
+import { DemoIdentityId, DemoSystemId } from '@/utils/demo';
 import { OrganizationScope } from '@/utils/organization';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type IRoute = AuthParams & {
   name: string;
   key: string;
   visibleScopes?: OrganizationScope[];
-  // 当前页是否展示面包屑
+  visibleSystems?: DemoSystemId[];
+  visibleDemoIdentities?: DemoIdentityId[];
   breadcrumb?: boolean;
   children?: IRoute[];
-  // 当前路由是否渲染菜单项，为 true 的话不会在菜单中显示，但可通过路由地址访问。
   ignore?: boolean;
 };
 
 export const routes: IRoute[] = [
   {
-    name: 'menu.dashboard',
-    key: 'dashboard',
-    children: [
-      {
-        name: 'menu.dashboard.workplace',
-        key: 'dashboard/workplace',
-        visibleScopes: ['headquarter', 'region', 'store'],
-      },
-    ],
+    name: 'menu.home',
+    key: 'dashboard/workplace',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant', 'store'],
+    visibleDemoIdentities: ['merchant_admin', 'region_admin', 'store_staff'],
   },
   {
-    name: 'menu.product',
-    key: 'product',
+    name: 'menu.merchant.organization',
+    key: 'merchant/organization',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin', 'region_admin'],
+  },
+  {
+    name: 'menu.merchant.organization.create',
+    key: 'merchant/organization/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin', 'region_admin'],
+  },
+  {
+    name: 'menu.merchant.organization.edit',
+    key: 'merchant/organization/edit',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin', 'region_admin'],
+  },
+  {
+    name: 'menu.productConfig',
+    key: 'product-config',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
     children: [
       {
-        name: 'menu.product.list',
-        key: 'product/list',
-        visibleScopes: ['headquarter', 'region', 'store'],
-      },
-      {
-        name: 'menu.product.create',
-        key: 'product/create',
-        ignore: true,
-        visibleScopes: ['headquarter', 'region', 'store'],
-      },
-      {
         name: 'menu.product.category',
-        key: 'product/category',
-        visibleScopes: ['headquarter'],
+        key: 'product-config/category',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
       },
       {
         name: 'menu.product.catalog',
-        key: 'product/catalog',
-        visibleScopes: ['headquarter'],
+        key: 'product-config/catalog',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
       },
       {
         name: 'menu.product.attribute',
-        key: 'product/attribute',
-        visibleScopes: ['headquarter'],
+        key: 'product-config/attribute',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
       },
     ],
+  },
+  {
+    name: 'menu.merchant.employee',
+    key: 'merchant/employee',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
+    name: 'menu.merchant.employee.create',
+    key: 'merchant/employee/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
+    name: 'menu.merchant.role',
+    key: 'merchant/role',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
+    name: 'menu.merchant.role.create',
+    key: 'merchant/role/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
+    name: 'menu.merchant.role.edit',
+    key: 'merchant/role/edit',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
+    name: 'menu.product',
+    key: 'product/list',
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.product.create',
+    key: 'product/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
   },
   {
     name: 'menu.order',
-    key: 'order',
-    children: [
-      {
-        name: 'menu.order.list',
-        key: 'order/list',
-        visibleScopes: ['headquarter', 'region', 'store'],
-      },
-    ],
+    key: 'order/list',
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
   },
   {
     name: 'menu.afterSales',
-    key: 'after-sales',
-    children: [
-      {
-        name: 'menu.afterSales.list',
-        key: 'after-sales/list',
-        visibleScopes: ['headquarter', 'region', 'store'],
-      },
-    ],
+    key: 'after-sales/list',
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
   },
   {
     name: 'menu.marketing',
-    key: 'marketing',
+    key: 'marketing/center',
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.marketing.couponList',
+    key: 'marketing/center/coupon/list',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.marketing.couponCreate',
+    key: 'marketing/center/coupon/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.marketing.couponDetail',
+    key: 'marketing/center/coupon/detail',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.marketing.couponEdit',
+    key: 'marketing/center/coupon/edit',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['store_staff'],
+  },
+  {
+    name: 'menu.storeConfig',
+    key: 'store-config',
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['region_admin'],
     children: [
       {
-        name: 'menu.marketing.center',
-        key: 'marketing/center',
-        visibleScopes: ['headquarter', 'region', 'store'],
-        children: [
-          {
-            name: 'menu.marketing.couponList',
-            key: 'marketing/center/coupon/list',
-            ignore: true,
-            visibleScopes: ['headquarter', 'region', 'store'],
-          },
-          {
-            name: 'menu.marketing.couponCreate',
-            key: 'marketing/center/coupon/create',
-            ignore: true,
-            visibleScopes: ['headquarter', 'region', 'store'],
-          },
-          {
-            name: 'menu.marketing.couponDetail',
-            key: 'marketing/center/coupon/detail',
-            ignore: true,
-            visibleScopes: ['headquarter', 'region', 'store'],
-          },
-          {
-            name: 'menu.marketing.couponEdit',
-            key: 'marketing/center/coupon/edit',
-            ignore: true,
-            visibleScopes: ['headquarter', 'region', 'store'],
-          },
-        ],
+        name: 'menu.storeConfig.employee',
+        key: 'store-config/employee',
+        visibleScopes: ['store'],
+        visibleSystems: ['store'],
+        visibleDemoIdentities: ['region_admin'],
+      },
+      {
+        name: 'menu.storeConfig.role',
+        key: 'store-config/role',
+        visibleScopes: ['store'],
+        visibleSystems: ['store'],
+        visibleDemoIdentities: ['region_admin'],
       },
     ],
   },
   {
-    name: 'menu.enterprise',
-    key: 'enterprise',
-    children: [
-      {
-        name: 'menu.enterprise.organization',
-        key: 'enterprise/organization',
-        visibleScopes: ['headquarter'],
-        children: [
-          {
-            name: 'menu.enterprise.organization.create',
-            key: 'enterprise/organization/create',
-            ignore: true,
-            visibleScopes: ['headquarter'],
-          },
-          {
-            name: 'menu.enterprise.organization.edit',
-            key: 'enterprise/organization/edit',
-            ignore: true,
-            visibleScopes: ['headquarter'],
-          },
-        ],
-      },
-      {
-        name: 'menu.enterprise.department',
-        key: 'enterprise/department',
-        visibleScopes: ['headquarter'],
-      },
-      {
-        name: 'menu.enterprise.employee',
-        key: 'enterprise/employee',
-        visibleScopes: ['headquarter'],
-        children: [
-          {
-            name: 'menu.enterprise.employee.create',
-            key: 'enterprise/employee/create',
-            ignore: true,
-            visibleScopes: ['headquarter'],
-          },
-        ],
-      },
-      {
-        name: 'menu.enterprise.role',
-        key: 'enterprise/role',
-        visibleScopes: ['headquarter'],
-        children: [
-          {
-            name: 'menu.enterprise.role.create',
-            key: 'enterprise/role/create',
-            ignore: true,
-            visibleScopes: ['headquarter'],
-          },
-          {
-            name: 'menu.enterprise.role.edit',
-            key: 'enterprise/role/edit',
-            ignore: true,
-            visibleScopes: ['headquarter'],
-          },
-        ],
-      },
-    ],
+    name: 'menu.storeConfig.employee.create',
+    key: 'store-config/employee/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['region_admin'],
+  },
+  {
+    name: 'menu.storeConfig.role.create',
+    key: 'store-config/role/create',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['region_admin'],
+  },
+  {
+    name: 'menu.storeConfig.role.edit',
+    key: 'store-config/role/edit',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['store'],
+    visibleSystems: ['store'],
+    visibleDemoIdentities: ['region_admin'],
   },
 ];
 
-export const getName = (path: string, routes) => {
-  return routes.find((item) => {
+export const getName = (path: string, routeItems: IRoute[]): IRoute | undefined => {
+  return routeItems.find((item) => {
     const itemPath = `/${item.key}`;
     if (path === itemPath) {
-      return item.name;
-    } else if (item.children) {
+      return item;
+    }
+
+    if (item.children) {
       return getName(path, item.children);
     }
+
+    return false;
   });
 };
 
-export const generatePermission = (role: string) => {
-  const actions = role === 'admin' ? ['*'] : ['read'];
-  const result = {};
-
-  const travel = (_routes: IRoute[]) => {
-    _routes.forEach((item) => {
-      if (item.children?.length) {
-        travel(item.children);
-        return;
-      }
-
-      result[item.name] = actions;
-    });
-  };
-
-  travel(routes);
-  return result;
-};
+export const generatePermission = () => ({});
 
 function collectRouteKeys(routeItems: IRoute[], keys: string[] = []) {
   routeItems.forEach((route) => {
@@ -224,55 +274,80 @@ function collectRouteKeys(routeItems: IRoute[], keys: string[] = []) {
 export const ALL_ROUTE_KEYS = collectRouteKeys(routes);
 
 const useRoute = (
-  userPermission,
-  currentScope: OrganizationScope = 'headquarter'
+  userPermission: Record<string, string[]> | undefined,
+  currentScope: OrganizationScope = 'headquarter',
+  currentDemoSystem: DemoSystemId = 'merchant',
+  currentDemoIdentity: DemoIdentityId = 'merchant_admin'
 ): [IRoute[], string] => {
-  const filterRoute = (routes: IRoute[], arr = []): IRoute[] => {
-    if (!routes.length) {
-      return [];
-    }
-    for (const route of routes) {
-      const { requiredPermissions, oneOfPerm, visibleScopes } = route;
-      let visible = true;
-      if (visibleScopes?.length) {
-        visible = visibleScopes.includes(currentScope);
-      }
-      if (requiredPermissions) {
-        visible =
-          visible && auth({ requiredPermissions, oneOfPerm }, userPermission);
+  const permissionSignature = JSON.stringify(userPermission || {});
+  const filterRoute = useCallback(
+    (routeItems: IRoute[], result: IRoute[] = []): IRoute[] => {
+      if (!routeItems.length) {
+        return [];
       }
 
-      if (!visible) {
-        continue;
-      }
-      if (route.children && route.children.length) {
-        const newRoute = { ...route, children: [] };
-        filterRoute(route.children, newRoute.children);
-        if (newRoute.children.length) {
-          arr.push(newRoute);
+      for (const route of routeItems) {
+        const {
+          requiredPermissions,
+          oneOfPerm,
+          visibleScopes,
+          visibleSystems,
+          visibleDemoIdentities,
+        } = route;
+        let visible = true;
+
+        if (visibleScopes?.length) {
+          visible = visibleScopes.includes(currentScope);
         }
-      } else {
-        arr.push({ ...route });
-      }
-    }
 
-    return arr;
-  };
+        if (visibleSystems?.length) {
+          visible = visible && visibleSystems.includes(currentDemoSystem);
+        }
+
+        if (visibleDemoIdentities?.length) {
+          visible = visible && visibleDemoIdentities.includes(currentDemoIdentity);
+        }
+
+        if (requiredPermissions) {
+          visible =
+            visible &&
+            auth({ requiredPermissions, oneOfPerm }, userPermission || {});
+        }
+
+        if (!visible) {
+          continue;
+        }
+
+        if (route.children?.length) {
+          const nextRoute = { ...route, children: [] as IRoute[] };
+          filterRoute(route.children, nextRoute.children);
+          if (nextRoute.children.length) {
+            result.push(nextRoute);
+          }
+          continue;
+        }
+
+        result.push({ ...route });
+      }
+
+      return result;
+    },
+    [currentDemoIdentity, currentDemoSystem, currentScope, userPermission]
+  );
 
   const [permissionRoute, setPermissionRoute] = useState(() => filterRoute(routes));
 
   useEffect(() => {
-    const newRoutes = filterRoute(routes);
-    setPermissionRoute(newRoutes);
-  }, [currentScope, JSON.stringify(userPermission)]);
+    setPermissionRoute(filterRoute(routes));
+  }, [filterRoute, permissionSignature]);
 
   const defaultRoute = useMemo(() => {
-    const first = permissionRoute[0];
-    if (first) {
-      const firstRoute = first?.children?.[0]?.key || first.key;
-      return firstRoute;
+    const firstRoute = permissionRoute[0];
+    if (!firstRoute) {
+      return '';
     }
-    return '';
+
+    return firstRoute.children?.[0]?.key || firstRoute.key;
   }, [permissionRoute]);
 
   return [permissionRoute, defaultRoute];

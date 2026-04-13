@@ -28,13 +28,15 @@ import {
   formatEnterpriseRoleDateTime,
   getEnterpriseRolePermissionRootKeys,
   getEnterpriseRolePermissionTree,
-  getEnterpriseRoleCreatePath,
-  getEnterpriseRoleEditPath,
-  getEnterpriseRoleListPath,
   normalizeEnterpriseRoleScope,
   useEnterpriseRoleItems,
   writeEnterpriseRoleItems,
 } from './data';
+import {
+  getRoleCreatePath,
+  getRoleEditPath,
+  getRoleListPath,
+} from '@/utils/demo-route';
 
 const { useForm } = Form;
 const TextArea = Input.TextArea;
@@ -77,11 +79,25 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
   );
 
   const isCreateMode = mode === 'create';
+  const visibleScopes = useMemo<EnterpriseRoleScope[]>(() => {
+    if (location.pathname.startsWith('/store-config/role')) {
+      return ['store'];
+    }
+
+    if (location.pathname.startsWith('/merchant/role')) {
+      return ['headquarter', 'region'];
+    }
+
+    return ['headquarter', 'region', 'store'];
+  }, [location.pathname]);
   const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
   const queryRoleId = getSingleQueryValue(locationQuery.id);
   const activeTab = useMemo<EnterpriseRoleScope>(
-    () => normalizeEnterpriseRoleScope(locationQuery.tab),
-    [locationQuery.tab]
+    () => {
+      const nextScope = normalizeEnterpriseRoleScope(locationQuery.tab);
+      return visibleScopes.includes(nextScope) ? nextScope : visibleScopes[0];
+    },
+    [locationQuery.tab, visibleScopes]
   );
   const editingRole = useMemo(
     () =>
@@ -126,7 +142,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
   useEffect(() => {
     if (isCreateMode) {
       if (locationQuery.tab !== activeTab) {
-        history.replace(getEnterpriseRoleCreatePath(activeTab));
+        history.replace(getRoleCreatePath(location.pathname, activeTab));
       }
       return;
     }
@@ -135,7 +151,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       if (!redirectHandledRef.current) {
         redirectHandledRef.current = true;
         Message.warning('未找到可编辑的角色');
-        history.replace(getEnterpriseRoleListPath(activeTab));
+        history.replace(getRoleListPath(location.pathname, activeTab));
       }
       return;
     }
@@ -144,7 +160,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       if (!redirectHandledRef.current) {
         redirectHandledRef.current = true;
         Message.warning('未找到可编辑的角色');
-        history.replace(getEnterpriseRoleListPath(activeTab));
+        history.replace(getRoleListPath(location.pathname, activeTab));
       }
       return;
     }
@@ -153,19 +169,22 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       if (!redirectHandledRef.current) {
         redirectHandledRef.current = true;
         Message.warning('默认角色暂不支持编辑');
-        history.replace(getEnterpriseRoleListPath(editingRole.scope));
+        history.replace(getRoleListPath(location.pathname, editingRole.scope));
       }
       return;
     }
 
     if (editingRole.scope !== activeTab || locationQuery.tab !== editingRole.scope) {
-      history.replace(getEnterpriseRoleEditPath(editingRole.id, editingRole.scope));
+      history.replace(
+        getRoleEditPath(location.pathname, editingRole.id, editingRole.scope)
+      );
     }
   }, [
     activeTab,
     editingRole,
     history,
     isCreateMode,
+    location.pathname,
     locationQuery.tab,
     queryRoleId,
   ]);
@@ -227,7 +246,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
   }, [editingRole, form, isCreateMode, pageScope, referenceRoleOptions]);
 
   function handleCancel() {
-    history.push(getEnterpriseRoleListPath(pageScope));
+    history.push(getRoleListPath(location.pathname, pageScope));
   }
 
   function patchPermissionState(value: Partial<EnterpriseRolePermissionState>) {
@@ -329,7 +348,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
 
       setRoleItems(nextItems);
       writeEnterpriseRoleItems(nextItems);
-      history.push(getEnterpriseRoleListPath(pageScope));
+      history.push(getRoleListPath(location.pathname, pageScope));
     } catch (_) {
       // validation error
     }

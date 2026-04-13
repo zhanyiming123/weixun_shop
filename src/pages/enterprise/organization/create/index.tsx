@@ -62,6 +62,10 @@ import {
   useOrganizationItems,
   writeOrganizationItems,
 } from '../data';
+import {
+  getOrganizationCreatePath,
+  getOrganizationListPath,
+} from '@/utils/demo-route';
 
 const { Step } = Steps;
 const { useForm } = Form;
@@ -395,9 +399,9 @@ export function EnterpriseOrganizationFormPage({
 
   useEffect(() => {
     if (isCreateMode && locationQuery.type !== pageType) {
-      history.replace(`/enterprise/organization/create?type=${pageType}`);
+      history.replace(getOrganizationCreatePath(location.pathname, pageType));
     }
-  }, [history, isCreateMode, locationQuery.type, pageType]);
+  }, [history, isCreateMode, location.pathname, locationQuery.type, pageType]);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -416,8 +420,8 @@ export function EnterpriseOrganizationFormPage({
 
     missingEditHandledRef.current = true;
     Message.error(organizationId ? '当前组织不存在或已删除' : '缺少组织标识，无法编辑');
-    history.replace(`/enterprise/organization?tab=${queryType}`);
-  }, [editingItem, history, isEditMode, organizationId, queryType]);
+    history.replace(getOrganizationListPath(location.pathname, queryType));
+  }, [editingItem, history, isEditMode, location.pathname, organizationId, queryType]);
 
   useEffect(() => {
     if (isEditMode && !editingItem) {
@@ -462,7 +466,7 @@ export function EnterpriseOrganizationFormPage({
   }, [currentCode, editingItem, form, initialStep, isEditMode, selectableStoreItems]);
 
   function handleCancel() {
-    history.push(`/enterprise/organization?tab=${pageType}`);
+    history.push(getOrganizationListPath(location.pathname, pageType));
   }
 
   async function syncOrganizationInfoFromForm() {
@@ -763,7 +767,7 @@ export function EnterpriseOrganizationFormPage({
     writeOrganizationItems(nextItems);
     setOrganizationItems(nextItems);
     Message.success(options.successMessage);
-    history.push(`/enterprise/organization?tab=${pageType}`);
+    history.push(getOrganizationListPath(location.pathname, pageType));
   }
 
   async function handleSaveBasicInfo() {

@@ -20,13 +20,15 @@ import {
   EnterpriseRoleScope,
   ENTERPRISE_ROLE_SCOPE_DESCRIPTION_MAP,
   ENTERPRISE_ROLE_SCOPE_LABEL_MAP,
-  getEnterpriseRoleCreatePath,
-  getEnterpriseRoleEditPath,
-  getEnterpriseRoleListPath,
   getEnterpriseRolePermissionTitles,
   normalizeEnterpriseRoleScope,
   useEnterpriseRoleItems,
 } from './data';
+import {
+  getRoleCreatePath,
+  getRoleEditPath,
+  getRoleListPath,
+} from '@/utils/demo-route';
 
 const TabPane = Tabs.TabPane;
 
@@ -37,17 +39,31 @@ function EnterpriseRolePage() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [viewingRole, setViewingRole] = useState<EnterpriseRoleItem | null>(null);
 
+  const visibleScopes = useMemo<EnterpriseRoleScope[]>(() => {
+    if (location.pathname.startsWith('/store-config/role')) {
+      return ['store'];
+    }
+
+    if (location.pathname.startsWith('/merchant/role')) {
+      return ['headquarter', 'region'];
+    }
+
+    return ['headquarter', 'region', 'store'];
+  }, [location.pathname]);
   const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
   const activeTab = useMemo<EnterpriseRoleScope>(
-    () => normalizeEnterpriseRoleScope(locationQuery.tab),
-    [locationQuery.tab]
+    () => {
+      const nextScope = normalizeEnterpriseRoleScope(locationQuery.tab);
+      return visibleScopes.includes(nextScope) ? nextScope : visibleScopes[0];
+    },
+    [locationQuery.tab, visibleScopes]
   );
 
   useEffect(() => {
     if (locationQuery.tab !== activeTab) {
-      history.replace(getEnterpriseRoleListPath(activeTab));
+      history.replace(getRoleListPath(location.pathname, activeTab));
     }
-  }, [activeTab, history, locationQuery.tab]);
+  }, [activeTab, history, location.pathname, locationQuery.tab]);
 
   const currentRoles = useMemo(
     () =>
@@ -154,10 +170,12 @@ function EnterpriseRolePage() {
               <span className={styles.actionDivider}>|</span>
               <Typography.Text
                 className={styles.actionLink}
-                onClick={() =>
-                  history.push(getEnterpriseRoleEditPath(record.id, record.scope))
-                }
-              >
+                  onClick={() =>
+                    history.push(
+                      getRoleEditPath(location.pathname, record.id, record.scope)
+                    )
+                  }
+                >
                 编辑
               </Typography.Text>
               <span className={styles.actionDivider}>|</span>
@@ -183,20 +201,34 @@ function EnterpriseRolePage() {
       )
     : [];
 
+  const pageTitle = location.pathname.startsWith('/store-config/role')
+    ? '门店角色列表'
+    : '商户角色列表';
+
   return (
     <div className={styles.page}>
       <Card className={styles.panelCard}>
-        <Tabs
-          activeTab={activeTab}
-          className={styles.tabs}
-          onChange={(value) =>
-            history.replace(getEnterpriseRoleListPath(normalizeEnterpriseRoleScope(value)))
-          }
-        >
-          {Object.entries(ENTERPRISE_ROLE_SCOPE_LABEL_MAP).map(([key, label]) => (
-            <TabPane key={key} title={label} />
-          ))}
-        </Tabs>
+        {visibleScopes.length > 1 && (
+          <Tabs
+            activeTab={activeTab}
+            className={styles.tabs}
+            onChange={(value) =>
+              history.replace(
+                getRoleListPath(
+                  location.pathname,
+                  normalizeEnterpriseRoleScope(value)
+                )
+              )
+            }
+          >
+            {visibleScopes.map((scope) => (
+              <TabPane
+                key={scope}
+                title={ENTERPRISE_ROLE_SCOPE_LABEL_MAP[scope]}
+              />
+            ))}
+          </Tabs>
+        )}
 
         <div className={styles.summaryRow}>
           <div className={styles.summaryCard}>
@@ -225,7 +257,7 @@ function EnterpriseRolePage() {
         <div className={styles.toolbar}>
           <div className={styles.toolbarInfo}>
             <Typography.Text className={styles.toolbarTitle}>
-              {ENTERPRISE_ROLE_SCOPE_LABEL_MAP[activeTab]}列表
+              {pageTitle}
             </Typography.Text>
             <Typography.Text className={styles.toolbarDesc}>
               每个 tab 维护独立角色，新增角色后只会出现在当前 tab 下。
@@ -234,7 +266,9 @@ function EnterpriseRolePage() {
           <Button
             icon={<IconPlus />}
             type="primary"
-            onClick={() => history.push(getEnterpriseRoleCreatePath(activeTab))}
+            onClick={() =>
+              history.push(getRoleCreatePath(location.pathname, activeTab))
+            }
           >
             添加角色
           </Button>

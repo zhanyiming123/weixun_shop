@@ -1,5 +1,12 @@
 import defaultSettings from '../settings.json';
 import { CurrentOrganization, readCurrentOrganization } from '@/utils/organization';
+import {
+  DemoContext,
+  DemoIdentityId,
+  DemoSystemId,
+  buildDemoUserInfo,
+  resolveDemoSelection,
+} from '@/utils/demo';
 
 export interface GlobalState {
   settings?: typeof defaultSettings;
@@ -13,15 +20,26 @@ export interface GlobalState {
     permissions: Record<string, string[]>;
   };
   currentOrganization?: CurrentOrganization;
+  currentDemoSystem?: DemoSystemId;
+  currentDemoIdentity?: DemoIdentityId;
+  demoContext?: DemoContext;
   userLoading?: boolean;
 }
 
+const initialDemoSelection = resolveDemoSelection({
+  currentOrganizationId: readCurrentOrganization().id,
+});
+
 const initialState: GlobalState = {
   settings: defaultSettings,
-  userInfo: {
-    permissions: {},
-  },
-  currentOrganization: readCurrentOrganization(),
+  userInfo: buildDemoUserInfo(
+    initialDemoSelection.currentDemoIdentity,
+    initialDemoSelection.currentOrganization
+  ),
+  currentOrganization: initialDemoSelection.currentOrganization,
+  currentDemoSystem: initialDemoSelection.currentDemoSystem,
+  currentDemoIdentity: initialDemoSelection.currentDemoIdentity,
+  demoContext: initialDemoSelection.demoContext,
 };
 
 export default function store(state = initialState, action) {
@@ -46,6 +64,23 @@ export default function store(state = initialState, action) {
       return {
         ...state,
         currentOrganization,
+      };
+    }
+    case 'update-demo-selection': {
+      const {
+        currentOrganization,
+        currentDemoSystem,
+        currentDemoIdentity,
+        demoContext,
+        userInfo,
+      } = action.payload;
+      return {
+        ...state,
+        currentOrganization,
+        currentDemoSystem,
+        currentDemoIdentity,
+        demoContext,
+        userInfo: userInfo || state.userInfo,
       };
     }
     default:
