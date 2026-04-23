@@ -5,10 +5,12 @@ import usePersistentState, {
 } from '@/utils/usePersistentState';
 import {
   normalizeProductCarouselImages,
+  normalizeProductIndependentPriceRule,
   normalizeProductStoreOverride,
 } from '@/lib/product';
 import type {
   ProductCarouselImage,
+  ProductIndependentPriceRule,
   ProductStoreOverrideMap,
 } from '@/types/product';
 import { ProductStoreConfigItem } from '../store-config/data';
@@ -55,6 +57,7 @@ export type ProductItem = {
   storeConfigs: ProductStoreConfigItem[];
   carouselImages?: ProductCarouselImage[];
   storeOverrides?: ProductStoreOverrideMap;
+  independentPriceRule?: ProductIndependentPriceRule;
 };
 
 export type ProductFilterValues = {
@@ -807,6 +810,10 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     ...product,
     sourceType,
     sourceStoreId,
+    independentPriceRule: normalizeProductIndependentPriceRule(
+      product.independentPriceRule,
+      product.skus || []
+    ),
     carouselImages: normalizeProductCarouselImages(product.carouselImages || []),
     storeConfigs: Array.from(storeConfigMap.values()),
     storeOverrides,

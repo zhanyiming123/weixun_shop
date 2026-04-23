@@ -85,6 +85,7 @@ function collectDescendantIds(
 ): string[] {
   const descendants: string[] = [];
   const queue = [id];
+  const visited = new Set<string>([id]);
 
   while (queue.length) {
     const currentId = queue.shift();
@@ -93,7 +94,8 @@ function collectDescendantIds(
     }
 
     items.forEach((item) => {
-      if (item.parentId === currentId) {
+      if (item.parentId === currentId && !visited.has(item.id)) {
+        visited.add(item.id);
         descendants.push(item.id);
         queue.push(item.id);
       }
@@ -115,6 +117,9 @@ function createDepartmentId() {
 function EnterpriseDepartmentPage() {
   const history = useHistory();
   const location = useLocation();
+  const isStoreConfigDepartmentPage = location.pathname.startsWith(
+    '/store-config/department'
+  );
   const [items, setItems] = useEnterpriseDepartmentItems();
   const [organizationItems] = useOrganizationItems();
   const [expanded, setExpanded] = useState<Set<string>>(
@@ -167,7 +172,10 @@ function EnterpriseDepartmentPage() {
   );
 
   useEffect(() => {
-    const expectedPath = getEnterpriseDepartmentListPath(activeTab, activeStoreId);
+    const expectedSearch = activeStoreId
+      ? `?tab=${activeTab}&storeId=${activeStoreId}`
+      : `?tab=${activeTab}`;
+    const expectedPath = `${location.pathname}${expectedSearch}`;
 
     if (`${location.pathname}${location.search}` !== expectedPath) {
       history.replace(expectedPath);
@@ -237,8 +245,14 @@ function EnterpriseDepartmentPage() {
   function getDepartmentPathLabels(parentId: string | null) {
     const labels: string[] = [];
     let currentId = parentId;
+    const visited = new Set<string>();
 
     while (currentId) {
+      if (visited.has(currentId)) {
+        break;
+      }
+      visited.add(currentId);
+
       const currentItem = itemMap.get(currentId);
       if (!currentItem) {
         break;
@@ -566,26 +580,27 @@ function EnterpriseDepartmentPage() {
 
   return (
     <div className={styles.page}>
-      <Tabs
-        activeTab={activeTab}
-        className={styles.tabs}
-        onChange={(value) =>
-          history.replace(
-            getEnterpriseDepartmentListPath(
-              normalizeEnterpriseDepartmentTab(value),
-              resolvedStoreId
-            )
-          )
-        }
-      >
-        {Object.entries(ENTERPRISE_DEPARTMENT_SCOPE_LABEL_MAP).map(([key, label]) => (
-          <TabPane key={key} title={label} />
-        ))}
-      </Tabs>
+      {!isStoreConfigDepartmentPage && (
+        <Tabs
+          activeTab={activeTab}
+          className={styles.tabs}
+          onChange={(value) => {
+            const nextTab = normalizeEnterpriseDepartmentTab(value);
+            const nextSearch = resolvedStoreId
+              ? `?tab=${nextTab}&storeId=${resolvedStoreId}`
+              : `?tab=${nextTab}`;
+            history.replace(`${location.pathname}${nextSearch}`);
+          }}
+        >
+          {Object.entries(ENTERPRISE_DEPARTMENT_SCOPE_LABEL_MAP).map(([key, label]) => (
+            <TabPane key={key} title={label} />
+          ))}
+        </Tabs>
+      )}
 
       <div className={styles.toolbar}>
         <div className={styles.toolbarActions}>
-          {activeTab === 'store' && (
+          {activeTab === 'store' && !isStoreConfigDepartmentPage && (
             <div className={styles.storeFilter}>
               <span className={styles.storeFilterLabel}>选择门店</span>
               <Select
@@ -595,7 +610,7 @@ function EnterpriseDepartmentPage() {
                 value={activeStoreId}
                 onChange={(value) =>
                   history.replace(
-                    getEnterpriseDepartmentListPath('store', String(value))
+                    `${location.pathname}?tab=store&storeId=${String(value)}`
                   )
                 }
               >

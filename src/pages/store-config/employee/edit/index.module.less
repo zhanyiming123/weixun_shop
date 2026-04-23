@@ -1,0 +1,249 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heroCard {
+  overflow: hidden;
+}
+
+.heroHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.heroTitle {
+  margin: 0 !important;
+}
+
+.heroMeta {
+  margin-bottom: 0 !important;
+}
+
+.heroSide {
+  min-width: 240px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f4f7ff 0%, #f6fbff 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heroSideLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.heroSideValue {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.heroSideMeta {
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.managementTag {
+  align-self: flex-start;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitleDesc {
+  color: var(--color-text-3);
+  font-size: 13px;
+  font-weight: normal;
+}
+
+.infoCard :global(.arco-card-body),
+.sectionCard :global(.arco-card-body) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.infoItem {
+  padding: 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: var(--color-fill-1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infoItemWide {
+  grid-column: 1 / -1;
+}
+
+.infoLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.infoValue {
+  color: var(--color-text-1);
+  font-size: 15px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.roleSelect {
+  max-width: 560px;
+}
+
+.permissionCard {
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfcff 0%, #f7f9fd 100%);
+  border: 1px solid var(--color-border-2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permissionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.permissionTitle {
+  font-weight: 600;
+}
+
+.permissionRoleName {
+  color: rgb(var(--arcoblue-6));
+}
+
+.permissionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permissionSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permissionSectionTitle {
+  font-weight: 600;
+}
+
+.permissionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.permissionItemTitle {
+  font-size: 15px;
+}
+
+.permissionItemDescription,
+.permissionDescription,
+.permissionEmpty,
+.permissionPlaceholder {
+  color: var(--color-text-3);
+  line-height: 1.6;
+}
+
+.permissionTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roleDescriptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roleDescriptionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roleDescriptionTitle {
+  font-weight: 600;
+}
+
+.permissionSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.permissionSummaryLabel {
+  font-weight: 600;
+}
+
+.managementSummary {
+  line-height: 1.6;
+}
+
+.treeWrap {
+  max-height: 420px;
+  padding: 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.tree {
+  padding-right: 8px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.emptyAction {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .heroHeader {
+    flex-direction: column;
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .infoItemWide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+  }
+}

@@ -23,6 +23,15 @@
   align-items: center;
 }
 
+.simpleFilterRow {
+  display: flex;
+  justify-content: flex-end;
+
+  .searchInput {
+    max-width: 320px;
+  }
+}
+
 .filterActions {
   display: flex;
   align-items: center;
@@ -111,6 +120,10 @@
 
   .filterRow {
     grid-template-columns: 1fr;
+  }
+
+  .simpleFilterRow .searchInput {
+    max-width: none;
   }
 
   .footerActions {

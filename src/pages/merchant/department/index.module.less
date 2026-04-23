@@ -1,0 +1,704 @@
+.page {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  height: calc(100vh - 164px);
+  max-height: calc(100vh - 164px);
+  min-height: 0;
+  overflow: hidden;
+  color: var(--color-text-1);
+}
+
+.sidebar,
+.content {
+  min-width: 0;
+  border-radius: 10px;
+  background: var(--color-bg-2);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 3%), 0 0 0 1px var(--color-border-1);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 12px;
+}
+
+.sidebarTitle,
+.pageTitle {
+  margin: 0 !important;
+}
+
+.sidebarCreateButton {
+  color: var(--color-text-2);
+  background: var(--color-fill-1);
+
+  &:hover {
+    color: rgb(var(--arcoblue-6));
+    background: rgb(var(--arcoblue-1));
+  }
+}
+
+.departmentSearch {
+  width: calc(100% - 32px);
+  margin: 0 16px 12px;
+}
+
+.departmentTree {
+  flex: 1;
+  min-height: 0;
+  padding: 0 8px 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.departmentNode {
+  min-width: 0;
+}
+
+.departmentRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding-top: 4px;
+  padding-right: 10px;
+  padding-bottom: 4px;
+  border-radius: 6px;
+  color: var(--color-text-1);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background: var(--color-fill-1);
+
+    .departmentMoreButton {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.departmentRowActive {
+  background: rgb(var(--arcoblue-1));
+  color: rgb(var(--arcoblue-6));
+
+  .departmentName {
+    font-weight: 600;
+  }
+
+  .departmentMoreButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  color: var(--color-text-4);
+  font-size: 15px;
+}
+
+.expandButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 22px;
+  margin: 0 2px 0 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.expandPlaceholder {
+  width: 14px;
+}
+
+.departmentName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.departmentSpacer {
+  flex: 1;
+  min-width: 12px;
+}
+
+.departmentActionWrap {
+  position: relative;
+  flex: none;
+}
+
+.departmentMoreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text-3);
+  font-size: 18px;
+  background: rgb(247 249 252 / 88%);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+
+  &:hover {
+    color: rgb(var(--arcoblue-6));
+    background: rgb(var(--arcoblue-1));
+  }
+}
+
+.departmentActionCard {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: 124px;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: var(--color-bg-2);
+  box-shadow: 0 8px 24px rgb(29 33 41 / 12%);
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 36px;
+    padding: 0 16px;
+    border: 0;
+    color: var(--color-text-1);
+    font-size: 14px;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-fill-1);
+    }
+  }
+
+  svg {
+    color: var(--color-text-2);
+    font-size: 15px;
+  }
+
+  .departmentDangerAction {
+    color: rgb(var(--red-6));
+
+    svg {
+      color: rgb(var(--red-6));
+    }
+  }
+}
+
+.departmentEmpty {
+  padding: 40px 12px;
+  color: var(--color-text-3);
+  text-align: center;
+}
+
+.storeBadge {
+  flex: none;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgb(var(--arcoblue-1));
+  color: rgb(var(--arcoblue-6));
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.storeAssignDesc {
+  margin: 0 0 14px;
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.contentHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 0;
+}
+
+.titleLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.companyName {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.currentDepartment {
+  margin-top: 8px;
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.managedStoreRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.managedStoreLabel {
+  color: var(--color-text-3);
+  white-space: nowrap;
+}
+
+.managedStoreTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.managedStoreTag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: rgb(var(--arcoblue-1));
+  color: rgb(var(--arcoblue-6));
+  font-size: 12px;
+  line-height: 1;
+}
+
+.managedStoreNone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-4);
+}
+
+.managedStoreSetBtn,
+.managedStoreEditBtn {
+  padding: 0;
+  border: 0;
+  color: rgb(var(--arcoblue-6));
+  font-size: 13px;
+  background: transparent;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 14px 20px 0;
+  border-bottom: 1px solid var(--color-border-1);
+}
+
+.tab {
+  position: relative;
+  padding: 0 0 10px;
+  border: 0;
+  color: var(--color-text-1);
+  font-size: 14px;
+  background: transparent;
+  cursor: pointer;
+
+  &:hover {
+    color: rgb(var(--arcoblue-6));
+  }
+}
+
+.tabActive {
+  color: rgb(var(--arcoblue-6));
+  font-weight: 600;
+
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: rgb(var(--arcoblue-6));
+    content: '';
+  }
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  background: var(--color-bg-2);
+}
+
+.statusSelect {
+  width: 180px;
+}
+
+.employeeSearch {
+  width: 280px;
+}
+
+.dateFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-2);
+  white-space: nowrap;
+}
+
+.rangePicker {
+  width: 310px;
+}
+
+.tablePanel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  padding: 12px 20px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tableScroll {
+  flex: none;
+  overflow-x: auto;
+  overflow-y: visible;
+
+  :global(.arco-table-container) {
+    border-radius: 8px;
+  }
+
+  :global(.arco-table-th) {
+    background: #f5f7fb;
+    color: var(--color-text-1);
+    font-weight: 600;
+  }
+
+  :global(.arco-table-td),
+  :global(.arco-table-th) {
+    border-bottom-color: var(--color-border-1);
+  }
+}
+
+.tablePagination {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.memberName {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.memberStoreTags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.memberStoreTag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: rgb(var(--arcoblue-1));
+  color: rgb(var(--arcoblue-6));
+  font-size: 12px;
+  line-height: 1;
+}
+
+.memberStoreEmpty {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.tableActions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.moreIcon {
+  margin-left: 2px;
+  font-size: 12px;
+  vertical-align: -1px;
+}
+
+.memberMoreWrap {
+  display: inline-flex;
+}
+
+.memberMoreCard {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  width: 108px;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: var(--color-bg-2);
+  box-shadow: 0 8px 24px rgb(29 33 41 / 12%);
+
+  button {
+    width: 100%;
+    height: 34px;
+    padding: 0 14px;
+    border: 0;
+    color: rgb(var(--primary-6));
+    font-size: 14px;
+    text-align: left;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-fill-1);
+    }
+  }
+}
+
+.dataScopeDrawer {
+  :global(.arco-drawer-scroll) {
+    overflow: hidden;
+  }
+
+  :global(.arco-drawer-content) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+.dataScopeContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dataScopeMemberMeta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border-1);
+  color: var(--color-text-1);
+  font-size: 14px;
+}
+
+.dataScopeGrid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dataScopePanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+
+  &:first-child {
+    border-right: 1px solid var(--color-border-1);
+  }
+}
+
+.dataScopePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--color-border-1);
+  color: var(--color-text-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dataScopeCount {
+  color: var(--color-text-3);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.dataScopePanelBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 20px 16px;
+  overflow: hidden;
+}
+
+.dataScopeSearch {
+  margin-bottom: 10px;
+}
+
+.dataScopeTreeWrap {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dataScopeSummaryWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dataScopeSummaryTree {
+  :global(.arco-tree-node-title) {
+    color: var(--color-text-1);
+    font-size: 13px;
+  }
+}
+
+.dataScopeEmpty {
+  margin-top: 24px;
+}
+
+.dataScopeFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.memberForm {
+  :global(.arco-form-item),
+  :global(.arco-form-item.arco-form-item-error) {
+    margin-bottom: 24px;
+  }
+
+  :global(.arco-form-item:last-child) {
+    margin-bottom: 0;
+  }
+}
+
+.departmentCreateForm {
+  :global(.arco-form-item),
+  :global(.arco-form-item.arco-form-item-error) {
+    margin-bottom: 20px;
+  }
+
+  :global(.arco-form-item:last-child) {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 1180px) {
+  .page {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .contentHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    max-height: 420px;
+  }
+
+  .filterBar,
+  .dateFilter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .statusSelect,
+  .employeeSearch,
+  .rangePicker {
+    width: 100%;
+  }
+
+  .dataScopeMemberMeta {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dataScopeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dataScopePanel {
+    &:first-child {
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border-1);
+    }
+  }
+}

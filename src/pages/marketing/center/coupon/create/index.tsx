@@ -11,8 +11,11 @@ import {
   Message,
   Radio,
   Select,
+  Space,
+  Tag,
   Typography,
 } from '@arco-design/web-react';
+import { IconShareAlt, IconShareInternal } from '@arco-design/web-react/icon';
 import { useSelector } from 'react-redux';
 import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
@@ -21,8 +24,10 @@ import {
   buildMarketingProductSelectorSpus,
   buildCreateValuesFromCoupon,
   COUPON_DISCOUNT_OPTIONS,
+  CouponDetailRecord,
   CouponDiscountType,
   CouponFormValues,
+  CouponOwnershipScope,
   CouponPageMode,
   CouponProductScope,
   CouponValidityType,
@@ -31,7 +36,7 @@ import {
   normalizeCouponStoreIds,
   PRODUCT_SCOPE_OPTIONS,
   readCouponById,
-  updateCouponQuota,
+  updateCouponById,
   VALIDITY_TYPE_OPTIONS,
 } from '../data';
 import {
@@ -174,8 +179,8 @@ function sanitizeConditionSelection(
     specAttributeId: matchedSpecOption?.value,
     specValue:
       matchedSpecOption &&
-      selection.specValue &&
-      matchedSpecOption.values.includes(selection.specValue)
+        selection.specValue &&
+        matchedSpecOption.values.includes(selection.specValue)
         ? selection.specValue
         : undefined,
   };
@@ -202,15 +207,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   );
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
-  const storeItems = useMemo(() => {
-    const nextItems = readProductStoreItems();
-    if (typeof visibleStoreIds === 'undefined') {
-      return nextItems;
-    }
-
-    const visibleStoreIdSet = new Set(visibleStoreIds);
-    return nextItems.filter((item) => visibleStoreIdSet.has(item.id));
-  }, [visibleStoreIds]);
+  const storeItems = useMemo(() => readProductStoreItems(), []);
   const ownershipLeafItems = useMemo(
     () => buildProductOwnershipLeafItems(ownershipItems),
     [ownershipItems]
@@ -233,6 +230,25 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     [couponCategories, ownershipLeafItems, visibleStoreIds]
   );
   const [formValues, setFormValues] = useState<CouponFormValues>(createDefaultFormValues);
+  const [loadedRecord, setLoadedRecord] = useState<CouponDetailRecord | null>(null);
+
+  // 根据当前可见门店计算该券的归属类型（仅详情模式下有意义）
+  const couponOwnershipScope = useMemo((): CouponOwnershipScope | null => {
+    if (!loadedRecord) return null;
+    const visibleSet = visibleStoreIds ? new Set(visibleStoreIds) : null;
+    // 总部视角（visibleSet 为 null）或创建者门店在可见范围内 → 本店创建
+    if (!visibleSet || visibleSet.has(loadedRecord.ownershipStoreId)) {
+      return loadedRecord.sharedToStoreIds.length > 0 ? 'shared_out' : 'own';
+    }
+    return 'shared_in';
+  }, [loadedRecord, visibleStoreIds]);
+
+  // 已分享门店的名称映射（用于详情展示）
+  const storeNameMap = useMemo(
+    () => new Map(storeItems.map((s) => [s.id, s.name])),
+    [storeItems]
+  );
+
   const conditionOwnershipSections = useMemo(
     () =>
       formValues.conditionCategoryPaths.map((catalogPath) => {
@@ -263,11 +279,13 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   const isCreateMode = mode === 'create';
   const isEditMode = mode === 'edit';
   const isDetailMode = mode === 'detail';
+  const canEditCoupon = isCreateMode || isEditMode;
 
   useEffect(() => {
     if (isCreateMode) {
       if (!sourceId) {
         setFormValues(createDefaultFormValues());
+        setLoadedRecord(null);
         setFormErrors({});
         return;
       }
@@ -278,6 +296,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         return;
       }
       setFormValues(sourceValues);
+      setLoadedRecord(null);
       setFormErrors({});
       return;
     }
@@ -295,18 +314,27 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       return;
     }
 
-    setFormValues(buildCouponFormValuesFromRecord(record, visibleStoreIds));
+    const isOwner =
+      typeof visibleStoreIds === 'undefined' ||
+      visibleStoreIds.includes(record.ownershipStoreId);
+    if (isEditMode && !isOwner) {
+      history.replace(`/marketing/center/coupon/detail?id=${record.id}`);
+      return;
+    }
+
+    setFormValues(buildCouponFormValuesFromRecord(record));
+    setLoadedRecord(record);
     setFormErrors({});
-  }, [couponId, history, isCreateMode, sourceId, visibleStoreIds]);
+  }, [couponId, history, isCreateMode, isEditMode, sourceId, visibleStoreIds]);
 
   const selectedSkuCount = formValues.selectedSkuIds.length;
   const selectedStoreIds = useMemo(
     () =>
       normalizeCouponStoreIds(
         formValues.storeIds,
-        visibleStoreIds || storeItems.map((item) => item.id)
+        storeItems.map((item) => item.id)
       ),
-    [formValues.storeIds, storeItems, visibleStoreIds]
+    [formValues.storeIds, storeItems]
   );
   const selectedStoreNames = useMemo(() => {
     const nameMap = new Map(storeItems.map((item) => [item.id, item.name]));
@@ -317,32 +345,32 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }, [selectedStoreIds, storeItems]);
   const storeSummaryTitle = useMemo(() => {
     if (!selectedStoreIds.length) {
-      return '未选择店铺';
+      return '未选择门店';
     }
 
     return isAllCouponStoresSelected(
       selectedStoreIds,
-      visibleStoreIds || storeItems.map((item) => item.id)
+      storeItems.map((item) => item.id)
     )
-      ? '全部店铺'
-      : `已选 ${selectedStoreIds.length} 家店铺`;
-  }, [selectedStoreIds, storeItems, visibleStoreIds]);
+      ? '全部门店'
+      : `已选 ${selectedStoreIds.length} 家门店`;
+  }, [selectedStoreIds, storeItems]);
   const storeSummaryDescription = useMemo(() => {
     if (!selectedStoreIds.length) {
-      return '点击右侧按钮选择优惠券可使用的店铺';
+      return '点击右侧按钮选择优惠券可使用的门店';
     }
 
     if (
       isAllCouponStoresSelected(
         selectedStoreIds,
-        visibleStoreIds || storeItems.map((item) => item.id)
+        storeItems.map((item) => item.id)
       )
     ) {
-      return `当前共覆盖 ${storeItems.length} 家店铺`;
+      return `当前共覆盖 ${storeItems.length} 家门店`;
     }
 
     return selectedStoreNames.join('、');
-  }, [selectedStoreIds, selectedStoreNames, storeItems.length, visibleStoreIds]);
+  }, [selectedStoreIds, selectedStoreNames, storeItems]);
 
   function patchFormValues(patch: Partial<CouponFormValues>) {
     setFormValues((previous) => ({
@@ -403,7 +431,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleDiscountTypeChange(value: string) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -418,7 +446,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleProductScopeChange(value: string) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -432,7 +460,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   function handleConditionCategoryChange(
     value: Array<string | string[]> | undefined
   ) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -471,7 +499,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     catalogPath: string[],
     value: Array<string | string[]> | undefined
   ) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -487,7 +515,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     catalogPath: string[],
     value: string | undefined
   ) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -506,8 +534,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         specAttributeId: matchedSpecOption?.value,
         specValue:
           matchedSpecOption &&
-          currentSelection.specValue &&
-          matchedSpecOption.values.includes(currentSelection.specValue)
+            currentSelection.specValue &&
+            matchedSpecOption.values.includes(currentSelection.specValue)
             ? currentSelection.specValue
             : undefined,
       };
@@ -518,7 +546,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     catalogPath: string[],
     value: string | undefined
   ) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -537,8 +565,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         catalogPath: [...catalogPath],
         specValue:
           matchedSpecOption &&
-          value &&
-          matchedSpecOption.values.includes(value)
+            value &&
+            matchedSpecOption.values.includes(value)
             ? value
             : undefined,
       };
@@ -552,7 +580,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleReceiveTimeChange(dateString: string[]) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -566,7 +594,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleValidityTypeChange(value: string) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -582,7 +610,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleCustomUseTimeChange(dateString: string[]) {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -606,10 +634,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       | 'validDays',
     value: number | undefined
   ) {
-    const canEditNumber =
-      isCreateMode ||
-      (isEditMode && (field === 'issueCount' || field === 'limitPerUser'));
-    if (!canEditNumber) {
+    if (!canEditCoupon) {
       return;
     }
 
@@ -636,7 +661,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function openSelectSkuModal() {
-    if (!isCreateMode) {
+    if (!canEditCoupon) {
       return;
     }
     setSkuModalVisible(true);
@@ -650,7 +675,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     patchFormValues({
       storeIds: normalizeCouponStoreIds(
         nextStoreIds,
-        visibleStoreIds || storeItems.map((item) => item.id)
+        storeItems.map((item) => item.id)
       ),
     });
     clearErrors('storeIds');
@@ -662,6 +687,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }
 
   function handleSkuModalConfirm(selectedSkuIds: string[]) {
+    if (!canEditCoupon) {
+      setSkuModalVisible(false);
+      return;
+    }
+
     patchFormValues({
       selectedSkuIds,
     });
@@ -703,7 +733,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     }
 
     if (!formValues.storeIds.length) {
-      errors.storeIds = '请选择适用店铺';
+      errors.storeIds = '请选择适用门店';
     }
 
     if (!formValues.productScope) {
@@ -757,29 +787,16 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
     return errors;
   }
 
-  function validateEditForm() {
-    const errors: CouponFormErrors = {};
-    if (
-      !formValues.issueCount ||
-      formValues.issueCount <= 0 ||
-      !formValues.limitPerUser ||
-      formValues.limitPerUser <= 0
-    ) {
-      errors.couponQuantity = '请填写正确的发放张数和每人限领数量';
-    }
-    return errors;
-  }
-
   function handleSubmit() {
     if (isDetailMode) {
       return;
     }
 
-    const nextErrors = isEditMode ? validateEditForm() : validateCreateForm();
+    const nextErrors = validateCreateForm();
     setFormErrors(nextErrors);
 
     if (Object.keys(nextErrors).length) {
-      Message.error(isEditMode ? '请完善张数配置后再保存' : '请完善必填项后再创建');
+      Message.error(isEditMode ? '请完善必填项后再保存' : '请完善必填项后再创建');
       return;
     }
 
@@ -788,10 +805,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         Message.error('缺少优惠券 ID');
         return;
       }
-      const updated = updateCouponQuota(couponId, {
-        issueCount: formValues.issueCount,
-        limitPerUser: formValues.limitPerUser,
-      });
+      const updated = updateCouponById(couponId, formValues);
       if (!updated) {
         Message.error('优惠券不存在或已删除');
         return;
@@ -824,6 +838,53 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
           labelCol={{ span: 3 }}
           wrapperCol={{ span: 21 }}
         >
+          {/* 分享/来源信息 - 仅在详情模式且有分享属性时展示 */}
+          {isDetailMode && loadedRecord && couponOwnershipScope && couponOwnershipScope !== 'own' && (
+            <div className={styles.sectionBlock}>
+              <Typography.Title className={styles.sectionTitle} heading={5}>
+                {couponOwnershipScope === 'shared_in' ? '券来源' : '分享信息'}
+              </Typography.Title>
+
+              {couponOwnershipScope === 'shared_in' && (
+                <Form.Item label="来源门店">
+                  <Space>
+                    <IconShareInternal style={{ color: 'var(--color-success-6)' }} />
+                    <Typography.Text>
+                      {storeNameMap.get(loadedRecord.ownershipStoreId) || loadedRecord.ownershipStoreId}
+                    </Typography.Text>
+                    <Tag color="green" size="small">接收分享</Tag>
+                  </Space>
+                  <div style={{ marginTop: 4 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      此券由来源门店统一管理，本店无法修改内容。
+                    </Typography.Text>
+                  </div>
+                </Form.Item>
+              )}
+
+              {couponOwnershipScope === 'shared_out' && (
+                <Form.Item label="已分享至">
+                  <Space wrap>
+                    <IconShareAlt style={{ color: 'var(--color-primary-6)' }} />
+                    {loadedRecord.sharedToStoreIds.map((storeId) => (
+                      <Tag key={storeId} color="arcoblue" size="small">
+                        {storeNameMap.get(storeId) || storeId}
+                      </Tag>
+                    ))}
+                  </Space>
+                </Form.Item>
+              )}
+
+              <Form.Item label="配额说明">
+                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                  全局发行量 {loadedRecord.issueCount} 张&nbsp;·&nbsp;
+                  全局已领取 {loadedRecord.receivedCount} 张&nbsp;·&nbsp;
+                  本店已领取 {loadedRecord.localReceivedCount} 张
+                </Typography.Text>
+              </Form.Item>
+            </div>
+          )}
+
           <div className={styles.sectionBlock}>
             <Typography.Title className={styles.sectionTitle} heading={5}>
               优惠信息
@@ -834,7 +895,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 <Select
                   className={styles.discountTypeSelect}
                   value={formValues.discountType}
-                  disabled={!isCreateMode}
+                  disabled={!canEditCoupon}
                   onChange={handleDiscountTypeChange}
                 >
                   {COUPON_DISCOUNT_OPTIONS.map((item) => (
@@ -852,7 +913,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       min={0}
                       precision={2}
                       placeholder="0.00"
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={formValues.fullReductionThreshold}
                       onChange={(value) =>
                         updateNumberField(
@@ -868,7 +929,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       min={0}
                       precision={2}
                       placeholder="0.00"
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={formValues.fullReductionAmount}
                       onChange={(value) =>
                         updateNumberField(
@@ -889,7 +950,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       min={0}
                       precision={2}
                       placeholder="0.00"
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={formValues.directReductionAmount}
                       onChange={(value) =>
                         updateNumberField(
@@ -911,7 +972,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       max={9.9}
                       precision={1}
                       placeholder="8.5"
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={formValues.discountRate}
                       onChange={(value) =>
                         updateNumberField(
@@ -929,13 +990,12 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               )}
             </Form.Item>
 
-            <Form.Item required label="适用店铺">
+            <Form.Item required label="适用门店">
               <div className={styles.storeSelectorTrigger}>
                 <div className={styles.storeSelectorSummary}>
                   <div
-                    className={`${styles.storeSelectorTitle} ${
-                      selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
-                    }`}
+                    className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
+                      }`}
                   >
                     {storeSummaryTitle}
                   </div>
@@ -945,7 +1005,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 </div>
 
                 <Button type="outline" onClick={openStoreModal}>
-                  {isCreateMode ? '选择店铺' : '查看店铺'}
+                  {canEditCoupon ? '选择门店' : '查看门店'}
                 </Button>
               </div>
               {formErrors.storeIds && (
@@ -957,7 +1017,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               <div className={styles.scopeBlock}>
                 <Radio.Group
                   value={formValues.productScope}
-                  disabled={!isCreateMode}
+                  disabled={!canEditCoupon}
                   onChange={handleProductScopeChange}
                 >
                   {PRODUCT_SCOPE_OPTIONS.map((item) => (
@@ -983,7 +1043,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                         placeholder="请选择适用的商品类目（可多选）"
                         options={couponCatalogOptions}
                         showSearch={{ retainInputValueWhileSelect: true }}
-                        disabled={!isCreateMode}
+                        disabled={!canEditCoupon}
                         value={formValues.conditionCategoryPaths}
                         onChange={handleConditionCategoryChange}
                       />
@@ -1025,7 +1085,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                                       options={couponOwnershipOptions}
                                       showSearch={{ retainInputValueWhileSelect: true }}
                                       disabled={
-                                        !isCreateMode || !couponOwnershipOptions.length
+                                        !canEditCoupon || !couponOwnershipOptions.length
                                       }
                                       value={conditionSelection?.ownershipPaths || []}
                                       onChange={(value) =>
@@ -1050,7 +1110,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                                           : '当前类目暂无规格项'
                                       }
                                       disabled={
-                                        !isCreateMode || !section.specOptions.length
+                                        !canEditCoupon || !section.specOptions.length
                                       }
                                       value={conditionSelection?.specAttributeId}
                                       onChange={(value) =>
@@ -1082,7 +1142,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                                           ? '请选择规格值'
                                           : '请先选择规格项'
                                       }
-                                      disabled={!isCreateMode || !selectedSpecOption}
+                                      disabled={!canEditCoupon || !selectedSpecOption}
                                       value={conditionSelection?.specValue}
                                       onChange={(value) =>
                                         handleConditionSpecValueChange(
@@ -1115,13 +1175,13 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                     className={styles.scopeActionRow}
                     style={FORM_CONFIG_ITEM_OFFSET_STYLE}
                   >
-                    {isCreateMode && (
+                    {canEditCoupon && (
                       <Button type="outline" onClick={openSelectSkuModal}>
                         选择商品
                       </Button>
                     )}
 
-                    {!isCreateMode && (
+                    {!canEditCoupon && (
                       <Button
                         type="outline"
                         disabled={!selectedSkuCount}
@@ -1142,12 +1202,12 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               {(formErrors.productScope ||
                 formErrors.conditionCategoryPaths ||
                 formErrors.selectedSkuIds) && (
-                <div className={styles.fieldError}>
-                  {formErrors.productScope ||
-                    formErrors.conditionCategoryPaths ||
-                    formErrors.selectedSkuIds}
-                </div>
-              )}
+                  <div className={styles.fieldError}>
+                    {formErrors.productScope ||
+                      formErrors.conditionCategoryPaths ||
+                      formErrors.selectedSkuIds}
+                  </div>
+                )}
             </Form.Item>
           </div>
 
@@ -1164,10 +1224,10 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                 placeholder="请输入券名称"
                 maxLength={15}
                 showWordLimit
-                disabled={!isCreateMode}
+                disabled={!canEditCoupon}
                 value={formValues.name}
                 onChange={(value) => {
-                  if (!isCreateMode) {
+                  if (!canEditCoupon) {
                     return;
                   }
                   patchFormValues({ name: value });
@@ -1219,7 +1279,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               <RangePicker
                 className={styles.rangePicker}
                 placeholder={['开始日期', '结束日期']}
-                disabled={!isCreateMode}
+                disabled={!canEditCoupon}
                 value={
                   formValues.receiveTimeRange.length
                     ? formValues.receiveTimeRange
@@ -1236,7 +1296,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               <div className={styles.validityBlock}>
                 <Radio.Group
                   value={formValues.validityType}
-                  disabled={!isCreateMode}
+                  disabled={!canEditCoupon}
                   onChange={handleValidityTypeChange}
                 >
                   {VALIDITY_TYPE_OPTIONS.map((item) => (
@@ -1255,7 +1315,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       className={styles.validDaysInput}
                       min={1}
                       precision={0}
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={formValues.validDays}
                       onChange={(value) =>
                         updateNumberField(
@@ -1275,7 +1335,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                       format="YYYY-MM-DD HH:mm:ss"
                       placeholder={['开始时间', '结束时间']}
                       showTime
-                      disabled={!isCreateMode}
+                      disabled={!canEditCoupon}
                       value={
                         formValues.customUseTimeRange.length
                           ? formValues.customUseTimeRange
@@ -1309,8 +1369,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
 
       <MarketingProductSelector
         visible={skuModalVisible}
-        title={isCreateMode ? '选择商品' : '查看商品'}
-        readonly={!isCreateMode}
+        title={canEditCoupon ? '选择商品' : '查看商品'}
+        readonly={!canEditCoupon}
         selectedSkuIds={formValues.selectedSkuIds}
         data={selectorSpuData}
         onCancel={() => setSkuModalVisible(false)}
@@ -1319,9 +1379,11 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
 
       <CouponStoreSelector
         visible={storeModalVisible}
-        readonly={!isCreateMode}
+        readonly={!canEditCoupon}
+        title="选择门店"
+        entityLabel="门店"
+        simple
         selectedStoreIds={selectedStoreIds}
-        allowedStoreIds={visibleStoreIds}
         onCancel={() => setStoreModalVisible(false)}
         onConfirm={handleStoreModalConfirm}
       />

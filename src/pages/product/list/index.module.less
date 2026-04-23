@@ -173,16 +173,6 @@
   line-height: 24px;
 }
 
-.settingTag {
-  flex: none;
-}
-
-.productSettingSummary {
-  color: var(--color-text-2);
-  font-size: 12px;
-  line-height: 20px;
-}
-
 .productId {
   color: var(--color-text-3);
   line-height: 22px;
@@ -198,10 +188,6 @@
 .sourceStoreName {
   color: var(--color-text-1);
   font-weight: 500;
-}
-
-.sourceRegionTag {
-  flex: none;
 }
 
 .statusSwitch {
@@ -230,32 +216,46 @@
   font-weight: 500;
 }
 
-.priceInfoCell {
+.priceQuickCell {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
 }
 
-.priceInfoRow {
+.priceQuickRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
 }
 
-.priceInfoLabel {
+.pricePrimaryValue {
+  color: var(--color-text-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.priceEditButton {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.priceQuickCellEditable:hover .priceEditButton,
+.priceEditButton:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.priceSourceValue {
   color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
-}
-
-.priceCurrentValue {
-  color: var(--color-text-1);
-  font-weight: 600;
-}
-
-.priceStatusTag {
-  flex: none;
 }
 
 .actionLinks {
@@ -315,193 +315,147 @@
   color: var(--color-text-3);
 }
 
-.storeSettingDrawer {
-  :global(.arco-drawer-header) {
-    padding: 18px 24px;
+.priceSettingModal {
+  :global(.arco-modal-header) {
     border-bottom: 1px solid var(--color-border-2);
   }
 
-  :global(.arco-drawer-body) {
-    padding: 24px;
-    background: var(--color-fill-1);
-  }
-
-  :global(.arco-drawer-footer) {
-    padding: 16px 24px;
-    border-top: 1px solid var(--color-border-2);
+  :global(.arco-modal-body) {
+    padding: 20px 24px;
   }
 }
 
-.storeSettingBody {
+.priceSettingBody {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.storeSettingIntroCard,
-.storeSettingSection {
+.priceSettingSummary {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.priceSettingProduct {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--color-border-2);
-  border-radius: 10px;
-  background: var(--color-bg-2);
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
 }
 
-.storeSettingHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.storeSettingHeaderTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.storeSettingProductName {
+.priceSettingProductName {
   color: var(--color-text-1);
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
 }
 
-.storeSettingIntroText {
-  margin: 0;
-  color: var(--color-text-2);
-}
-
-.storeSettingSectionHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.storeSettingSectionTitle {
-  display: block;
-  color: var(--color-text-1);
-  font-weight: 600;
-  line-height: 24px;
-}
-
-.storeSettingSectionHint {
-  display: block;
-  margin-top: 4px;
+.priceSettingSource {
   color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
 }
 
-.settingCompareGrid {
+.priceSettingMetrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 12px;
+  min-width: 280px;
 }
 
-.settingMetricCard {
+.priceSettingMetric {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: var(--color-fill-2);
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--color-bg-2);
 }
 
-.settingMetricLabel {
+.priceSettingMetricLabel {
   color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
 }
 
-.settingMetricValue,
-.settingTextValue {
+.priceSettingMetricValue {
   color: var(--color-text-1);
+  font-size: 15px;
   font-weight: 600;
-  line-height: 24px;
-  word-break: break-all;
+  line-height: 22px;
 }
 
-.settingInput {
-  width: 100%;
-}
-
-.carouselEditor {
+.priceModeBar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  min-height: 32px;
 }
 
-.carouselHint {
-  color: var(--color-text-3);
-  font-size: 12px;
-  line-height: 20px;
-}
-
-.carouselPreviewGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.carouselPreviewCard {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+.quickSkuPricePanel {
+  overflow: hidden;
   border: 1px solid var(--color-border-2);
   border-radius: 8px;
-  background: var(--color-bg-1);
 }
 
-.carouselPreviewImageBox {
-  display: flex;
+.quickSkuPriceHeader,
+.quickSkuPriceRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) 120px minmax(160px, 1fr);
+  gap: 12px;
   align-items: center;
-  justify-content: center;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--color-fill-2);
 }
 
-.carouselPreviewImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.carouselPreviewFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.carouselPreviewOrder {
-  color: var(--color-text-2);
+.quickSkuPriceHeader {
+  padding: 10px 14px;
+  color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
-}
-
-.carouselPreviewActions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.carouselEmpty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  border: 1px dashed var(--color-border-2);
-  border-radius: 8px;
-  color: var(--color-text-3);
   background: var(--color-fill-2);
+}
+
+.quickSkuPriceRow {
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.quickSkuPriceCell {
+  min-width: 0;
+}
+
+.quickSkuPriceSpec,
+.quickSkuPriceText {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.quickSkuPriceInput {
+  width: 100%;
+}
+
+.quickSkuPriceLimit {
+  margin-top: 6px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.quickSkuPriceError {
+  margin-top: 4px;
+  color: rgb(var(--danger-6));
+  font-size: 12px;
+  line-height: 18px;
 }
 
 @media (max-width: 1100px) {
@@ -551,14 +505,20 @@
     justify-content: flex-start;
   }
 
-  .storeSettingDrawer {
-    :global(.arco-drawer-body) {
-      padding: 16px;
-    }
+  .priceSettingSummary,
+  .priceModeBar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .settingCompareGrid,
-  .carouselPreviewGrid {
+  .priceSettingMetrics,
+  .quickSkuPriceHeader,
+  .quickSkuPriceRow {
     grid-template-columns: 1fr;
+  }
+
+  .priceSettingMetrics {
+    width: 100%;
+    min-width: 0;
   }
 }

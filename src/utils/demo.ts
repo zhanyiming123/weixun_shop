@@ -4,8 +4,10 @@ import {
   OrganizationOption,
   buildCurrentOrganizationOptions,
   getCurrentOrganizationById,
+  hasStoreIntersection,
 } from '@/utils/organization';
 import { readPersistentValue, writePersistentValue } from '@/utils/usePersistentState';
+import { readDeptStoreAssignments } from '@/utils/data-scope';
 
 export type DemoSystemId = 'merchant' | 'store';
 export type DemoIdentityId = 'merchant_admin' | 'region_admin' | 'store_staff';
@@ -24,6 +26,7 @@ export type DemoIdentityPreset = {
   dataScope: DemoDataScope;
   description: string;
   currentStaffDepartmentName?: string;
+  managedDepartmentId?: string;
 };
 
 export type DemoContext = {
@@ -108,6 +111,7 @@ export const DEMO_IDENTITY_PRESET_MAP: Record<DemoIdentityId, DemoIdentityPreset
     dataScope: 'department_all',
     description: '负责门店日常经营，看到的核心经营数据按当前部门全量口径投影。',
     currentStaffDepartmentName: '升学顾问部',
+    managedDepartmentId: 'dept_guangzhou',
   },
 };
 
@@ -164,7 +168,29 @@ export function getAllowedOrganizationIds(
     return organizationOptions.map((item) => item.id);
   }
 
-  return preset.allowedOrganizationIds.filter((item) => optionIdSet.has(item));
+  const baseAllowed = preset.allowedOrganizationIds.filter((item) => optionIdSet.has(item));
+
+  // Further restrict by department store assignment if the identity has a managed department
+  if (preset.managedDepartmentId) {
+    const assignments = readDeptStoreAssignments();
+    const deptStoreIds = assignments[preset.managedDepartmentId];
+
+    if (deptStoreIds && deptStoreIds.length > 0) {
+      const filteredAllowed = organizationOptions
+        .filter(
+          (org) =>
+            baseAllowed.includes(org.id) &&
+            hasStoreIntersection(org.storeIds, deptStoreIds)
+        )
+        .map((org) => org.id);
+
+      if (filteredAllowed.length > 0) {
+        return filteredAllowed;
+      }
+    }
+  }
+
+  return baseAllowed;
 }
 
 export function getAllowedDemoSystemIds(
@@ -194,7 +220,7 @@ export function getAvailableDemoIdentityIds(
   const preferredOrder: DemoIdentityId[] =
     currentDemoSystem === 'merchant'
       ? ['merchant_admin', 'region_admin']
-      : ['store_staff', 'region_admin'];
+      : ['region_admin', 'store_staff'];
 
   return preferredOrder.filter((identityId) => {
     const allowedOrganizationIds = getAllowedOrganizationIds(
@@ -207,6 +233,12 @@ export function getAvailableDemoIdentityIds(
       getAllowedDemoSystemIds(identityId, currentOrganization).includes(currentDemoSystem)
     );
   });
+}
+
+export function getDefaultDemoIdentityForSystem(
+  currentDemoSystem: DemoSystemId
+): DemoIdentityId {
+  return currentDemoSystem === 'store' ? 'region_admin' : 'merchant_admin';
 }
 
 export function getPreferredDemoIdentityForSystem(
@@ -225,9 +257,7 @@ export function getPreferredDemoIdentityForSystem(
     return preferredIdentityId;
   }
 
-  return availableIdentityIds[0] || (
-    currentDemoSystem === 'store' ? 'store_staff' : 'merchant_admin'
-  );
+  return availableIdentityIds[0] || getDefaultDemoIdentityForSystem(currentDemoSystem);
 }
 
 function getDefaultOrganizationId(
@@ -242,6 +272,54 @@ function getDefaultOrganizationId(
   }
 
   return allowedOrganizationIds[0] || HEADQUARTER_ORGANIZATION_ID;
+}
+
+function getCompatibleOrganizationIdForSelection(
+  currentDemoSystem: DemoSystemId,
+  currentDemoIdentity: DemoIdentityId,
+  organizationOptions: OrganizationOption[],
+  preferredOrganizationId?: string
+) {
+  const allowedOrganizationIdSet = new Set(
+    getAllowedOrganizationIds(currentDemoIdentity, organizationOptions)
+  );
+  const compatibleOrganizations = organizationOptions.filter((item) => {
+    return (
+      allowedOrganizationIdSet.has(item.id) &&
+      getAllowedDemoSystemIds(currentDemoIdentity, item).includes(currentDemoSystem)
+    );
+  });
+
+  if (!compatibleOrganizations.length) {
+    return getDefaultOrganizationId(currentDemoIdentity, organizationOptions);
+  }
+
+  if (
+    preferredOrganizationId &&
+    compatibleOrganizations.some((item) => item.id === preferredOrganizationId)
+  ) {
+    return preferredOrganizationId;
+  }
+
+  if (currentDemoSystem === 'store') {
+    const matchedStoreOrganization = compatibleOrganizations.find(
+      (item) => item.scope === 'store'
+    );
+
+    if (matchedStoreOrganization) {
+      return matchedStoreOrganization.id;
+    }
+  }
+
+  const preset = getDemoIdentityPreset(currentDemoIdentity);
+
+  if (
+    compatibleOrganizations.some((item) => item.id === preset.defaultOrganizationId)
+  ) {
+    return preset.defaultOrganizationId;
+  }
+
+  return compatibleOrganizations[0].id;
 }
 
 export function buildDemoContext(
@@ -289,6 +367,9 @@ export function resolveDemoSelection(params?: {
     params?.currentOrganizationId || readCurrentOrganizationIdFallback(),
     organizationOptions
   );
+  let currentDemoSystem = normalizeDemoSystemId(
+    params?.currentDemoSystem || readCurrentDemoSystemId()
+  );
 
   if (
     !getAllowedOrganizationIds(currentDemoIdentity, organizationOptions).includes(
@@ -301,8 +382,14 @@ export function resolveDemoSelection(params?: {
     );
   }
 
-  let currentDemoSystem = normalizeDemoSystemId(
-    params?.currentDemoSystem || readCurrentDemoSystemId()
+  currentOrganization = getCurrentOrganizationById(
+    getCompatibleOrganizationIdForSelection(
+      currentDemoSystem,
+      currentDemoIdentity,
+      organizationOptions,
+      currentOrganization.id
+    ),
+    organizationOptions
   );
 
   if (
@@ -318,6 +405,16 @@ export function resolveDemoSelection(params?: {
     );
   }
 
+  currentOrganization = getCurrentOrganizationById(
+    getCompatibleOrganizationIdForSelection(
+      currentDemoSystem,
+      currentDemoIdentity,
+      organizationOptions,
+      currentOrganization.id
+    ),
+    organizationOptions
+  );
+
   if (
     !getAllowedDemoSystemIds(currentDemoIdentity, currentOrganization).includes(
       currentDemoSystem
@@ -325,6 +422,16 @@ export function resolveDemoSelection(params?: {
   ) {
     currentDemoSystem = getDemoIdentityPreset(currentDemoIdentity).defaultSystemId;
   }
+
+  currentOrganization = getCurrentOrganizationById(
+    getCompatibleOrganizationIdForSelection(
+      currentDemoSystem,
+      currentDemoIdentity,
+      organizationOptions,
+      currentOrganization.id
+    ),
+    organizationOptions
+  );
 
   if (
     !getAllowedOrganizationIds(currentDemoIdentity, organizationOptions).includes(

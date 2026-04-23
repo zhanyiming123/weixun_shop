@@ -297,7 +297,7 @@ function EnterpriseEmployeePage() {
 
   const columns = [
     {
-      title: '有赞账号',
+      title: '账号',
       dataIndex: 'account',
       width: 180,
       render: (value: string, record: EmployeeItem) => (
@@ -323,7 +323,7 @@ function EnterpriseEmployeePage() {
       width: 160,
     },
     {
-      title: '所属组织/部门/员工角色',
+      title: '员工角色',
       dataIndex: 'organizationDisplay',
       width: 320,
       render: (value: string[]) => (

@@ -4,10 +4,20 @@ import usePersistentState, {
 } from '@/utils/usePersistentState';
 
 export type EnterpriseRoleScope = 'headquarter' | 'store' | 'region';
-export type EnterpriseRoleDataViewScope = 'all' | 'department' | 'self';
+export type EnterpriseRoleDataViewScope =
+  | 'all'
+  | 'department'
+  | 'self'
+  | 'custom_employee';
 
 export type EnterpriseRoleDataPermissions = {
   viewScope: EnterpriseRoleDataViewScope;
+};
+
+export type EnterpriseRoleDataViewScopeOption = {
+  label: string;
+  value: EnterpriseRoleDataViewScope;
+  description: string;
 };
 
 export type EnterpriseRolePermissionNode = {
@@ -33,6 +43,14 @@ export type EnterpriseRoleItem = {
 export type EnterpriseRolePermissionState = {
   dataPermissions: EnterpriseRoleDataPermissions;
   functionPermissionKeys: string[];
+};
+
+export type EnterpriseRolePermissionMode = 'default' | 'merchant';
+export type MerchantRolePermissionSystem = 'store' | 'merchant';
+
+export type MerchantRolePermissionSystemOption = {
+  label: string;
+  value: MerchantRolePermissionSystem;
 };
 
 const STORAGE_KEY = 'enterprise-role-items-v1';
@@ -65,6 +83,7 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP: Record<
   all: '全量数据',
   department: '本部门数据',
   self: '个人数据',
+  custom_employee: '自定义员工范围',
 };
 
 export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP: Record<
@@ -74,29 +93,45 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP: Record<
   all: '可查看当前权限范围内的全部业务数据。',
   department: '可查看当前部门下的业务数据。',
   self: '仅可查看当前账号自己产生的业务数据。',
+  custom_employee: '允许为持有该角色的每个单独员工自定义配置能查看的其他员工业务数据。',
 };
 
-export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS: Array<{
-  label: string;
-  value: EnterpriseRoleDataViewScope;
-  description: string;
-}> = [
-  {
-    label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.all,
-    value: 'all',
-    description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.all,
-  },
-  {
-    label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.department,
-    value: 'department',
-    description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department,
-  },
-  {
-    label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.self,
-    value: 'self',
-    description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self,
-  },
-];
+export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS: EnterpriseRoleDataViewScopeOption[] =
+  [
+    {
+      label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.all,
+      value: 'all',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.all,
+    },
+    {
+      label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.department,
+      value: 'department',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department,
+    },
+    {
+      label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.custom_employee,
+      value: 'custom_employee',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.custom_employee,
+    },
+    {
+      label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP.self,
+      value: 'self',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self,
+    },
+  ];
+
+export function getEnterpriseRoleDataViewScopeOptions(
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
+) {
+  if (mode === 'merchant' || scope === 'store') {
+    return ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS.filter(
+      (option) => option.value !== 'custom_employee'
+    );
+  }
+
+  return ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS;
+}
 
 export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
   {
@@ -213,6 +248,167 @@ export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
     ],
   },
+];
+
+export const MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS: MerchantRolePermissionSystemOption[] =
+  [
+    {
+      label: '门店管理系统',
+      value: 'store',
+    },
+    {
+      label: '商户管理系统',
+      value: 'merchant',
+    },
+  ];
+
+const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
+  {
+    key: 'store-system.dashboard',
+    title: '首页',
+  },
+  {
+    key: 'store-system.product',
+    title: '商品管理',
+    children: [
+      {
+        key: 'product/list',
+        title: '商品列表',
+      },
+      {
+        key: 'product/create',
+        title: '添加商品',
+      },
+    ],
+  },
+  {
+    key: 'store-system.order',
+    title: '订单管理',
+    children: [
+      {
+        key: 'order/list',
+        title: '订单列表',
+      },
+    ],
+  },
+  {
+    key: 'store-system.after-sales',
+    title: '售后管理',
+    children: [
+      {
+        key: 'after-sales/list',
+        title: '售后列表',
+      },
+    ],
+  },
+  {
+    key: 'store-system.marketing',
+    title: '营销管理',
+    children: [
+      {
+        key: 'marketing/center',
+        title: '营销中心',
+      },
+      {
+        key: 'marketing/center/coupon/list',
+        title: '优惠券列表',
+      },
+      {
+        key: 'marketing/center/coupon/create',
+        title: '创建优惠券',
+      },
+    ],
+  },
+  {
+    key: 'store-system.config',
+    title: '门店配置',
+    children: [
+      {
+        key: 'store-config/department',
+        title: '门店组织',
+      },
+      {
+        key: 'store-config/org-reference',
+        title: '组织架构引用',
+      },
+      {
+        key: 'store-config/employee',
+        title: '门店员工',
+      },
+      {
+        key: 'store-config/role',
+        title: '门店角色',
+      },
+      {
+        key: 'store-config/basic',
+        title: '门店基础配置',
+      },
+    ],
+  },
+];
+
+const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
+  {
+    key: 'merchant-system.dashboard',
+    title: '首页',
+  },
+  {
+    key: 'merchant/organization',
+    title: '门店管理',
+  },
+  {
+    key: 'merchant-system.product-config',
+    title: '商品配置',
+    children: [
+      {
+        key: 'product-config/category',
+        title: '商品分类',
+      },
+      {
+        key: 'product-config/catalog',
+        title: '商品类目',
+      },
+      {
+        key: 'product-config/attribute',
+        title: '类目属性',
+      },
+    ],
+  },
+  {
+    key: 'merchant-system.permission',
+    title: '权限管理',
+    children: [
+      {
+        key: 'merchant/employee',
+        title: '员工管理',
+      },
+      {
+        key: 'merchant/store-employee',
+        title: '门店员工',
+      },
+      {
+        key: 'merchant/role',
+        title: '员工角色',
+      },
+      {
+        key: 'merchant/department',
+        title: '部门管理',
+      },
+    ],
+  },
+];
+
+const MERCHANT_ROLE_PERMISSION_TREE_BY_SYSTEM: Record<
+  MerchantRolePermissionSystem,
+  EnterpriseRolePermissionNode[]
+> = {
+  store: MERCHANT_ROLE_STORE_PERMISSION_TREE,
+  merchant: MERCHANT_ROLE_MERCHANT_PERMISSION_TREE,
+};
+
+const MERCHANT_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
+  ...MERCHANT_ROLE_STORE_PERMISSION_TREE,
+  ...MERCHANT_ROLE_MERCHANT_PERMISSION_TREE,
 ];
 
 const ENTERPRISE_ROLE_PERMISSION_EXCLUDED_KEYS_BY_SCOPE: Partial<
@@ -356,6 +552,71 @@ const ENTERPRISE_ROLE_PERMISSION_TITLE_MAP_BY_SCOPE: Record<
   region: collectPermissionTitleMap(ENTERPRISE_ROLE_PERMISSION_TREE_BY_SCOPE.region),
 };
 
+const MERCHANT_ROLE_PERMISSION_ALL_KEYS = collectPermissionKeys(
+  MERCHANT_ROLE_PERMISSION_TREE
+);
+
+const MERCHANT_ROLE_PERMISSION_KEY_SET = new Set(MERCHANT_ROLE_PERMISSION_ALL_KEYS);
+
+const MERCHANT_ROLE_PERMISSION_TITLE_MAP = collectPermissionTitleMap(
+  MERCHANT_ROLE_PERMISSION_TREE
+);
+
+const MERCHANT_ROLE_PERMISSION_ALL_KEYS_BY_SYSTEM: Record<
+  MerchantRolePermissionSystem,
+  string[]
+> = {
+  store: collectPermissionKeys(MERCHANT_ROLE_STORE_PERMISSION_TREE),
+  merchant: collectPermissionKeys(MERCHANT_ROLE_MERCHANT_PERMISSION_TREE),
+};
+
+const MERCHANT_ROLE_STORE_KEY_SET = new Set(MERCHANT_ROLE_PERMISSION_ALL_KEYS_BY_SYSTEM.store);
+const MERCHANT_ROLE_MERCHANT_KEY_SET = new Set(MERCHANT_ROLE_PERMISSION_ALL_KEYS_BY_SYSTEM.merchant);
+
+const LEGACY_PERMISSION_KEY_TO_MERCHANT_KEYS: Record<string, string[]> = {
+  'permission.overview': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.overview.workbench-data': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.overview.sales-target-mobile': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.overview.ai-assistant': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.common-functions': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.common-functions.view-operate': [
+    'store-system.dashboard',
+    'merchant-system.dashboard',
+  ],
+  'permission.product-management': [
+    'store-system.product',
+    'merchant-system.product-config',
+  ],
+  'product/category': ['product-config/category'],
+  'product/catalog': ['product-config/catalog'],
+  'product/attribute': ['product-config/attribute'],
+  'permission.order-management': ['store-system.order'],
+  'permission.after-sales-management': ['store-system.after-sales'],
+  'permission.marketing-management': ['store-system.marketing'],
+  'permission.enterprise-management': ['merchant-system.permission'],
+  'enterprise/organization': ['merchant/organization'],
+  'enterprise/department': ['merchant/department'],
+  'store-config/department': ['merchant/department'],
+  'enterprise/employee': ['merchant/employee'],
+  'enterprise/role': ['merchant/role'],
+  'store-config/employee': ['merchant/store-employee'],
+};
+
 function padNumber(value: number) {
   return String(value).padStart(2, '0');
 }
@@ -374,7 +635,32 @@ export function getEnterpriseRolePermissionTree(scope: EnterpriseRoleScope) {
   return ENTERPRISE_ROLE_PERMISSION_TREE_BY_SCOPE[scope];
 }
 
-export function getEnterpriseRolePermissionRootKeys(scope: EnterpriseRoleScope) {
+export function getMerchantRolePermissionTree(
+  system: MerchantRolePermissionSystem
+) {
+  return MERCHANT_ROLE_PERMISSION_TREE_BY_SYSTEM[system];
+}
+
+export function getMerchantRolePermissionRootKeys(
+  system: MerchantRolePermissionSystem
+) {
+  return MERCHANT_ROLE_PERMISSION_TREE_BY_SYSTEM[system].map((item) => item.key);
+}
+
+export function getMerchantRolePermissionSystemKeys(
+  system: MerchantRolePermissionSystem
+) {
+  return MERCHANT_ROLE_PERMISSION_ALL_KEYS_BY_SYSTEM[system];
+}
+
+export function getEnterpriseRolePermissionRootKeys(
+  scope: EnterpriseRoleScope,
+  mode: EnterpriseRolePermissionMode = 'default'
+) {
+  if (mode === 'merchant') {
+    return MERCHANT_ROLE_PERMISSION_TREE.map((item) => item.key);
+  }
+
   return ENTERPRISE_ROLE_PERMISSION_TREE_BY_SCOPE[scope].map((item) => item.key);
 }
 
@@ -411,56 +697,105 @@ export function createEnterpriseRoleId(
 export function normalizeEnterpriseRoleDataViewScope(
   value: unknown
 ): EnterpriseRoleDataViewScope {
-  if (value === 'all' || value === 'department' || value === 'self') {
+  if (
+    value === 'all' ||
+    value === 'department' ||
+    value === 'self' ||
+    value === 'custom_employee'
+  ) {
     return value;
   }
 
   return DEFAULT_ENTERPRISE_ROLE_DATA_PERMISSIONS.viewScope;
 }
 
+export function normalizeEnterpriseRoleDataViewScopeByScope(
+  value: unknown,
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
+): EnterpriseRoleDataViewScope {
+  const normalizedValue = normalizeEnterpriseRoleDataViewScope(value);
+
+  if (
+    (mode === 'merchant' || scope === 'store') &&
+    normalizedValue === 'custom_employee'
+  ) {
+    return 'department';
+  }
+
+  return normalizedValue;
+}
+
 export function cloneEnterpriseRoleDataPermissions(
   value?: {
     viewScope?: unknown;
     canViewAllVerificationRecords?: unknown;
-  }
+  },
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ): EnterpriseRoleDataPermissions {
   if (value && 'viewScope' in value) {
     return {
-      viewScope: normalizeEnterpriseRoleDataViewScope(value.viewScope),
+      viewScope: normalizeEnterpriseRoleDataViewScopeByScope(
+        value.viewScope,
+        scope,
+        mode
+      ),
     };
   }
 
   if (value && 'canViewAllVerificationRecords' in value) {
     return {
-      viewScope: 'department',
+      viewScope: normalizeEnterpriseRoleDataViewScopeByScope(
+        'department',
+        scope,
+        mode
+      ),
     };
   }
 
   return {
-    viewScope: DEFAULT_ENTERPRISE_ROLE_DATA_PERMISSIONS.viewScope,
+    viewScope: normalizeEnterpriseRoleDataViewScopeByScope(
+      DEFAULT_ENTERPRISE_ROLE_DATA_PERMISSIONS.viewScope,
+      scope,
+      mode
+    ),
   };
 }
 
 export function cloneEnterpriseRolePermissionState(
   value?: Partial<EnterpriseRolePermissionState>,
-  scope: EnterpriseRoleScope = 'headquarter'
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ): EnterpriseRolePermissionState {
   return {
-    dataPermissions: cloneEnterpriseRoleDataPermissions(value?.dataPermissions),
+    dataPermissions: cloneEnterpriseRoleDataPermissions(
+      value?.dataPermissions,
+      scope,
+      mode
+    ),
     functionPermissionKeys: normalizeEnterpriseRolePermissionKeys(
       value?.functionPermissionKeys,
-      scope
+      scope,
+      mode
     ),
   };
 }
 
 export function expandEnterpriseRolePermissionKeys(
   keys: string[],
-  scope: EnterpriseRoleScope = 'headquarter'
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ) {
   const result = new Set<string>();
-  const permissionTree = getEnterpriseRolePermissionTree(scope);
-  const permissionKeys = ENTERPRISE_ROLE_PERMISSION_ALL_KEYS_BY_SCOPE[scope];
+  const permissionTree =
+    mode === 'merchant'
+      ? MERCHANT_ROLE_PERMISSION_TREE
+      : getEnterpriseRolePermissionTree(scope);
+  const permissionKeys =
+    mode === 'merchant'
+      ? MERCHANT_ROLE_PERMISSION_ALL_KEYS
+      : ENTERPRISE_ROLE_PERMISSION_ALL_KEYS_BY_SCOPE[scope];
 
   keys.forEach((key) => {
     const node = findPermissionNode(key, permissionTree);
@@ -476,41 +811,110 @@ export function expandEnterpriseRolePermissionKeys(
 
 export function normalizeEnterpriseRolePermissionKeys(
   value: unknown,
-  scope: EnterpriseRoleScope = 'headquarter'
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ) {
   const rawKeys = Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
-  const filteredKeys = rawKeys.filter((key) =>
-    ENTERPRISE_ROLE_PERMISSION_KEY_SET_BY_SCOPE[scope].has(key)
-  );
+  const nextKeys =
+    mode === 'merchant'
+      ? rawKeys.flatMap((key) => {
+          if (MERCHANT_ROLE_PERMISSION_KEY_SET.has(key)) {
+            return [key];
+          }
 
-  return expandEnterpriseRolePermissionKeys(filteredKeys, scope);
+          return LEGACY_PERMISSION_KEY_TO_MERCHANT_KEYS[key] || [];
+        })
+      : rawKeys;
+  const filteredKeys =
+    mode === 'merchant'
+      ? nextKeys.filter((key) => MERCHANT_ROLE_PERMISSION_KEY_SET.has(key))
+      : nextKeys.filter((key) =>
+          ENTERPRISE_ROLE_PERMISSION_KEY_SET_BY_SCOPE[scope].has(key)
+        );
+
+  return expandEnterpriseRolePermissionKeys(filteredKeys, scope, mode);
 }
 
 export function getEnterpriseRolePermissionTitles(
   keys: string[],
-  scope: EnterpriseRoleScope = 'headquarter'
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ) {
-  const normalizedKeys = normalizeEnterpriseRolePermissionKeys(keys, scope);
-  const titleMap = ENTERPRISE_ROLE_PERMISSION_TITLE_MAP_BY_SCOPE[scope];
+  const normalizedKeys = normalizeEnterpriseRolePermissionKeys(
+    keys,
+    scope,
+    mode
+  );
+  const titleMap =
+    mode === 'merchant'
+      ? MERCHANT_ROLE_PERMISSION_TITLE_MAP
+      : ENTERPRISE_ROLE_PERMISSION_TITLE_MAP_BY_SCOPE[scope];
 
-  return normalizedKeys.map((key) => titleMap[key]);
+  const titles = normalizedKeys.reduce<string[]>((result, key) => {
+    const title = titleMap[key];
+    if (title) {
+      result.push(title);
+    }
+    return result;
+  }, []);
+
+  return Array.from(new Set(titles));
+}
+
+export function getMerchantRoleSystemNames(
+  keys: string[],
+  scope: EnterpriseRoleScope = 'headquarter'
+): string[] {
+  const merchantKeys = normalizeEnterpriseRolePermissionKeys(keys, scope, 'merchant');
+  const systems: string[] = [];
+  if (merchantKeys.some((k) => MERCHANT_ROLE_STORE_KEY_SET.has(k))) {
+    systems.push('门店管理系统');
+  }
+  if (merchantKeys.some((k) => MERCHANT_ROLE_MERCHANT_KEY_SET.has(k))) {
+    systems.push('商户管理系统');
+  }
+  return systems;
+}
+
+export function replaceMerchantRolePermissionSystemKeys(
+  allKeys: string[],
+  system: MerchantRolePermissionSystem,
+  nextSystemKeys: string[]
+) {
+  const systemKeySet = new Set(getMerchantRolePermissionSystemKeys(system));
+  const preservedKeys = allKeys.filter((key) => !systemKeySet.has(key));
+
+  return normalizeEnterpriseRolePermissionKeys(
+    [...preservedKeys, ...nextSystemKeys],
+    'headquarter',
+    'merchant'
+  );
 }
 
 export function areEnterpriseRolePermissionStatesEqual(
   left: EnterpriseRolePermissionState,
   right: EnterpriseRolePermissionState,
-  scope: EnterpriseRoleScope = 'headquarter'
+  scope: EnterpriseRoleScope = 'headquarter',
+  mode: EnterpriseRolePermissionMode = 'default'
 ) {
   return (
     left.dataPermissions.viewScope === right.dataPermissions.viewScope &&
     JSON.stringify(
-      normalizeEnterpriseRolePermissionKeys(left.functionPermissionKeys, scope)
-    ) ===
-      JSON.stringify(
-        normalizeEnterpriseRolePermissionKeys(right.functionPermissionKeys, scope)
+      normalizeEnterpriseRolePermissionKeys(
+        left.functionPermissionKeys,
+        scope,
+        mode
       )
+    ) ===
+    JSON.stringify(
+      normalizeEnterpriseRolePermissionKeys(
+        right.functionPermissionKeys,
+        scope,
+        mode
+      )
+    )
   );
 }
 
@@ -531,6 +935,19 @@ function normalizeEnterpriseRoleItem(
       ? item.createdAt
       : formatEnterpriseRoleDateTime(new Date());
 
+  const rawPermissionKeys = Array.isArray(item.functionPermissionKeys)
+    ? item.functionPermissionKeys.filter((k): k is string => typeof k === 'string')
+    : [];
+  const enterpriseKeySet = ENTERPRISE_ROLE_PERMISSION_KEY_SET_BY_SCOPE[scope];
+  const hasMerchantOnlyKeys =
+    scope !== 'store' &&
+    rawPermissionKeys.some(
+      (k) => MERCHANT_ROLE_PERMISSION_KEY_SET.has(k) && !enterpriseKeySet.has(k)
+    );
+  const permissionMode: EnterpriseRolePermissionMode = hasMerchantOnlyKeys
+    ? 'merchant'
+    : 'default';
+
   return {
     id: item.id || `enterprise_role_${index + 1}`,
     scope,
@@ -540,10 +957,11 @@ function normalizeEnterpriseRoleItem(
       Number.isFinite(employeeCount) && employeeCount > 0 ? employeeCount : 0,
     isDefault: Boolean(item.isDefault),
     referenceRoleId: normalizeReferenceRoleId(item.referenceRoleId),
-    dataPermissions: cloneEnterpriseRoleDataPermissions(item.dataPermissions),
+    dataPermissions: cloneEnterpriseRoleDataPermissions(item.dataPermissions, scope, permissionMode),
     functionPermissionKeys: normalizeEnterpriseRolePermissionKeys(
-      item.functionPermissionKeys,
-      scope
+      rawPermissionKeys,
+      scope,
+      permissionMode
     ),
     createdAt,
     updatedAt:
@@ -833,6 +1251,182 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       updatedAt: '2026-04-07 11:20:00',
     },
     12
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_super_admin',
+      scope: 'headquarter',
+      name: '商户超级管理员',
+      description: '拥有门店管理系统和商户管理系统全量权限，负责商户级别最终决策与兜底。',
+      employeeCount: 1,
+      isDefault: true,
+      dataPermissions: { viewScope: 'all' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.product',
+        'product/list',
+        'product/create',
+        'store-system.order',
+        'order/list',
+        'store-system.after-sales',
+        'after-sales/list',
+        'store-system.marketing',
+        'marketing/center',
+        'marketing/center/coupon/list',
+        'marketing/center/coupon/create',
+        'store-system.config',
+        'store-config/department',
+        'store-config/org-reference',
+        'store-config/employee',
+        'store-config/role',
+        'store-config/basic',
+        'merchant-system.dashboard',
+        'merchant/organization',
+        'merchant-system.product-config',
+        'product-config/category',
+        'product-config/catalog',
+        'product-config/attribute',
+        'merchant-system.permission',
+        'merchant/employee',
+        'merchant/store-employee',
+        'merchant/role',
+        'merchant/department',
+      ],
+      createdAt: '2026-04-08 09:00:00',
+      updatedAt: '2026-04-08 09:00:00',
+    },
+    13
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_branch_gm',
+      scope: 'headquarter',
+      name: '商户分总',
+      description: '负责所辖区域内门店整体经营管理，兼顾商户系统权限配置与门店运营监控。',
+      employeeCount: 3,
+      isDefault: true,
+      dataPermissions: { viewScope: 'all' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.product',
+        'product/list',
+        'product/create',
+        'store-system.order',
+        'order/list',
+        'store-system.after-sales',
+        'after-sales/list',
+        'store-system.marketing',
+        'marketing/center',
+        'marketing/center/coupon/list',
+        'marketing/center/coupon/create',
+        'merchant-system.dashboard',
+        'merchant/organization',
+        'merchant-system.permission',
+        'merchant/employee',
+        'merchant/store-employee',
+        'merchant/role',
+        'merchant/department',
+      ],
+      createdAt: '2026-04-08 09:10:00',
+      updatedAt: '2026-04-08 09:10:00',
+    },
+    14
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_product_ops',
+      scope: 'headquarter',
+      name: '门店商品运营',
+      description: '负责门店商品上架维护、库存调整及优惠券关联配置，保障商品供给质量。',
+      employeeCount: 5,
+      isDefault: true,
+      dataPermissions: { viewScope: 'department' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.product',
+        'product/list',
+        'product/create',
+        'store-system.marketing',
+        'marketing/center',
+        'marketing/center/coupon/list',
+      ],
+      createdAt: '2026-04-08 09:20:00',
+      updatedAt: '2026-04-08 09:20:00',
+    },
+    15
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_marketing_ops',
+      scope: 'headquarter',
+      name: '门店营销运营',
+      description: '负责门店活动策划与执行、优惠券发放及订单数据跟踪，驱动门店增长。',
+      employeeCount: 4,
+      isDefault: true,
+      dataPermissions: { viewScope: 'department' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.product',
+        'product/list',
+        'store-system.order',
+        'order/list',
+        'store-system.marketing',
+        'marketing/center',
+        'marketing/center/coupon/list',
+        'marketing/center/coupon/create',
+      ],
+      createdAt: '2026-04-08 09:30:00',
+      updatedAt: '2026-04-08 09:30:00',
+    },
+    16
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_store_admin',
+      scope: 'region',
+      name: '门店管理员',
+      description: '负责门店日常运营管理，覆盖商品、订单、售后和营销等核心业务模块。',
+      employeeCount: 12,
+      isDefault: true,
+      dataPermissions: { viewScope: 'department' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.product',
+        'product/list',
+        'product/create',
+        'store-system.order',
+        'order/list',
+        'store-system.after-sales',
+        'after-sales/list',
+        'store-system.marketing',
+        'marketing/center',
+        'marketing/center/coupon/list',
+      ],
+      createdAt: '2026-04-08 09:40:00',
+      updatedAt: '2026-04-08 09:40:00',
+    },
+    17
+  ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_customer_service',
+      scope: 'region',
+      name: '门店客服',
+      description: '负责订单跟进、退换货处理及客户投诉受理，保障门店服务体验达标。',
+      employeeCount: 18,
+      isDefault: true,
+      dataPermissions: { viewScope: 'self' },
+      functionPermissionKeys: [
+        'store-system.dashboard',
+        'store-system.order',
+        'order/list',
+        'store-system.after-sales',
+        'after-sales/list',
+      ],
+      createdAt: '2026-04-08 09:50:00',
+      updatedAt: '2026-04-08 09:50:00',
+    },
+    18
   ),
 ];
 

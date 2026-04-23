@@ -36,6 +36,7 @@ export function getOrganizationEditPath(
 
 export function getEmployeeRouteBase(pathname: string) {
   return resolveRouteBase(pathname, [
+    '/merchant/organization/store-employee',
     '/store-config/employee',
     '/merchant/employee',
     '/enterprise/employee',
@@ -48,6 +49,10 @@ export function getEmployeeListPath(pathname: string) {
 
 export function getEmployeeCreatePath(pathname: string) {
   return `${getEmployeeRouteBase(pathname)}/create`;
+}
+
+export function getEmployeeEditPath(pathname: string, id: string) {
+  return `${getEmployeeRouteBase(pathname)}/edit?id=${id}`;
 }
 
 export function getRoleRouteBase(pathname: string) {

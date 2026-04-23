@@ -1,18 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Card,
-  Form,
-  Input,
-  Select,
-  Tag,
-  TreeSelect,
-  Typography,
-} from '@arco-design/web-react';
-import {
-  buildEnterpriseDepartmentTree,
-  EnterpriseDepartmentScope,
-  readEnterpriseDepartmentStoreOptions,
-} from '@/pages/enterprise/department/data';
+import { Card, Form, Input, Select, Tag, Typography } from '@arco-design/web-react';
 import {
   ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP,
   ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP,
@@ -20,22 +7,13 @@ import {
   getEnterpriseRolePermissionTitles,
   useEnterpriseRoleItems,
 } from '@/pages/enterprise/role/data';
+import { EmployeeItem, DEFAULT_EMPLOYEE_ITEMS } from '@/pages/enterprise/employee/data';
+import usePersistentState from '@/utils/usePersistentState';
 import styles from './index.module.less';
 
 const { useForm } = Form;
 const Option = Select.Option;
-const HEADQUARTER_ORGANIZATION_ID = 'headquarter';
-
-type EmployeeOrganizationScope = EnterpriseDepartmentScope;
-
-type EmployeeTreeNode = {
-  key: string;
-  value: string;
-  title: string;
-  scope?: EmployeeOrganizationScope;
-  disabled?: boolean;
-  children?: EmployeeTreeNode[];
-};
+const DEFAULT_ROLE_SCOPE = 'headquarter';
 
 const EMPLOYEE_FORM_LAYOUT = {
   layout: 'horizontal' as const,
@@ -57,76 +35,14 @@ function normalizeSingleValue(value: unknown) {
   return undefined;
 }
 
-function flattenTreeNodes<T extends { value: string; children?: T[] }>(
-  nodes: T[],
-  accumulator = new Map<string, T>()
-) {
-  nodes.forEach((node) => {
-    accumulator.set(node.value, node);
-    if (node.children?.length) {
-      flattenTreeNodes(node.children, accumulator);
-    }
-  });
-
-  return accumulator;
-}
-
-function buildOrganizationTreeData(): EmployeeTreeNode[] {
-  const storeNodes = readEnterpriseDepartmentStoreOptions().map<EmployeeTreeNode>(
-    (item) => ({
-      key: item.value,
-      value: item.value,
-      title: item.label,
-      scope: 'store',
-    })
-  );
-
-  return [
-    {
-      key: HEADQUARTER_ORGANIZATION_ID,
-      value: HEADQUARTER_ORGANIZATION_ID,
-      title: '总部',
-      scope: 'headquarter',
-    },
-    {
-      key: 'store_group',
-      value: 'store_group',
-      title: '门店',
-      disabled: true,
-      children: storeNodes,
-    },
-  ];
-}
-
 function EmployeeCreatePage() {
   const [form] = useForm();
   const [roleItems] = useEnterpriseRoleItems();
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState(
-    HEADQUARTER_ORGANIZATION_ID
-  );
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>();
-
-  const organizationTreeData = useMemo(() => buildOrganizationTreeData(), []);
-  const organizationNodeMap = useMemo(
-    () => flattenTreeNodes(organizationTreeData),
-    [organizationTreeData]
-  );
-  const selectedOrganization =
-    organizationNodeMap.get(selectedOrganizationId) ||
-    organizationNodeMap.get(HEADQUARTER_ORGANIZATION_ID);
-  const selectedOrganizationScope = selectedOrganization?.scope || 'headquarter';
-  const departmentTreeData = useMemo(
-    () =>
-      buildEnterpriseDepartmentTree(
-        selectedOrganizationScope,
-        selectedOrganizationScope === 'store' ? selectedOrganizationId : undefined
-      ),
-    [selectedOrganizationId, selectedOrganizationScope]
-  );
   const availableRoles = useMemo(
     () =>
       roleItems
-        .filter((item) => item.scope === selectedOrganizationScope)
+        .filter((item) => item.scope === DEFAULT_ROLE_SCOPE)
         .sort((left, right) => {
           if (left.isDefault !== right.isDefault) {
             return Number(right.isDefault) - Number(left.isDefault);
@@ -134,8 +50,14 @@ function EmployeeCreatePage() {
 
           return left.name.localeCompare(right.name, 'zh-CN');
         }),
-    [roleItems, selectedOrganizationScope]
+    [roleItems]
   );
+
+  const [allEmployees] = usePersistentState<EmployeeItem[]>(
+    'enterprise-employee-items-v1',
+    DEFAULT_EMPLOYEE_ITEMS
+  );
+
   const selectedRole = useMemo<EnterpriseRoleItem | undefined>(
     () => availableRoles.find((item) => item.id === selectedRoleId),
     [availableRoles, selectedRoleId]
@@ -144,9 +66,9 @@ function EmployeeCreatePage() {
     () =>
       selectedRole
         ? getEnterpriseRolePermissionTitles(
-            selectedRole.functionPermissionKeys,
-            selectedRole.scope
-          )
+          selectedRole.functionPermissionKeys,
+          selectedRole.scope
+        )
         : [],
     [selectedRole]
   );
@@ -159,18 +81,6 @@ function EmployeeCreatePage() {
       });
     }
   }, [form, selectedRole, selectedRoleId]);
-
-  function handleOrganizationChange(value: unknown) {
-    const nextOrganizationId = normalizeSingleValue(value) || HEADQUARTER_ORGANIZATION_ID;
-
-    setSelectedOrganizationId(nextOrganizationId);
-    setSelectedRoleId(undefined);
-    form.setFieldsValue({
-      organizationId: nextOrganizationId,
-      departmentId: undefined,
-      roleId: undefined,
-    });
-  }
 
   function handleRoleChange(value: unknown) {
     setSelectedRoleId(normalizeSingleValue(value));
@@ -185,7 +95,6 @@ function EmployeeCreatePage() {
           className={styles.employeeForm}
           initialValues={{
             areaCode: 'cn-86',
-            organizationId: HEADQUARTER_ORGANIZATION_ID,
           }}
         >
           <Form.Item
@@ -249,52 +158,6 @@ function EmployeeCreatePage() {
 
           <Form.Item
             required
-            field="organizationId"
-            label="所属总部/门店："
-            rules={[{ required: true, message: '请选择所属总部/门店' }]}
-          >
-            <TreeSelect
-              allowClear={false}
-              className={styles.selectorField}
-              treeData={organizationTreeData}
-              triggerProps={{
-                autoAlignPopupMinWidth: true,
-                position: 'bl',
-              }}
-              treeProps={{
-                defaultExpandedKeys: ['store_group'],
-                showLine: true,
-              }}
-              onChange={handleOrganizationChange}
-            />
-          </Form.Item>
-
-          <Form.Item
-            required
-            field="departmentId"
-            label="所属部门："
-            rules={[{ required: true, message: '请选择所属部门' }]}
-          >
-            <TreeSelect
-              allowClear
-              className={styles.selectorField}
-              treeData={departmentTreeData}
-              placeholder={
-                departmentTreeData.length ? '请选择所属部门' : '请先在部门管理中配置部门'
-              }
-              triggerProps={{
-                autoAlignPopupMinWidth: true,
-                position: 'bl',
-              }}
-              treeProps={{
-                defaultExpandAll: true,
-                showLine: true,
-              }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            required
             field="roleId"
             label="所属角色："
             className={styles.roleField}
@@ -339,14 +202,14 @@ function EmployeeCreatePage() {
                         <span className={styles.permissionItemTitle}>
                           {
                             ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP[
-                              selectedRole.dataPermissions.viewScope
+                            selectedRole.dataPermissions.viewScope
                             ]
                           }
                         </span>
                         <span className={styles.permissionItemDescription}>
                           {
                             ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP[
-                              selectedRole.dataPermissions.viewScope
+                            selectedRole.dataPermissions.viewScope
                             ]
                           }
                         </span>
@@ -385,6 +248,29 @@ function EmployeeCreatePage() {
               </div>
             </div>
           </Form.Item>
+
+          {selectedRole?.dataPermissions.viewScope === 'custom_employee' && (
+            <Form.Item
+              field="customVisibleEmployeeIds"
+              label="可见员工范围："
+              rules={[{ required: true, message: '请至少指定一位允许查看数据的员工' }]}
+              extra="因当前角色的数据权限为“自定义员工范围”，您需要为其明确指定管辖的具体人员。"
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="请框选可见数据的员工"
+                className={styles.selectorField}
+              >
+                {allEmployees.map((emp) => (
+                  <Select.Option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.account})
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
+
         </Form>
       </Card>
     </div>

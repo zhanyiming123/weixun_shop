@@ -97,6 +97,16 @@
   line-height: 22px;
 }
 
+.employeeCountLink {
+  color: rgb(var(--arcoblue-6));
+  cursor: pointer;
+  user-select: none;
+}
+
+.employeeCountLink:hover {
+  text-decoration: underline;
+}
+
 .actionLinks {
   display: inline-flex;
   align-items: center;
@@ -157,6 +167,63 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.roleEmployeeModal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roleEmployeeSummary {
+  color: var(--color-text-2);
+}
+
+.roleEmployeeList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.roleEmployeeItem {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-fill-2);
+}
+
+.roleEmployeeOrder {
+  min-width: 18px;
+  color: var(--color-text-3);
+}
+
+.roleEmployeeContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.roleEmployeeName {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.roleEmployeeAccount {
+  color: var(--color-text-3);
+  line-height: 20px;
+}
+
+.roleEmployeeEmpty {
+  color: var(--color-text-3);
+}
+
+.roleEmployeeHint {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
 }
 
 @media (max-width: 900px) {

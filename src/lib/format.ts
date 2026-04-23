@@ -4,3 +4,14 @@ export function formatCurrency(price: number, currency = 'CNY') {
     currency,
   }).format(price);
 }
+
+export function formatPriceNumber(price: number) {
+  if (!Number.isFinite(price)) {
+    return '--';
+  }
+
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price);
+}

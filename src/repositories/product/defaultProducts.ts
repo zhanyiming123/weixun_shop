@@ -1,5 +1,22 @@
 import type { ProductItem } from '@/types/product';
 
+function buildMockBannerImage(label: string, tone: string) {
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">',
+    `<rect width="1200" height="720" fill="${tone}"/>`,
+    '<rect x="56" y="56" width="1088" height="608" rx="32" fill="rgba(255,255,255,0.14)"/>',
+    '<text x="88" y="188" fill="#ffffff" font-size="64" font-family="Arial, sans-serif" font-weight="700">',
+    label,
+    '</text>',
+    '<text x="88" y="276" fill="#ffffff" font-size="28" font-family="Arial, sans-serif">',
+    'Store Shared Product Mock',
+    '</text>',
+    '</svg>',
+  ].join('');
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1237036327413878784',
@@ -631,6 +648,401 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         channelStatus: 'on',
       },
     ],
+  },
+  {
+    id: 'G_1260413000000000001',
+    name: '苏州共享·英本面试冲刺营',
+    productCatalogId: 'thesis',
+    productOwnershipId: 'item_05_02_05',
+    productType: 'course',
+    inventoryUnit: '席位',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1260413000000000001-1',
+        specText: '标准席位',
+        price: 259,
+        stock: 42,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1260413000000000001-2',
+        specText: '冲刺席位',
+        price: 319,
+        stock: 28,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 259,
+    stock: 70,
+    createdAt: '2026-04-13 10:05:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    carouselImages: [
+      {
+        id: 'carousel-G_1260413000000000001-1',
+        name: '原门店主图',
+        url: buildMockBannerImage('Suzhou Shared 01', '#2f6fed'),
+      },
+      {
+        id: 'carousel-G_1260413000000000001-2',
+        name: '原门店详情图',
+        url: buildMockBannerImage('Interview Sprint', '#1f4fb8'),
+      },
+    ],
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    independentPriceRule: {
+      enabled: true,
+      skuRules: [
+        {
+          skuId: 'sku-G_1260413000000000001-1',
+          minPrice: 279,
+          maxPrice: 329,
+        },
+        {
+          skuId: 'sku-G_1260413000000000001-2',
+          minPrice: 339,
+          maxPrice: 389,
+        },
+      ],
+    },
+    storeOverrides: {
+      store_guangzhou: {
+        storeId: 'store_guangzhou',
+        priceMode: 'independent',
+        currentPrice: 299,
+        skuPriceOverrides: [
+          {
+            skuId: 'sku-G_1260413000000000001-1',
+            currentPrice: 299,
+          },
+          {
+            skuId: 'sku-G_1260413000000000001-2',
+            currentPrice: 359,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+        updatedAt: '2026-04-13 10:40:00',
+      },
+    },
+  },
+  {
+    id: 'G_1260413000000000002',
+    name: '深圳共享·雅思规划体验营',
+    productCatalogId: 'planning',
+    productOwnershipId: 'item_06_03_01',
+    productType: 'service',
+    inventoryUnit: '课时',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1260413000000000002-1',
+        specText: '',
+        price: 179,
+        stock: 56,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 179,
+    stock: 56,
+    createdAt: '2026-04-13 11:20:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    carouselImages: [
+      {
+        id: 'carousel-G_1260413000000000002-1',
+        name: '原门店主图',
+        url: buildMockBannerImage('Shenzhen Shared 02', '#0f8f74'),
+      },
+      {
+        id: 'carousel-G_1260413000000000002-2',
+        name: '原门店详情图',
+        url: buildMockBannerImage('Planning Camp', '#0c6a57'),
+      },
+    ],
+    storeConfigs: [
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    independentPriceRule: {
+      enabled: false,
+      skuRules: [],
+    },
+    storeOverrides: {
+      store_guangzhou: {
+        storeId: 'store_guangzhou',
+        priceMode: 'follow',
+        nameMode: 'override',
+        overrideName: '广州门店专享·雅思规划体验营',
+        carouselMode: 'override',
+        overrideCarouselImages: [
+          {
+            id: 'carousel-G_1260413000000000002-gz-1',
+            name: '广州门店轮播图1',
+            url: buildMockBannerImage('Guangzhou Custom 02', '#f26b5b'),
+          },
+          {
+            id: 'carousel-G_1260413000000000002-gz-2',
+            name: '广州门店轮播图2',
+            url: buildMockBannerImage('Custom Carousel', '#cc4d44'),
+          },
+        ],
+        updatedAt: '2026-04-13 11:45:00',
+      },
+    },
+  },
+  {
+    id: 'G_1260413000000000003',
+    name: '苏州共享·升学顾问1对1诊断',
+    productCatalogId: 'planning',
+    productOwnershipId: 'item_06_03_01',
+    productType: 'service',
+    inventoryUnit: '课时',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1260413000000000003-1',
+        specText: '',
+        price: 239,
+        stock: 34,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 239,
+    stock: 34,
+    createdAt: '2026-04-13 12:10:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    carouselImages: [
+      {
+        id: 'carousel-G_1260413000000000003-1',
+        name: '原门店主图',
+        url: buildMockBannerImage('Suzhou Shared 03', '#7b5cff'),
+      },
+    ],
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+  },
+  {
+    id: 'G_1260414000000000001',
+    name: '深圳共享·文书冲刺双规格包',
+    productCatalogId: 'thesis',
+    productOwnershipId: 'item_05_03_04',
+    productType: 'course',
+    inventoryUnit: '席位',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1260414000000000001-1',
+        specText: '标准版',
+        price: 199,
+        stock: 46,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1260414000000000001-2',
+        specText: '尊享版',
+        price: 259,
+        stock: 30,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 199,
+    stock: 76,
+    createdAt: '2026-04-14 09:18:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    carouselImages: [
+      {
+        id: 'carousel-G_1260414000000000001-1',
+        name: '原门店主图',
+        url: buildMockBannerImage('Shenzhen Shared 04', '#1b7f8a'),
+      },
+      {
+        id: 'carousel-G_1260414000000000001-2',
+        name: '原门店详情图',
+        url: buildMockBannerImage('Essay Sprint Pack', '#0e5560'),
+      },
+    ],
+    storeConfigs: [
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    independentPriceRule: {
+      enabled: false,
+      skuRules: [],
+    },
+    storeOverrides: {
+      store_guangzhou: {
+        storeId: 'store_guangzhou',
+        priceMode: 'independent',
+        currentPrice: 229,
+        skuPriceOverrides: [
+          {
+            skuId: 'sku-G_1260414000000000001-1',
+            currentPrice: 229,
+          },
+          {
+            skuId: 'sku-G_1260414000000000001-2',
+            currentPrice: 289,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+        updatedAt: '2026-04-14 09:36:00',
+      },
+    },
+  },
+  {
+    id: 'G_1260414000000000002',
+    name: '苏州共享·暑期模考训练营',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
+    productType: 'course',
+    inventoryUnit: '名额',
+    specMode: 'multi',
+    skus: [
+      {
+        id: 'sku-G_1260414000000000002-1',
+        specText: '基础班',
+        price: 149,
+        stock: 52,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1260414000000000002-2',
+        specText: '强化班',
+        price: 189,
+        stock: 38,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1260414000000000002-3',
+        specText: '冲刺班',
+        price: 229,
+        stock: 24,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 149,
+    stock: 114,
+    createdAt: '2026-04-14 10:02:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    carouselImages: [
+      {
+        id: 'carousel-G_1260414000000000002-1',
+        name: '原门店主图',
+        url: buildMockBannerImage('Suzhou Shared 05', '#8b5cf6'),
+      },
+      {
+        id: 'carousel-G_1260414000000000002-2',
+        name: '原门店详情图',
+        url: buildMockBannerImage('Summer Mock Camp', '#6237cf'),
+      },
+    ],
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    independentPriceRule: {
+      enabled: true,
+      skuRules: [
+        {
+          skuId: 'sku-G_1260414000000000002-1',
+          minPrice: 159,
+          maxPrice: 189,
+        },
+        {
+          skuId: 'sku-G_1260414000000000002-2',
+          minPrice: 209,
+          maxPrice: 239,
+        },
+        {
+          skuId: 'sku-G_1260414000000000002-3',
+          minPrice: 249,
+          maxPrice: 279,
+        },
+      ],
+    },
+    storeOverrides: {
+      store_guangzhou: {
+        storeId: 'store_guangzhou',
+        priceMode: 'independent',
+        currentPrice: 169,
+        skuPriceOverrides: [
+          {
+            skuId: 'sku-G_1260414000000000002-1',
+            currentPrice: 169,
+          },
+          {
+            skuId: 'sku-G_1260414000000000002-2',
+            currentPrice: 219,
+          },
+          {
+            skuId: 'sku-G_1260414000000000002-3',
+            currentPrice: 259,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+        updatedAt: '2026-04-14 10:28:00',
+      },
+    },
   },
 ];
 

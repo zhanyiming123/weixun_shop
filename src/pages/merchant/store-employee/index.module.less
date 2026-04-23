@@ -1,0 +1,129 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.headerCard {
+  :global(.arco-card-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle {
+  margin: 0 !important;
+}
+
+.storeField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.storeLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.storeSelect {
+  width: 260px;
+}
+
+.metaRow {
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.contentCard {
+  :global(.arco-card-body) {
+    padding-top: 12px;
+  }
+}
+
+.tabs {
+  :global(.arco-tabs-content) {
+    padding-top: 16px;
+  }
+}
+
+.tabGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.8fr);
+  gap: 16px;
+}
+
+.treeCard,
+.previewCard,
+.resultCard {
+  min-width: 0;
+}
+
+.treeCard :global(.arco-card-body) {
+  max-height: 620px;
+  overflow: auto;
+}
+
+.tree {
+  padding-right: 8px;
+}
+
+.previewCard :global(.arco-card-body),
+.resultCard :global(.arco-card-body) {
+  max-height: 620px;
+  overflow: auto;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardDesc {
+  color: var(--color-text-3);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.primaryText {
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 1200px) {
+  .tabGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerTop {
+    flex-direction: column;
+  }
+
+  .storeField,
+  .storeSelect {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}

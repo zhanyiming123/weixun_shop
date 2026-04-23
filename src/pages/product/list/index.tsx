@@ -5,7 +5,6 @@ import {
   Cascader,
   Card,
   DatePicker,
-  Drawer,
   Form,
   Input,
   InputNumber,
@@ -19,10 +18,10 @@ import {
   Table,
   Tag,
   Tabs,
+  Tooltip,
   Typography,
-  Upload,
 } from '@arco-design/web-react';
-import type { RequestOptions } from '@arco-design/web-react/es/Upload/interface';
+import { IconEdit } from '@arco-design/web-react/icon';
 import { useHistory } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import styles from './index.module.less';
@@ -48,9 +47,10 @@ import {
   DEFAULT_INVENTORY_UNIT,
   filterProductStoreConfigsByStoreIds,
   getProductCurrentStoreId,
+  getProductCurrentSkus,
   resolveSourceStoreMetaById,
 } from '@/lib/product';
-import { formatCurrency } from '@/lib/format';
+import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { readOrganizationItems } from '@/pages/enterprise/organization/data';
 import {
@@ -71,6 +71,8 @@ import type {
   ProductStatus,
   ProductStoreOverrideMode,
   ProductStorePriceMode,
+  ProductStoreSkuPriceOverrideItem,
+  ProductStoreSkuViewItem,
   ProductTab,
 } from '@/types/product';
 import { GlobalState } from '@/store';
@@ -156,24 +158,142 @@ function parseSourceFilterStoreIds(
 type ProductStoreSettingDraft = {
   priceMode: ProductStorePriceMode;
   currentPrice?: number;
+  skuPriceOverrides: ProductStoreSkuPriceOverrideItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName: string;
   carouselMode: ProductStoreOverrideMode;
   overrideCarouselImages: ProductCarouselImage[];
 };
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
-    reader.readAsDataURL(file);
-  });
+function getStoreSettingDraftSkuPriceOverrides(
+  product: ProductListItem
+): ProductStoreSkuPriceOverrideItem[] {
+  return getProductCurrentSkus(product, product.storeView.currentStoreId).map((sku) => ({
+    skuId: sku.id,
+    currentPrice: sku.currentPrice,
+  }));
 }
 
-function createCarouselImageId() {
-  return `carousel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+function getSkuLabel(item: ProductStoreSkuViewItem, index: number) {
+  return item.specText || (index === 0 ? '默认规格' : `规格${index + 1}`);
+}
+
+function formatPriceRange(prices: number[]) {
+  const validPrices = prices.filter(
+    (price) => typeof price === 'number' && Number.isFinite(price)
+  );
+
+  if (!validPrices.length) {
+    return '--';
+  }
+
+  const minPrice = Math.min(...validPrices);
+  const maxPrice = Math.max(...validPrices);
+
+  return minPrice === maxPrice
+    ? formatPriceNumber(minPrice)
+    : `${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
+}
+
+function formatIndependentPriceLimit(sku: ProductStoreSkuViewItem) {
+  const minPrice =
+    typeof sku.minIndependentPrice === 'number' &&
+    Number.isFinite(sku.minIndependentPrice)
+      ? sku.minIndependentPrice
+      : undefined;
+  const maxPrice =
+    typeof sku.maxIndependentPrice === 'number' &&
+    Number.isFinite(sku.maxIndependentPrice)
+      ? sku.maxIndependentPrice
+      : undefined;
+
+  if (typeof minPrice === 'number' && typeof maxPrice === 'number') {
+    return `允许 ${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
+  }
+
+  if (typeof minPrice === 'number') {
+    return `最低 ${formatPriceNumber(minPrice)}`;
+  }
+
+  if (typeof maxPrice === 'number') {
+    return `最高 ${formatPriceNumber(maxPrice)}`;
+  }
+
+  return '不限';
+}
+
+function getSkuPriceLimitError(
+  sku: ProductStoreSkuViewItem,
+  value?: number
+) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '请填写独立售价';
+  }
+
+  if (
+    typeof sku.minIndependentPrice === 'number' &&
+    value < sku.minIndependentPrice
+  ) {
+    return `不能低于 ${formatPriceNumber(sku.minIndependentPrice)}`;
+  }
+
+  if (
+    typeof sku.maxIndependentPrice === 'number' &&
+    value > sku.maxIndependentPrice
+  ) {
+    return `不能高于 ${formatPriceNumber(sku.maxIndependentPrice)}`;
+  }
+
+  return '';
+}
+
+function resolveDraftSkuCurrentPrice(
+  draft: ProductStoreSettingDraft,
+  skuId: string,
+  fallbackPrice: number
+) {
+  const matched = draft.skuPriceOverrides.find((item) => item.skuId === skuId);
+  return typeof matched?.currentPrice === 'number' ? matched.currentPrice : fallbackPrice;
+}
+
+function buildDraftCurrentPriceValue(
+  product: ProductListItem,
+  draft: ProductStoreSettingDraft
+) {
+  const currentSkuPrices = product.storeView.currentSkus.map((sku) =>
+    resolveDraftSkuCurrentPrice(draft, sku.id, sku.currentPrice)
+  );
+
+  return currentSkuPrices.length
+    ? Math.min(...currentSkuPrices)
+    : draft.currentPrice ?? product.storeView.currentPrice;
+}
+
+function getCurrentSkuPriceRange(record: ProductListItem) {
+  return formatPriceRange(
+    record.storeView.currentSkus.map((item) => item.currentPrice)
+  );
+}
+
+function getOriginalSkuPriceRange(record: ProductListItem) {
+  return formatPriceRange(
+    record.storeView.currentSkus.map((item) => item.originalPrice)
+  );
+}
+
+function getDraftSkuPriceRange(
+  product: ProductListItem,
+  draft: ProductStoreSettingDraft
+) {
+  if (draft.priceMode !== 'independent') {
+    return '跟随原售价';
+  }
+
+  return formatPriceRange(
+    product.storeView.currentSkus.map((sku) =>
+      resolveDraftSkuCurrentPrice(draft, sku.id, sku.currentPrice)
+    )
+  );
 }
 
 function cloneCarouselImages(images: ProductCarouselImage[] = []) {
@@ -186,6 +306,7 @@ function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDr
   return {
     priceMode: product.storeView.priceMode,
     currentPrice: product.storeView.currentPrice,
+    skuPriceOverrides: getStoreSettingDraftSkuPriceOverrides(product),
     nameMode: product.storeView.nameMode,
     overrideName: product.storeView.currentName,
     carouselMode: product.storeView.carouselMode,
@@ -193,6 +314,14 @@ function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDr
       product.storeView.currentCarouselImages
     ),
   };
+}
+
+function getRecordDisplayStatus(record: ProductListItem): ProductStatus {
+  if (record.storeView.currentStoreId) {
+    return record.storeView.currentStoreChannelStatus === 'on' ? 'on' : 'off';
+  }
+
+  return record.status;
 }
 
 function ProductListPage() {
@@ -371,6 +500,36 @@ function ProductListPage() {
     () => storeDetailItems.filter((item) => item.type === 'store'),
     [storeDetailItems]
   );
+  const priceSettingErrorMap = useMemo(() => {
+    if (
+      !storeSettingTarget ||
+      !storeSettingDraft ||
+      storeSettingDraft.priceMode !== 'independent'
+    ) {
+      return {};
+    }
+
+    return storeSettingTarget.storeView.currentSkus.reduce<Record<string, string>>(
+      (result, sku) => {
+        const error = getSkuPriceLimitError(
+          sku,
+          resolveDraftSkuCurrentPrice(
+            storeSettingDraft,
+            sku.id,
+            sku.currentPrice
+          )
+        );
+
+        if (error) {
+          result[sku.id] = error;
+        }
+
+        return result;
+      },
+      {}
+    );
+  }, [storeSettingDraft, storeSettingTarget]);
+  const hasPriceSettingError = Object.keys(priceSettingErrorMap).length > 0;
 
   useEffect(() => {
     const visibleKeys = new Set(tableData.map((item) => item.id));
@@ -526,7 +685,15 @@ function ProductListPage() {
   }
 
   async function updateProductStatus(ids: string[], nextStatus: ProductStatus) {
-    await productService.updateProductStatus(ids, nextStatus);
+    if (currentStoreId) {
+      await productService.updateProductStoreChannelStatus({
+        productIds: ids,
+        storeId: currentStoreId,
+        channelStatus: nextStatus === 'on' ? 'on' : 'off',
+      });
+    } else {
+      await productService.updateProductStatus(ids, nextStatus);
+    }
     setRefreshKey((value) => value + 1);
   }
 
@@ -559,25 +726,19 @@ function ProductListPage() {
     }
   }
 
-  function closeStoreSettingDrawer() {
+  function closePriceSettingModal() {
     setStoreSettingTarget(null);
     setStoreSettingDraft(null);
     setStoreSettingSaving(false);
   }
 
-  function openStoreSettingDrawer(product: ProductListItem) {
-    setStoreSettingTarget(product);
-  }
+  function openPriceSettingModal(product: ProductListItem) {
+    if (!product.storeView.canManageIndependentPrice) {
+      Message.info('源商品未开放独立售价');
+      return;
+    }
 
-  function patchStoreSettingDraft(patch: Partial<ProductStoreSettingDraft>) {
-    setStoreSettingDraft((previous) =>
-      previous
-        ? {
-            ...previous,
-            ...patch,
-          }
-        : previous
-    );
+    setStoreSettingTarget(product);
   }
 
   function handlePriceModeChange(value: string) {
@@ -586,129 +747,67 @@ function ProductListPage() {
         return previous;
       }
 
+      const nextPriceMode = value as ProductStorePriceMode;
+      const nextSkuPriceOverrides =
+        previous.skuPriceOverrides.length
+          ? previous.skuPriceOverrides
+          : getStoreSettingDraftSkuPriceOverrides(storeSettingTarget);
+
       return {
         ...previous,
-        priceMode: value as ProductStorePriceMode,
+        priceMode: nextPriceMode,
         currentPrice:
-          value === 'independent'
+          nextPriceMode === 'independent'
             ? previous.currentPrice ?? storeSettingTarget.storeView.currentPrice
             : previous.currentPrice,
+        skuPriceOverrides: nextSkuPriceOverrides,
       };
     });
   }
 
-  function handleNameModeChange(value: string) {
+  function handleSkuPriceChange(skuId: string, value?: number) {
     setStoreSettingDraft((previous) => {
       if (!previous || !storeSettingTarget) {
         return previous;
       }
 
-      return {
-        ...previous,
-        nameMode: value as ProductStoreOverrideMode,
-        overrideName:
-          value === 'override'
-            ? previous.overrideName || storeSettingTarget.storeView.currentName
-            : previous.overrideName,
-      };
-    });
-  }
-
-  function handleCarouselModeChange(value: string) {
-    setStoreSettingDraft((previous) => {
-      if (!previous || !storeSettingTarget) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        carouselMode: value as ProductStoreOverrideMode,
-        overrideCarouselImages:
-          value === 'override' && !previous.overrideCarouselImages.length
-            ? cloneCarouselImages(storeSettingTarget.storeView.currentCarouselImages)
-            : previous.overrideCarouselImages,
-      };
-    });
-  }
-
-  async function handleStoreSettingCarouselUpload(option: RequestOptions) {
-    if (!storeSettingDraft || storeSettingDraft.overrideCarouselImages.length >= 8) {
-      Message.warning('最多上传 8 张轮播图');
-      option.onSuccess?.({});
-      return;
-    }
-
-    const file = option.file as File;
-
-    if (!file) {
-      option.onError?.(new Error('文件不存在'));
-      return;
-    }
-
-    try {
-      const nextUrl = await readFileAsDataUrl(file);
-      setStoreSettingDraft((previous) =>
-        previous
+      const nextSkuPriceOverrides = previous.skuPriceOverrides.map((item) =>
+        item.skuId === skuId
           ? {
-              ...previous,
-              overrideCarouselImages: [
-                ...previous.overrideCarouselImages,
-                {
-                  id: createCarouselImageId(),
-                  name: file.name || `图片${previous.overrideCarouselImages.length + 1}`,
-                  url: nextUrl,
-                },
-              ],
+              ...item,
+              currentPrice:
+                typeof value === 'number' && Number.isFinite(value) ? value : item.currentPrice,
             }
-          : previous
-      );
-      option.onSuccess?.({});
-    } catch (error) {
-      option.onError?.(error);
-      Message.error('图片读取失败，请重试');
-    }
-  }
-
-  function handleStoreSettingCarouselRemove(imageId: string) {
-    setStoreSettingDraft((previous) =>
-      previous
-        ? {
-            ...previous,
-            overrideCarouselImages: previous.overrideCarouselImages.filter(
-              (item) => item.id !== imageId
-            ),
-          }
-        : previous
-    );
-  }
-
-  function handleStoreSettingCarouselMoveToFirst(imageId: string) {
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      const targetIndex = previous.overrideCarouselImages.findIndex(
-        (item) => item.id === imageId
+          : item
       );
 
-      if (targetIndex <= 0) {
-        return previous;
-      }
-
-      const nextImages = [...previous.overrideCarouselImages];
-      const [target] = nextImages.splice(targetIndex, 1);
-      nextImages.unshift(target);
+      const nextDraft = {
+        ...previous,
+        skuPriceOverrides: nextSkuPriceOverrides,
+      };
 
       return {
-        ...previous,
-        overrideCarouselImages: nextImages,
+        ...nextDraft,
+        currentPrice: buildDraftCurrentPriceValue(storeSettingTarget, nextDraft),
       };
     });
   }
 
   async function handleStoreSettingSubmit() {
     if (!storeSettingTarget || !storeSettingDraft || !currentStoreId) {
+      return;
+    }
+
+    if (!storeSettingTarget.storeView.canManageIndependentPrice) {
+      Message.warning('源商品未开放独立售价');
+      return;
+    }
+
+    if (
+      storeSettingDraft.priceMode === 'independent' &&
+      hasPriceSettingError
+    ) {
+      Message.warning('请先调整超出允许区间的 SKU 售价');
       return;
     }
 
@@ -719,36 +818,19 @@ function ProductListPage() {
         storeId: currentStoreId,
         priceMode: storeSettingDraft.priceMode,
         currentPrice: storeSettingDraft.currentPrice,
+        skuPriceOverrides: storeSettingDraft.skuPriceOverrides,
         nameMode: storeSettingDraft.nameMode,
         overrideName: storeSettingDraft.overrideName,
         carouselMode: storeSettingDraft.carouselMode,
         overrideCarouselImages: storeSettingDraft.overrideCarouselImages,
       });
-      Message.success('本店设置已保存');
-      closeStoreSettingDrawer();
+      Message.success('独立售价已保存');
+      closePriceSettingModal();
       setRefreshKey((value) => value + 1);
     } catch (error) {
       setStoreSettingSaving(false);
       Message.error(getErrorMessage(error));
     }
-  }
-
-  function getStoreSettingSummary(record: ProductListItem) {
-    const summaries: string[] = [];
-
-    if (record.storeView.priceMode === 'independent') {
-      summaries.push('独立售价');
-    }
-
-    if (record.storeView.nameMode === 'override') {
-      summaries.push('名称本店设置');
-    }
-
-    if (record.storeView.carouselMode === 'override') {
-      summaries.push('轮播图本店设置');
-    }
-
-    return summaries.join(' / ');
   }
 
   const columns = [
@@ -770,17 +852,7 @@ function ProductListPage() {
             <Typography.Text className={styles.productName}>
               {record.name}
             </Typography.Text>
-            {record.storeView.hasStoreSetting && (
-              <Tag className={styles.settingTag} color="arcoblue">
-                本店设置
-              </Tag>
-            )}
           </div>
-          {record.storeView.hasStoreSetting && (
-            <Typography.Text className={styles.productSettingSummary}>
-              {getStoreSettingSummary(record)}
-            </Typography.Text>
-          )}
           <Typography.Text className={styles.productId}>
             id: {record.id}
           </Typography.Text>
@@ -808,11 +880,6 @@ function ProductListPage() {
           <Typography.Text className={styles.sourceStoreName}>
             {record.storeView.sourceStoreName || '--'}
           </Typography.Text>
-          {record.storeView.sourceRegionName && (
-            <Tag className={styles.sourceRegionTag} color="arcoblue">
-              {record.storeView.sourceRegionName}
-            </Tag>
-          )}
         </div>
       ),
     },
@@ -820,13 +887,13 @@ function ProductListPage() {
       title: '上架状态',
       dataIndex: 'status',
       width: 170,
-      render: (value: ProductStatus, record: ProductListItem) => (
+      render: (_: ProductStatus, record: ProductListItem) => (
         <Switch
           className={styles.statusSwitch}
-          checked={value === 'on'}
+          checked={getRecordDisplayStatus(record) === 'on'}
           checkedText="上架"
           uncheckedText="下架"
-          disabled={Boolean(currentStoreId) && record.storeView.isShared}
+          disabled={Boolean(currentStoreId) && !record.storeView.canManageStoreStatus}
           onChange={(checked) => handleRowStatusChange(checked, record)}
         />
       ),
@@ -862,28 +929,38 @@ function ProductListPage() {
       title: '商品售价',
       dataIndex: 'price',
       width: 220,
-      render: (_: number, record: ProductListItem) =>
-        record.storeView.isShared ? (
-          <div className={styles.priceInfoCell}>
-            <div className={styles.priceInfoRow}>
-              <span className={styles.priceInfoLabel}>原售价</span>
-              <span>{formatCurrency(record.storeView.originalPrice)}</span>
-            </div>
-            <div className={styles.priceInfoRow}>
-              <span className={styles.priceInfoLabel}>现售价</span>
-              <span className={styles.priceCurrentValue}>
-                {formatCurrency(record.storeView.currentPrice)}
-              </span>
-              {record.storeView.priceMode === 'independent' && (
-                <Tag className={styles.priceStatusTag} color="gold">
-                  独立售价
-                </Tag>
-              )}
-            </div>
+      render: (_: number, record: ProductListItem) => (
+        <div
+          className={`${styles.priceQuickCell} ${
+            record.storeView.canManageIndependentPrice
+              ? styles.priceQuickCellEditable
+              : ''
+          }`}
+        >
+          <div className={styles.priceQuickRow}>
+            <span className={styles.pricePrimaryValue}>
+              {getCurrentSkuPriceRange(record)}
+            </span>
+            {record.storeView.canManageIndependentPrice && (
+              <Tooltip content="编辑独立售价">
+                <Button
+                  aria-label="编辑独立售价"
+                  className={styles.priceEditButton}
+                  icon={<IconEdit />}
+                  size="mini"
+                  type="text"
+                  onClick={() => openPriceSettingModal(record)}
+                />
+              </Tooltip>
+            )}
           </div>
-        ) : (
-          formatCurrency(record.storeView.currentPrice)
-        ),
+          {record.storeView.priceMode === 'independent' && (
+            <Typography.Text className={styles.priceSourceValue}>
+              源价 {getOriginalSkuPriceRange(record)}
+            </Typography.Text>
+          )}
+        </div>
+      ),
     },
     {
       title: '库存',
@@ -954,13 +1031,23 @@ function ProductListPage() {
           >
             详情
           </Link>
-          {record.storeView.canManageStoreSettings ? (
-            <Link
-              className={styles.actionLinkButton}
-              onClick={() => openStoreSettingDrawer(record)}
-            >
-              本店设置
-            </Link>
+          {record.storeView.isShared ? (
+            <>
+              {record.storeView.canManageIndependentPrice && (
+                <Link
+                  className={styles.actionLinkButton}
+                  onClick={() => openPriceSettingModal(record)}
+                >
+                  编辑价格
+                </Link>
+              )}
+              <Link
+                className={styles.actionLinkButton}
+                onClick={() => goToProductCreate('copy', record)}
+              >
+                复制
+              </Link>
+            </>
           ) : (
             <>
               <Link
@@ -977,12 +1064,14 @@ function ProductListPage() {
               </Link>
             </>
           )}
-          <Link
-            className={styles.actionLinkButton}
-            onClick={() => showPendingMessage(`${record.name}库存管理暂未实现`)}
-          >
-            库存
-          </Link>
+          {!record.storeView.isShared && (
+            <Link
+              className={styles.actionLinkButton}
+              onClick={() => showPendingMessage(`${record.name}库存管理暂未实现`)}
+            >
+              库存
+            </Link>
+          )}
           <Link
             className={styles.actionLinkButton}
             onClick={() => showPendingMessage(`${record.name}分享功能暂未实现`)}
@@ -1267,83 +1356,50 @@ function ProductListPage() {
         <div className={styles.emptyModalContent}>弹窗内容待补充</div>
       </Modal>
 
-      <Drawer
-        className={styles.storeSettingDrawer}
-        placement="right"
-        title="本店设置"
+      <Modal
+        className={styles.priceSettingModal}
+        title="编辑独立售价"
         visible={Boolean(storeSettingTarget)}
-        width="min(720px, calc(100vw - 32px))"
+        style={{ width: 720 }}
         okText="保存"
         cancelText="取消"
         confirmLoading={storeSettingSaving}
-        onCancel={closeStoreSettingDrawer}
+        okButtonProps={{
+          disabled: hasPriceSettingError,
+        }}
+        onCancel={closePriceSettingModal}
         onOk={handleStoreSettingSubmit}
       >
         {storeSettingTarget && storeSettingDraft && (
-          <div className={styles.storeSettingBody}>
-            <div className={styles.storeSettingIntroCard}>
-              <div className={styles.storeSettingHeader}>
-                <Typography.Text className={styles.storeSettingProductName}>
+          <div className={styles.priceSettingBody}>
+            <div className={styles.priceSettingSummary}>
+              <div className={styles.priceSettingProduct}>
+                <Typography.Text className={styles.priceSettingProductName}>
                   {storeSettingTarget.name}
                 </Typography.Text>
-                <div className={styles.storeSettingHeaderTags}>
-                  {storeSettingTarget.storeView.sourceStoreName && (
-                    <Tag color="arcoblue">
-                      {storeSettingTarget.storeView.sourceStoreName}
-                    </Tag>
-                  )}
-                  {storeSettingTarget.storeView.sourceRegionName && (
-                    <Tag color="green">{storeSettingTarget.storeView.sourceRegionName}</Tag>
-                  )}
-                  {storeSettingTarget.storeView.hasStoreSetting && (
-                    <Tag color="green">本店设置</Tag>
-                  )}
+                <Typography.Text className={styles.priceSettingSource}>
+                  来源：{storeSettingTarget.storeView.sourceStoreName || '--'}
+                </Typography.Text>
+              </div>
+              <div className={styles.priceSettingMetrics}>
+                <div className={styles.priceSettingMetric}>
+                  <span className={styles.priceSettingMetricLabel}>源价</span>
+                  <span className={styles.priceSettingMetricValue}>
+                    {getOriginalSkuPriceRange(storeSettingTarget)}
+                  </span>
+                </div>
+                <div className={styles.priceSettingMetric}>
+                  <span className={styles.priceSettingMetricLabel}>
+                    独立售价
+                  </span>
+                  <span className={styles.priceSettingMetricValue}>
+                    {getDraftSkuPriceRange(storeSettingTarget, storeSettingDraft)}
+                  </span>
                 </div>
               </div>
-              <Typography.Paragraph className={styles.storeSettingIntroText}>
-                原商品信息保持不变，本店仅维护当前门店自己的售价、名称和轮播图。
-              </Typography.Paragraph>
             </div>
 
-            <div className={styles.storeSettingSection}>
-              <div className={styles.storeSettingSectionHeader}>
-                <div>
-                  <Typography.Text className={styles.storeSettingSectionTitle}>
-                    价格设置
-                  </Typography.Text>
-                  <Typography.Text className={styles.storeSettingSectionHint}>
-                    原商品改价只影响原售价，不会覆盖本店现售价。
-                  </Typography.Text>
-                </div>
-                {storeSettingDraft.priceMode === 'independent' && (
-                  <Link onClick={() => handlePriceModeChange('follow')}>
-                    恢复跟随原售价
-                  </Link>
-                )}
-              </div>
-
-              <div className={styles.settingCompareGrid}>
-                <div className={styles.settingMetricCard}>
-                  <span className={styles.settingMetricLabel}>原售价</span>
-                  <span className={styles.settingMetricValue}>
-                    {formatCurrency(storeSettingTarget.storeView.originalPrice)}
-                  </span>
-                </div>
-                <div className={styles.settingMetricCard}>
-                  <span className={styles.settingMetricLabel}>现售价</span>
-                  <span className={styles.settingMetricValue}>
-                    {formatCurrency(
-                      storeSettingDraft.priceMode === 'independent'
-                        ? Number(
-                            storeSettingDraft.currentPrice ??
-                              storeSettingTarget.storeView.currentPrice
-                          )
-                        : storeSettingTarget.storeView.originalPrice
-                    )}
-                  </span>
-                </div>
-              </div>
-
+            <div className={styles.priceModeBar}>
               <Radio.Group
                 value={storeSettingDraft.priceMode}
                 onChange={handlePriceModeChange}
@@ -1351,181 +1407,76 @@ function ProductListPage() {
                 <Radio value="follow">跟随原售价</Radio>
                 <Radio value="independent">独立售价</Radio>
               </Radio.Group>
-
               {storeSettingDraft.priceMode === 'independent' && (
-                <InputNumber
-                  className={styles.settingInput}
-                  min={0}
-                  precision={2}
-                  placeholder="请输入现售价"
-                  value={storeSettingDraft.currentPrice}
-                  onChange={(value) =>
-                    patchStoreSettingDraft({
-                      currentPrice:
-                        typeof value === 'number' ? value : undefined,
-                    })
-                  }
-                />
+                <Link onClick={() => handlePriceModeChange('follow')}>
+                  恢复跟随原售价
+                </Link>
               )}
             </div>
 
-            <div className={styles.storeSettingSection}>
-              <div className={styles.storeSettingSectionHeader}>
-                <div>
-                  <Typography.Text className={styles.storeSettingSectionTitle}>
-                    名称设置
-                  </Typography.Text>
-                  <Typography.Text className={styles.storeSettingSectionHint}>
-                    默认跟随原商品名称，需要时可切换为本店名称。
-                  </Typography.Text>
-                </div>
-                {storeSettingDraft.nameMode === 'override' && (
-                  <Link onClick={() => handleNameModeChange('follow')}>
-                    恢复跟随原名称
-                  </Link>
-                )}
+            <div className={styles.quickSkuPricePanel}>
+              <div className={styles.quickSkuPriceHeader}>
+                <span>SKU 名称</span>
+                <span>原售价</span>
+                <span>独立售价</span>
               </div>
+              {storeSettingTarget.storeView.currentSkus.map((sku, index) => {
+                const isIndependent =
+                  storeSettingDraft.priceMode === 'independent';
 
-              <div className={styles.settingCompareGrid}>
-                <div className={styles.settingMetricCard}>
-                  <span className={styles.settingMetricLabel}>原名称</span>
-                  <span className={styles.settingTextValue}>
-                    {storeSettingTarget.storeView.originalName}
-                  </span>
-                </div>
-                <div className={styles.settingMetricCard}>
-                  <span className={styles.settingMetricLabel}>当前展示</span>
-                  <span className={styles.settingTextValue}>
-                    {storeSettingDraft.nameMode === 'override'
-                      ? storeSettingDraft.overrideName ||
-                        storeSettingTarget.storeView.originalName
-                      : storeSettingTarget.storeView.originalName}
-                  </span>
-                </div>
-              </div>
-
-              <Radio.Group
-                value={storeSettingDraft.nameMode}
-                onChange={handleNameModeChange}
-              >
-                <Radio value="follow">跟随原名称</Radio>
-                <Radio value="override">本店设置</Radio>
-              </Radio.Group>
-
-              {storeSettingDraft.nameMode === 'override' && (
-                <Input
-                  className={styles.settingInput}
-                  maxLength={30}
-                  placeholder="请输入本店名称"
-                  value={storeSettingDraft.overrideName}
-                  onChange={(value) =>
-                    patchStoreSettingDraft({
-                      overrideName: value,
-                    })
-                  }
-                />
-              )}
-            </div>
-
-            <div className={styles.storeSettingSection}>
-              <div className={styles.storeSettingSectionHeader}>
-                <div>
-                  <Typography.Text className={styles.storeSettingSectionTitle}>
-                    轮播图设置
-                  </Typography.Text>
-                  <Typography.Text className={styles.storeSettingSectionHint}>
-                    默认跟随原轮播图，可切换为本店单独维护。
-                  </Typography.Text>
-                </div>
-                {storeSettingDraft.carouselMode === 'override' && (
-                  <Link onClick={() => handleCarouselModeChange('follow')}>
-                    恢复跟随原轮播图
-                  </Link>
-                )}
-              </div>
-
-              <Radio.Group
-                value={storeSettingDraft.carouselMode}
-                onChange={handleCarouselModeChange}
-              >
-                <Radio value="follow">跟随原轮播图</Radio>
-                <Radio value="override">本店设置</Radio>
-              </Radio.Group>
-
-              {storeSettingDraft.carouselMode === 'override' && (
-                <div className={styles.carouselEditor}>
-                  <Upload
-                    accept="image/*"
-                    showUploadList={false}
-                    customRequest={handleStoreSettingCarouselUpload}
-                  >
-                    <Button type="outline">上传轮播图</Button>
-                  </Upload>
-                  <Typography.Text className={styles.carouselHint}>
-                    最多上传 8 张，首张默认为主图。
-                  </Typography.Text>
-                </div>
-              )}
-
-              <div className={styles.carouselPreviewGrid}>
-                {(storeSettingDraft.carouselMode === 'override'
-                  ? storeSettingDraft.overrideCarouselImages
-                  : storeSettingTarget.storeView.originalCarouselImages
-                ).length ? (
-                  (storeSettingDraft.carouselMode === 'override'
-                    ? storeSettingDraft.overrideCarouselImages
-                    : storeSettingTarget.storeView.originalCarouselImages
-                  ).map((item, index) => (
-                    <div key={item.id} className={styles.carouselPreviewCard}>
-                      <div className={styles.carouselPreviewImageBox}>
-                        <img
-                          alt={item.name || `轮播图${index + 1}`}
-                          className={styles.carouselPreviewImage}
-                          src={item.url}
-                        />
-                      </div>
-                      <div className={styles.carouselPreviewFooter}>
-                        <span className={styles.carouselPreviewOrder}>
-                          {index === 0 ? '主图' : `第 ${index + 1} 张`}
-                        </span>
-                        {storeSettingDraft.carouselMode === 'override' && (
-                          <div className={styles.carouselPreviewActions}>
-                            {index > 0 && (
-                              <Button
-                                size="mini"
-                                type="text"
-                                onClick={() =>
-                                  handleStoreSettingCarouselMoveToFirst(item.id)
-                                }
-                              >
-                                设为首图
-                              </Button>
-                            )}
-                            <Button
-                              size="mini"
-                              status="danger"
-                              type="text"
-                              onClick={() =>
-                                handleStoreSettingCarouselRemove(item.id)
-                              }
-                            >
-                              删除
-                            </Button>
-                          </div>
-                        )}
-                      </div>
+                return (
+                  <div key={sku.id} className={styles.quickSkuPriceRow}>
+                    <div className={styles.quickSkuPriceCell}>
+                      <Typography.Text
+                        className={styles.quickSkuPriceSpec}
+                        ellipsis
+                      >
+                        {getSkuLabel(sku, index)}
+                      </Typography.Text>
                     </div>
-                  ))
-                ) : (
-                  <div className={styles.carouselEmpty}>
-                    当前暂无轮播图
+                    <div className={styles.quickSkuPriceCell}>
+                      <span className={styles.quickSkuPriceText}>
+                        {formatPriceNumber(sku.originalPrice)}
+                      </span>
+                    </div>
+                    <div className={styles.quickSkuPriceCell}>
+                      <InputNumber
+                        className={styles.quickSkuPriceInput}
+                        disabled={!isIndependent}
+                        min={0}
+                        precision={2}
+                        value={
+                          isIndependent
+                            ? resolveDraftSkuCurrentPrice(
+                                storeSettingDraft,
+                                sku.id,
+                                sku.currentPrice
+                              )
+                            : sku.originalPrice
+                        }
+                        onChange={(value) =>
+                          handleSkuPriceChange(
+                            sku.id,
+                            typeof value === 'number' ? value : undefined
+                          )
+                        }
+                      />
+                      <div className={styles.quickSkuPriceLimit}>
+                        {formatIndependentPriceLimit(sku)}
+                      </div>
+                      {isIndependent && priceSettingErrorMap[sku.id] && (
+                        <div className={styles.quickSkuPriceError}>
+                          {priceSettingErrorMap[sku.id]}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
-      </Drawer>
+      </Modal>
 
       <Modal
         title={

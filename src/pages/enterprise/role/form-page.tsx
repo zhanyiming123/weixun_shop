@@ -19,16 +19,23 @@ import {
   cloneEnterpriseRolePermissionState,
   createEnterpriseRoleId,
   DEFAULT_ENTERPRISE_ROLE_DATA_PERMISSIONS,
-  ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS,
   EnterpriseRoleDataViewScope,
   EnterpriseRoleItem,
+  EnterpriseRolePermissionMode,
   EnterpriseRolePermissionState,
   EnterpriseRoleScope,
+  getEnterpriseRoleDataViewScopeOptions,
   ENTERPRISE_ROLE_SCOPE_LABEL_MAP,
   formatEnterpriseRoleDateTime,
   getEnterpriseRolePermissionRootKeys,
   getEnterpriseRolePermissionTree,
+  getMerchantRolePermissionRootKeys,
+  getMerchantRolePermissionSystemKeys,
+  getMerchantRolePermissionTree,
+  MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS,
+  MerchantRolePermissionSystem,
   normalizeEnterpriseRoleScope,
+  replaceMerchantRolePermissionSystemKeys,
   useEnterpriseRoleItems,
   writeEnterpriseRoleItems,
 } from './data';
@@ -55,12 +62,32 @@ function getSingleQueryValue(
 }
 
 function buildEmptyPermissionState(
-  scope: EnterpriseRoleScope
+  scope: EnterpriseRoleScope,
+  mode: EnterpriseRolePermissionMode = 'default'
 ): EnterpriseRolePermissionState {
   return cloneEnterpriseRolePermissionState({
     dataPermissions: DEFAULT_ENTERPRISE_ROLE_DATA_PERMISSIONS,
     functionPermissionKeys: [],
-  }, scope);
+  }, scope, mode);
+}
+
+function normalizeCheckedKeys(checkedKeys: unknown) {
+  if (Array.isArray(checkedKeys)) {
+    return checkedKeys.filter((key): key is string => typeof key === 'string');
+  }
+
+  if (
+    checkedKeys &&
+    typeof checkedKeys === 'object' &&
+    'checkedKeys' in checkedKeys
+  ) {
+    const nextKeys = (checkedKeys as { checkedKeys?: unknown }).checkedKeys;
+    return Array.isArray(nextKeys)
+      ? nextKeys.filter((key): key is string => typeof key === 'string')
+      : [];
+  }
+
+  return [];
 }
 
 function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
@@ -79,6 +106,12 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
   );
 
   const isCreateMode = mode === 'create';
+  const isMerchantRolePage = location.pathname.startsWith('/merchant/role');
+  const rolePermissionMode: EnterpriseRolePermissionMode = isMerchantRolePage
+    ? 'merchant'
+    : 'default';
+  const [activeMerchantPermissionSystem, setActiveMerchantPermissionSystem] =
+    useState<MerchantRolePermissionSystem>('store');
   const visibleScopes = useMemo<EnterpriseRoleScope[]>(() => {
     if (location.pathname.startsWith('/store-config/role')) {
       return ['store'];
@@ -116,6 +149,27 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
     () => getEnterpriseRolePermissionRootKeys(pageScope),
     [pageScope]
   );
+  const merchantPermissionTree = useMemo(
+    () => getMerchantRolePermissionTree(activeMerchantPermissionSystem),
+    [activeMerchantPermissionSystem]
+  );
+  const merchantPermissionRootKeys = useMemo(
+    () => getMerchantRolePermissionRootKeys(activeMerchantPermissionSystem),
+    [activeMerchantPermissionSystem]
+  );
+  const activeMerchantPermissionKeys = useMemo(() => {
+    const systemKeySet = new Set(
+      getMerchantRolePermissionSystemKeys(activeMerchantPermissionSystem)
+    );
+
+    return permissionState.functionPermissionKeys.filter((key) =>
+      systemKeySet.has(key)
+    );
+  }, [activeMerchantPermissionSystem, permissionState.functionPermissionKeys]);
+  const dataViewScopeOptions = useMemo(
+    () => getEnterpriseRoleDataViewScopeOptions(pageScope, rolePermissionMode),
+    [pageScope, rolePermissionMode]
+  );
 
   const referenceRoleOptions = useMemo(
     () =>
@@ -130,9 +184,10 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       !areEnterpriseRolePermissionStatesEqual(
         permissionState,
         permissionBaselineRef.current,
-        pageScope
+        pageScope,
+        rolePermissionMode
       ),
-    [pageScope, permissionState]
+    [pageScope, permissionState, rolePermissionMode]
   );
 
   useEffect(() => {
@@ -165,7 +220,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       return;
     }
 
-    if (editingRole.isDefault) {
+    if (editingRole.isDefault && !isMerchantRolePage) {
       if (!redirectHandledRef.current) {
         redirectHandledRef.current = true;
         Message.warning('默认角色暂不支持编辑');
@@ -191,7 +246,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
 
   useEffect(() => {
     if (isCreateMode) {
-      const initKey = `create:${pageScope}`;
+      const initKey = `create:${pageScope}:${rolePermissionMode}`;
       if (formInitializedKeyRef.current === initKey) {
         return;
       }
@@ -202,11 +257,12 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
         description: '',
       });
       setReferenceRoleId(undefined);
-      const emptyState = buildEmptyPermissionState(pageScope);
+      const emptyState = buildEmptyPermissionState(pageScope, rolePermissionMode);
       setPermissionState(emptyState);
       permissionBaselineRef.current = cloneEnterpriseRolePermissionState(
         emptyState,
-        pageScope
+        pageScope,
+        rolePermissionMode
       );
       formInitializedKeyRef.current = initKey;
       return;
@@ -216,7 +272,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       return;
     }
 
-    const initKey = `edit:${editingRole.id}:${editingRole.updatedAt}`;
+    const initKey = `edit:${editingRole.id}:${editingRole.updatedAt}:${rolePermissionMode}`;
     if (formInitializedKeyRef.current === initKey) {
       return;
     }
@@ -230,11 +286,15 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
     const nextPermissionState = cloneEnterpriseRolePermissionState({
       dataPermissions: editingRole.dataPermissions,
       functionPermissionKeys: editingRole.functionPermissionKeys,
-    }, pageScope);
+    }, pageScope, rolePermissionMode);
 
     setPermissionState(nextPermissionState);
     permissionBaselineRef.current =
-      cloneEnterpriseRolePermissionState(nextPermissionState, pageScope);
+      cloneEnterpriseRolePermissionState(
+        nextPermissionState,
+        pageScope,
+        rolePermissionMode
+      );
 
     const nextReferenceRoleId = referenceRoleOptions.some(
       (item) => item.id === editingRole.referenceRoleId
@@ -243,7 +303,14 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       : undefined;
     setReferenceRoleId(nextReferenceRoleId);
     formInitializedKeyRef.current = initKey;
-  }, [editingRole, form, isCreateMode, pageScope, referenceRoleOptions]);
+  }, [
+    editingRole,
+    form,
+    isCreateMode,
+    pageScope,
+    referenceRoleOptions,
+    rolePermissionMode,
+  ]);
 
   function handleCancel() {
     history.push(getRoleListPath(location.pathname, pageScope));
@@ -258,7 +325,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
           'functionPermissionKeys' in value
             ? value.functionPermissionKeys
             : prev.functionPermissionKeys,
-      }, pageScope)
+      }, pageScope, rolePermissionMode)
     );
   }
 
@@ -266,12 +333,16 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
     const nextPermissionState = cloneEnterpriseRolePermissionState({
       dataPermissions: role.dataPermissions,
       functionPermissionKeys: role.functionPermissionKeys,
-    }, pageScope);
+    }, pageScope, rolePermissionMode);
 
     setReferenceRoleId(role.id);
     setPermissionState(nextPermissionState);
     permissionBaselineRef.current =
-      cloneEnterpriseRolePermissionState(nextPermissionState, pageScope);
+      cloneEnterpriseRolePermissionState(
+        nextPermissionState,
+        pageScope,
+        rolePermissionMode
+      );
   }
 
   function handleReferenceRoleChange(value?: string) {
@@ -308,7 +379,11 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       const name = values.name.trim();
       const description = values.description.trim();
       const normalizedPermissionState =
-        cloneEnterpriseRolePermissionState(permissionState, pageScope);
+        cloneEnterpriseRolePermissionState(
+          permissionState,
+          pageScope,
+          rolePermissionMode
+        );
       let nextItems = roleItems;
 
       if (isCreateMode) {
@@ -365,20 +440,22 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
 
   return (
     <div className={styles.page}>
-      <Card>
-        <div className={styles.headerContent}>
-          <Typography.Title heading={4} style={{ margin: 0 }}>
-            {pageTitle}
-          </Typography.Title>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 8, marginBottom: 0 }}
-          >
-            {pageDescription}
-          </Typography.Paragraph>
-          <span className={styles.scopeBadge}>{scopeLabel}</span>
-        </div>
-      </Card>
+      {!isMerchantRolePage && (
+        <Card>
+          <div className={styles.headerContent}>
+            <Typography.Title heading={4} style={{ margin: 0 }}>
+              {pageTitle}
+            </Typography.Title>
+            <Typography.Paragraph
+              type="secondary"
+              style={{ marginTop: 8, marginBottom: 0 }}
+            >
+              {pageDescription}
+            </Typography.Paragraph>
+            <span className={styles.scopeBadge}>{scopeLabel}</span>
+          </div>
+        </Card>
+      )}
 
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
@@ -468,16 +545,15 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
         </Form>
       </Card>
 
-      <Card className={styles.sectionCard}>
-        <div className={styles.sectionHeader}>
-          <Typography.Title heading={6} className={styles.sectionTitle}>
-            角色权限
-          </Typography.Title>
-        </div>
+      {isMerchantRolePage ? (
+        <>
+          <Card className={styles.sectionCard}>
+            <div className={styles.sectionHeader}>
+              <Typography.Title heading={6} className={styles.sectionTitle}>
+                数据权限
+              </Typography.Title>
+            </div>
 
-        <div className={styles.permissionSection}>
-          <div className={styles.permissionRow}>
-            <div className={styles.permissionLabel}>数据权限</div>
             <div className={styles.permissionContent}>
               <Radio.Group
                 direction="vertical"
@@ -491,7 +567,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
                   })
                 }
               >
-                {ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS.map((option) => (
+                {dataViewScopeOptions.map((option) => (
                   <Radio key={option.value} value={option.value}>
                     <span className={styles.viewScopeOptionContent}>
                       <span className={styles.viewScopeTitle}>{option.label}</span>
@@ -506,35 +582,139 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
                 数据查看范围用于控制该角色在当前业务权限下可访问的记录层级。
               </Typography.Text>
             </div>
+          </Card>
+
+          <Card className={styles.sectionCard}>
+            <div className={styles.sectionHeader}>
+              <Typography.Title heading={6} className={styles.sectionTitle}>
+                功能权限
+              </Typography.Title>
+            </div>
+
+            <Typography.Text type="secondary" className={styles.permissionHelp}>
+              用于配置员工角色在不同系统里的页面查看、编辑和业务功能使用范围。
+            </Typography.Text>
+
+            <div className={styles.merchantPermissionLayout}>
+              <div className={styles.permissionSystemList}>
+                {MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS.map((option) => {
+                  const active = activeMerchantPermissionSystem === option.value;
+                  const buttonClassName = [
+                    styles.permissionSystemButton,
+                    active && styles.permissionSystemButtonActive,
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={buttonClassName}
+                      onClick={() => setActiveMerchantPermissionSystem(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={styles.permissionTreePanel}>
+                <div className={styles.treeWrapper}>
+                  <Tree
+                    key={activeMerchantPermissionSystem}
+                    blockNode
+                    checkable
+                    checkedKeys={activeMerchantPermissionKeys}
+                    defaultExpandedKeys={merchantPermissionRootKeys}
+                    treeData={merchantPermissionTree}
+                    showLine
+                    selectable={false}
+                    onCheck={(checkedKeys) =>
+                      patchPermissionState({
+                        functionPermissionKeys:
+                          replaceMerchantRolePermissionSystemKeys(
+                            permissionState.functionPermissionKeys,
+                            activeMerchantPermissionSystem,
+                            normalizeCheckedKeys(checkedKeys)
+                          ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </>
+      ) : (
+        <Card className={styles.sectionCard}>
+          <div className={styles.sectionHeader}>
+            <Typography.Title heading={6} className={styles.sectionTitle}>
+              角色权限
+            </Typography.Title>
           </div>
 
-          <div className={styles.permissionRow}>
-            <div className={styles.permissionLabel}>功能权限</div>
-            <div className={styles.permissionContent}>
-              <Typography.Text type="secondary" className={styles.permissionHelp}>
-                用于配置员工角色在页面上的查看、编辑和业务功能使用范围。
-              </Typography.Text>
-              <div className={styles.treeWrapper}>
-                <Tree
-                  key={pageScope}
-                  blockNode
-                  checkable
-                  checkedKeys={permissionState.functionPermissionKeys}
-                  defaultExpandedKeys={permissionRootKeys}
-                  treeData={permissionTree}
-                  showLine
-                  selectable={false}
-                  onCheck={(checkedKeys) =>
+          <div className={styles.permissionSection}>
+            <div className={styles.permissionRow}>
+              <div className={styles.permissionLabel}>数据权限</div>
+              <div className={styles.permissionContent}>
+                <Radio.Group
+                  direction="vertical"
+                  className={styles.viewScopeGroup}
+                  value={permissionState.dataPermissions.viewScope}
+                  onChange={(value) =>
                     patchPermissionState({
-                      functionPermissionKeys: checkedKeys,
+                      dataPermissions: {
+                        viewScope: value as EnterpriseRoleDataViewScope,
+                      },
                     })
                   }
-                />
+                >
+                  {dataViewScopeOptions.map((option) => (
+                    <Radio key={option.value} value={option.value}>
+                      <span className={styles.viewScopeOptionContent}>
+                        <span className={styles.viewScopeTitle}>{option.label}</span>
+                        <span className={styles.viewScopeDescription}>
+                          {option.description}
+                        </span>
+                      </span>
+                    </Radio>
+                  ))}
+                </Radio.Group>
+                <Typography.Text type="secondary" className={styles.permissionHelp}>
+                  数据查看范围用于控制该角色在当前业务权限下可访问的记录层级。
+                </Typography.Text>
+              </div>
+            </div>
+
+            <div className={styles.permissionRow}>
+              <div className={styles.permissionLabel}>功能权限</div>
+              <div className={styles.permissionContent}>
+                <Typography.Text type="secondary" className={styles.permissionHelp}>
+                  用于配置员工角色在页面上的查看、编辑和业务功能使用范围。
+                </Typography.Text>
+                <div className={styles.treeWrapper}>
+                  <Tree
+                    key={pageScope}
+                    blockNode
+                    checkable
+                    checkedKeys={permissionState.functionPermissionKeys}
+                    defaultExpandedKeys={permissionRootKeys}
+                    treeData={permissionTree}
+                    showLine
+                    selectable={false}
+                    onCheck={(checkedKeys) =>
+                      patchPermissionState({
+                        functionPermissionKeys: normalizeCheckedKeys(checkedKeys),
+                      })
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <Card className={styles.footerCard}>
         <div className={styles.footerActions}>

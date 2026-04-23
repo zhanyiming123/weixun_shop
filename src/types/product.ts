@@ -19,6 +19,22 @@ export type ProductCarouselImage = {
   url: string;
 };
 
+export type ProductStoreSkuPriceOverrideItem = {
+  skuId: string;
+  currentPrice: number;
+};
+
+export type ProductSkuIndependentPriceRule = {
+  skuId: string;
+  minPrice?: number;
+  maxPrice?: number;
+};
+
+export type ProductIndependentPriceRule = {
+  enabled: boolean;
+  skuRules: ProductSkuIndependentPriceRule[];
+};
+
 export type ProductStoreConfigItem = {
   storeId: string;
   sellStatus: ProductStoreSellStatus;
@@ -29,6 +45,7 @@ export type ProductStoreOverrideItem = {
   storeId: string;
   priceMode: ProductStorePriceMode;
   currentPrice?: number;
+  skuPriceOverrides?: ProductStoreSkuPriceOverrideItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName?: string;
   carouselMode: ProductStoreOverrideMode;
@@ -44,6 +61,17 @@ export type ProductSkuItem = {
   price: number;
   stock: number;
   status: ProductStatus;
+};
+
+export type ProductStoreSkuViewItem = {
+  id: string;
+  specText: string;
+  stock: number;
+  status: ProductStatus;
+  originalPrice: number;
+  currentPrice: number;
+  minIndependentPrice?: number;
+  maxIndependentPrice?: number;
 };
 
 export type ProductItem = {
@@ -64,17 +92,22 @@ export type ProductItem = {
   storeConfigs: ProductStoreConfigItem[];
   carouselImages?: ProductCarouselImage[];
   storeOverrides?: ProductStoreOverrideMap;
+  independentPriceRule?: ProductIndependentPriceRule;
 };
 
 export type ProductStoreView = {
   currentStoreId?: string;
+  currentStoreSellStatus?: ProductStoreSellStatus;
+  currentStoreChannelStatus?: ProductStoreChannelStatus;
   resolvedSourceStoreId?: string;
   sourceLabel: string;
   sourceStoreName: string;
   sourceRegionName: string;
   showOwnershipTag: boolean;
   ownershipTag?: ProductOwnershipTag;
+  canManageStoreStatus: boolean;
   canManageStoreSettings: boolean;
+  canManageIndependentPrice: boolean;
   isShared: boolean;
   isSelfBuilt: boolean;
   hasStoreSetting: boolean;
@@ -89,6 +122,8 @@ export type ProductStoreView = {
   currentName: string;
   originalPrice: number;
   currentPrice: number;
+  originalSkus: ProductSkuItem[];
+  currentSkus: ProductStoreSkuViewItem[];
   originalCarouselImages: ProductCarouselImage[];
   currentCarouselImages: ProductCarouselImage[];
 };
@@ -137,6 +172,7 @@ export type UpdateProductStoreOverrideInput = {
   storeId: string;
   priceMode: ProductStorePriceMode;
   currentPrice?: number;
+  skuPriceOverrides?: ProductStoreSkuPriceOverrideItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName?: string;
   carouselMode: ProductStoreOverrideMode;
@@ -150,4 +186,10 @@ export type PublishProductsToStoresInput = {
   sellStatus: ProductStoreSellStatus;
   channelStatus: ProductStoreChannelStatus;
   visibleStoreIds: string[];
+};
+
+export type UpdateProductStoreChannelStatusInput = {
+  productIds: string[];
+  storeId: string;
+  channelStatus: ProductStoreChannelStatus;
 };

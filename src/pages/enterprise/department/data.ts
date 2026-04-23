@@ -46,9 +46,23 @@ type EnterpriseDepartmentHeadquarterMeta = Pick<
   'id' | 'code' | 'managerName' | 'headcount' | 'description' | 'updatedAt'
 >;
 
-const STORAGE_KEY = 'enterprise-department-items-v3';
+const STORAGE_KEY = 'enterprise-department-items-v4';
+
 const LEGACY_TAB_STORAGE_KEY = 'enterprise-department-items-v2';
 const LEGACY_SINGLE_STORAGE_KEY = 'enterprise-department-items-v1';
+const LEGACY_STORE_DEFAULT_DEPARTMENT_ID_PREFIX = 'department_store_';
+const STORE_TEMPLATE_DEPARTMENT_ID_PREFIX = 'department_campus_';
+const STORE_DEFAULT_DEPARTMENT_UPDATED_AT = '2026-04-20 10:00:00';
+
+type StoreDepartmentTemplateNode = {
+  suffix: string;
+  name: string;
+  codeSuffix: string;
+  headcount: number;
+  description: string;
+  managerName?: 'store_manager';
+  children?: StoreDepartmentTemplateNode[];
+};
 
 export const ENTERPRISE_DEPARTMENT_SCOPE_LABEL_MAP: Record<
   EnterpriseDepartmentScope,
@@ -122,63 +136,214 @@ export function readEnterpriseDepartmentStoreOptions(
   }));
 }
 
-function createStoreDepartmentItems(store: OrganizationItem, index: number) {
-  const rootId = `department_store_${store.id}_01`;
-  const teachingId = `${rootId}_01`;
-  const serviceId = `${rootId}_02`;
-  const frontDeskId = `${rootId}_03`;
-  const codePrefix = store.code || `STORE-${index + 1}`;
+const STORE_DEPARTMENT_TEMPLATE: StoreDepartmentTemplateNode[] = [
+  {
+    suffix: 'principal-office',
+    name: '校区校长办公室',
+    codeSuffix: 'PRINCIPAL',
+    headcount: 2,
+    description: '负责校区经营目标管理、跨部门协调与关键决策推进。',
+    managerName: 'store_manager',
+  },
+  {
+    suffix: 'admission-signing-center',
+    name: '咨询与签约中心',
+    codeSuffix: 'ADMISSION',
+    headcount: 10,
+    description: '负责意向学员咨询接待、需求诊断、签约转化与阶段目标管理。',
+    children: [
+      {
+        suffix: 'admission-planning-team',
+        name: '留学规划咨询组',
+        codeSuffix: 'ADMISSION-PLAN',
+        headcount: 6,
+        description: '负责学员背景评估、规划路径设计和咨询方案输出。',
+      },
+      {
+        suffix: 'admission-signing-team',
+        name: '签约转化组',
+        codeSuffix: 'ADMISSION-SIGN',
+        headcount: 4,
+        description: '负责咨询跟进、签约推进与转化数据复盘。',
+      },
+    ],
+  },
+  {
+    suffix: 'application-essay-center',
+    name: '申请与文书中心',
+    codeSuffix: 'APPLICATION',
+    headcount: 9,
+    description: '负责目标院校申请执行、文书交付与签证材料推进。',
+    children: [
+      {
+        suffix: 'application-team',
+        name: '选校申请组',
+        codeSuffix: 'APPLICATION-SCHOOL',
+        headcount: 3,
+        description: '负责院校匹配、申请流程推进与结果跟踪。',
+      },
+      {
+        suffix: 'essay-team',
+        name: '文书服务组',
+        codeSuffix: 'APPLICATION-ESSAY',
+        headcount: 4,
+        description: '负责文书策划、撰写指导、版本交付与质量把控。',
+      },
+      {
+        suffix: 'visa-team',
+        name: '签证服务组',
+        codeSuffix: 'APPLICATION-VISA',
+        headcount: 2,
+        description: '负责签证申请材料准备、递签支持与入境流程指导。',
+      },
+    ],
+  },
+  {
+    suffix: 'language-test-center',
+    name: '语言与标化培训中心',
+    codeSuffix: 'LANGUAGE',
+    headcount: 8,
+    description: '负责雅思、托福及 SAT 等课程教学交付与学习效果管理。',
+    children: [
+      {
+        suffix: 'ielts-team',
+        name: '雅思教学组',
+        codeSuffix: 'LANGUAGE-IELTS',
+        headcount: 4,
+        description: '负责雅思课程教学、模考评估和学习计划跟进。',
+      },
+      {
+        suffix: 'toefl-sat-team',
+        name: '托福/SAT 教学组',
+        codeSuffix: 'LANGUAGE-TOEFL-SAT',
+        headcount: 4,
+        description: '负责托福与 SAT 课程教学、阶段测评与提分方案。',
+      },
+    ],
+  },
+  {
+    suffix: 'academic-student-service-center',
+    name: '教务与学员服务中心',
+    codeSuffix: 'SERVICE',
+    headcount: 7,
+    description: '负责排课教务、在读服务、续费衔接和满意度管理。',
+    children: [
+      {
+        suffix: 'schedule-team',
+        name: '排课教务组',
+        codeSuffix: 'SERVICE-SCHEDULE',
+        headcount: 3,
+        description: '负责师资排班、课程排期和教学资源协调。',
+      },
+      {
+        suffix: 'homeroom-team',
+        name: '班主任服务组',
+        codeSuffix: 'SERVICE-HOMEROOM',
+        headcount: 4,
+        description: '负责在读学员学习跟进、家校沟通与续费服务支持。',
+      },
+    ],
+  },
+  {
+    suffix: 'marketing-channel-center',
+    name: '市场与渠道中心',
+    codeSuffix: 'MARKETING',
+    headcount: 6,
+    description: '负责线索增长、品牌传播和本地化渠道合作拓展。',
+    children: [
+      {
+        suffix: 'new-media-team',
+        name: '新媒体运营组',
+        codeSuffix: 'MARKETING-MEDIA',
+        headcount: 3,
+        description: '负责内容运营、账号增长与线上获客线索管理。',
+      },
+      {
+        suffix: 'channel-team',
+        name: '渠道拓展组',
+        codeSuffix: 'MARKETING-CHANNEL',
+        headcount: 3,
+        description: '负责学校/机构合作拓展、活动联动和渠道转化管理。',
+      },
+    ],
+  },
+  {
+    suffix: 'operations-support-center',
+    name: '运营支持中心',
+    codeSuffix: 'SUPPORT',
+    headcount: 5,
+    description: '负责校区行政、人力与财务协同，保障组织稳定运行。',
+    children: [
+      {
+        suffix: 'hr-admin-team',
+        name: '人事行政组',
+        codeSuffix: 'SUPPORT-HR-ADMIN',
+        headcount: 3,
+        description: '负责人事办理、行政支持与办公环境管理。',
+      },
+      {
+        suffix: 'finance-support-team',
+        name: '财务支持组',
+        codeSuffix: 'SUPPORT-FINANCE',
+        headcount: 2,
+        description: '负责收支核对、对账报表与财务流程支持。',
+      },
+    ],
+  },
+];
 
-  return [
-    {
-      id: rootId,
-      name: '校区运营部',
-      code: `${codePrefix}-OPS`,
-      scope: 'store' as const,
-      storeId: store.id,
-      parentId: null,
-      managerName: store.managerName,
-      headcount: 6,
-      description: `负责${store.name}的日常经营运营与资源协调`,
-      updatedAt: '2026-03-29 09:20:00',
-    },
-    {
-      id: teachingId,
-      name: '招生咨询组',
-      code: `${codePrefix}-CONSULT`,
-      scope: 'store' as const,
-      storeId: store.id,
-      parentId: rootId,
-      managerName: '',
-      headcount: 2,
-      description: '负责咨询接待、试听安排和签约转化',
-      updatedAt: '2026-03-29 09:40:00',
-    },
-    {
-      id: serviceId,
-      name: '教务服务组',
-      code: `${codePrefix}-SERVICE`,
-      scope: 'store' as const,
-      storeId: store.id,
-      parentId: rootId,
-      managerName: '',
-      headcount: 2,
-      description: '负责排课、学员服务和课时履约',
-      updatedAt: '2026-03-29 09:50:00',
-    },
-    {
-      id: frontDeskId,
-      name: '前台接待组',
-      code: `${codePrefix}-FRONT`,
-      scope: 'store' as const,
-      storeId: store.id,
-      parentId: rootId,
-      managerName: '',
-      headcount: 1,
-      description: '负责到店接待、登记和现场服务支持',
-      updatedAt: '2026-03-29 10:00:00',
-    },
-  ];
+function createStoreDepartmentId(storeId: string, suffix: string) {
+  return `${STORE_TEMPLATE_DEPARTMENT_ID_PREFIX}${storeId}_${suffix}`;
+}
+
+function buildStoreDepartmentCodePrefix(store: OrganizationItem, index: number) {
+  const normalizedCode =
+    typeof store.code === 'string'
+      ? store.code
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+      : '';
+
+  return normalizedCode || `STORE-${index + 1}`;
+}
+
+function createStoreDepartmentItemsByTemplate(
+  store: OrganizationItem,
+  index: number,
+  templateNodes: StoreDepartmentTemplateNode[] = STORE_DEPARTMENT_TEMPLATE
+) {
+  const codePrefix = buildStoreDepartmentCodePrefix(store, index);
+
+  function buildItems(
+    nodes: StoreDepartmentTemplateNode[],
+    parentId: string | null = null
+  ): EnterpriseDepartmentItem[] {
+    return nodes.flatMap((node) => {
+      const currentId = createStoreDepartmentId(store.id, node.suffix);
+      const currentItem: EnterpriseDepartmentItem = {
+        id: currentId,
+        name: node.name,
+        code: `${codePrefix}-${node.codeSuffix}`,
+        scope: 'store',
+        storeId: store.id,
+        parentId,
+        managerName: node.managerName === 'store_manager' ? store.managerName : '',
+        headcount: node.headcount,
+        description: node.description,
+        updatedAt: STORE_DEFAULT_DEPARTMENT_UPDATED_AT,
+      };
+
+      return [currentItem, ...buildItems(node.children || [], currentId)];
+    });
+  }
+
+  return buildItems(templateNodes);
+}
+
+function createStoreDepartmentItems(store: OrganizationItem, index: number) {
+  return createStoreDepartmentItemsByTemplate(store, index);
 }
 
 function createDefaultStoreDepartmentItems(
@@ -317,6 +482,80 @@ function cloneStoreTreeToTargetStore(
   }));
 }
 
+function isLegacySystemStoreDepartment(item: EnterpriseDepartmentItem) {
+  if (item.scope !== 'store' || !item.storeId) {
+    return false;
+  }
+
+  return item.id.startsWith(`${LEGACY_STORE_DEFAULT_DEPARTMENT_ID_PREFIX}${item.storeId}_`);
+}
+
+function isTemplateStoreDepartment(item: EnterpriseDepartmentItem) {
+  if (item.scope !== 'store' || !item.storeId) {
+    return false;
+  }
+
+  return item.id.startsWith(`${STORE_TEMPLATE_DEPARTMENT_ID_PREFIX}${item.storeId}_`);
+}
+
+function migrateStoreTemplateItems(
+  storeItems: EnterpriseDepartmentItem[],
+  storeOrganizations: OrganizationItem[]
+) {
+  const storeItemGroups = new Map<string, EnterpriseDepartmentItem[]>();
+
+  storeItems.forEach((item) => {
+    if (!item.storeId) {
+      return;
+    }
+
+    const currentItems = storeItemGroups.get(item.storeId) || [];
+    currentItems.push(item);
+    storeItemGroups.set(item.storeId, currentItems);
+  });
+
+  const knownStoreIdSet = new Set(storeOrganizations.map((item) => item.id));
+  const migratedKnownStoreItems = storeOrganizations.flatMap((store, index) => {
+    const templateItems = createStoreDepartmentItems(store, index);
+    const currentStoreItems = storeItemGroups.get(store.id) || [];
+
+    if (!currentStoreItems.length) {
+      return templateItems;
+    }
+
+    const customItems = currentStoreItems
+      .filter(
+        (item) =>
+          !isLegacySystemStoreDepartment(item) && !isTemplateStoreDepartment(item)
+      )
+      .reduce<EnterpriseDepartmentItem[]>((accumulator, item) => {
+        if (accumulator.some((current) => current.id === item.id)) {
+          return accumulator;
+        }
+
+        accumulator.push({ ...item });
+        return accumulator;
+      }, []);
+    const validParentIdSet = new Set([
+      ...templateItems.map((item) => item.id),
+      ...customItems.map((item) => item.id),
+    ]);
+    const normalizedCustomItems = customItems.map((item) => ({
+      ...item,
+      parentId:
+        item.parentId && validParentIdSet.has(item.parentId) ? item.parentId : null,
+    }));
+
+    return [...templateItems, ...normalizedCustomItems];
+  });
+
+  const unmanagedStoreItems = storeItems.filter(
+    (item) => !item.storeId || !knownStoreIdSet.has(item.storeId)
+  );
+
+  return [...migratedKnownStoreItems, ...unmanagedStoreItems];
+}
+
 function migrateGenericStoreItems(
   items: EnterpriseDepartmentItem[],
   storeOrganizations: OrganizationItem[]
@@ -332,7 +571,7 @@ function migrateGenericStoreItems(
   const genericStoreItems = storeItems.filter((item) => !item.storeId);
 
   if (!genericStoreItems.length) {
-    return [...headquarterItems, ...scopedStoreItems];
+    return [...headquarterItems, ...migrateStoreTemplateItems(scopedStoreItems, storeOrganizations)];
   }
 
   const existingStoreIds = new Set(
@@ -349,7 +588,13 @@ function migrateGenericStoreItems(
     return cloneStoreTreeToTargetStore(genericStoreItems, store.id);
   });
 
-  return [...headquarterItems, ...scopedStoreItems, ...clonedStoreItems];
+  return [
+    ...headquarterItems,
+    ...migrateStoreTemplateItems(
+      [...scopedStoreItems, ...clonedStoreItems],
+      storeOrganizations
+    ),
+  ];
 }
 
 function migrateSingleTreeItems(
@@ -369,21 +614,45 @@ function migrateSingleTreeItems(
 
   return [
     ...normalizedHeadquarterItems,
-    ...createDefaultStoreDepartmentItems(storeOrganizations),
+    ...migrateStoreTemplateItems(createDefaultStoreDepartmentItems(storeOrganizations), storeOrganizations),
   ];
+}
+
+function migrateDepartmentItems(
+  items: EnterpriseDepartmentItem[],
+  storeOrganizations: OrganizationItem[]
+) {
+  const headquarterItems = items.filter((item) => item.scope === 'headquarter');
+  const scopedStoreItems = items.filter((item) => item.scope === 'store' && item.storeId);
+  const genericStoreItems = items.filter((item) => item.scope === 'store' && !item.storeId);
+  const normalizedStoreItems = genericStoreItems.length
+    ? migrateGenericStoreItems(
+        [...headquarterItems, ...scopedStoreItems, ...genericStoreItems],
+        storeOrganizations
+      ).filter((item) => item.scope === 'store')
+    : migrateStoreTemplateItems(scopedStoreItems, storeOrganizations);
+
+  return [...headquarterItems, ...normalizedStoreItems];
 }
 
 function readPersistedDepartmentItems(
   storeOrganizations: OrganizationItem[] = readStoreOrganizations()
 ) {
   if (hasStorageValue(STORAGE_KEY)) {
-    return normalizeDepartmentItems(
+    const persistedItems = normalizeDepartmentItems(
       readPersistentValue<Partial<EnterpriseDepartmentItem>[]>(STORAGE_KEY, [])
     );
+    const migratedItems = migrateDepartmentItems(persistedItems, storeOrganizations);
+
+    if (JSON.stringify(persistedItems) !== JSON.stringify(migratedItems)) {
+      writePersistentValue(STORAGE_KEY, migratedItems);
+    }
+
+    return migratedItems;
   }
 
   if (hasStorageValue(LEGACY_TAB_STORAGE_KEY)) {
-    return migrateGenericStoreItems(
+    const migratedItems = migrateGenericStoreItems(
       normalizeDepartmentItems(
         readPersistentValue<Partial<EnterpriseDepartmentItem>[]>(
           LEGACY_TAB_STORAGE_KEY,
@@ -392,19 +661,28 @@ function readPersistedDepartmentItems(
       ),
       storeOrganizations
     );
+
+    writePersistentValue(STORAGE_KEY, migratedItems);
+    return migratedItems;
   }
 
   if (hasStorageValue(LEGACY_SINGLE_STORAGE_KEY)) {
-    return migrateSingleTreeItems(
+    const migratedItems = migrateSingleTreeItems(
       readPersistentValue<Partial<EnterpriseDepartmentItem>[]>(
         LEGACY_SINGLE_STORAGE_KEY,
         []
       ),
       storeOrganizations
     );
+
+    writePersistentValue(STORAGE_KEY, migratedItems);
+    return migratedItems;
   }
 
-  return createDefaultStoreDepartmentItems(storeOrganizations);
+  const defaultItems = createDefaultStoreDepartmentItems(storeOrganizations);
+  writePersistentValue(STORAGE_KEY, defaultItems);
+
+  return defaultItems;
 }
 
 export function readEnterpriseDepartmentItems() {

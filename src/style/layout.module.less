@@ -114,6 +114,8 @@
 }
 
 .layout-content {
+  display: flex;
+  flex-direction: column;
   background-color: var(--color-fill-2);
   min-width: @layout-max-width;
   min-height: 100vh;
@@ -122,11 +124,40 @@
 }
 
 .layout-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 16px 20px 0;
+
+  > :global(.arco-layout-content) {
+    flex: 1;
+
+    > :global(.arco-card),
+    > * > :global(.arco-card) {
+      > :global(.arco-card-body) {
+        padding-top: 24px;
+      }
+    }
+  }
 }
 
 .layout-breadcrumb {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.layout-breadcrumb-link {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--color-text-2);
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: rgb(var(--arcoblue-6));
+  }
 }
 
 .spin {

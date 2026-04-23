@@ -32,6 +32,7 @@ type CouponStoreSelectorProps = {
   allowedStoreTypes?: ProductStoreType[];
   entityLabel?: string;
   title?: string;
+  simple?: boolean;
   onCancel: () => void;
   onConfirm: (storeIds: string[]) => void;
 };
@@ -61,6 +62,7 @@ function CouponStoreSelector({
   allowedStoreTypes,
   entityLabel = '店铺',
   title = '选择店铺',
+  simple = false,
   onCancel,
   onConfirm,
 }: CouponStoreSelectorProps) {
@@ -146,24 +148,26 @@ function CouponStoreSelector({
         return true;
       }
 
-      const searchFields = [
-        item.name,
-        item.managerName,
-        item.phone,
-        item.address,
-        item.departmentName,
-      ]
-        .join(' ')
-        .toLowerCase();
+      const searchFields = simple
+        ? item.name.toLowerCase()
+        : [
+            item.name,
+            item.managerName,
+            item.phone,
+            item.address,
+            item.departmentName,
+          ]
+            .join(' ')
+            .toLowerCase();
 
       return searchFields.includes(keyword);
     });
-  }, [storeDepartmentFilter, storeItems, storeKeyword, storeTypeFilter]);
+  }, [simple, storeDepartmentFilter, storeItems, storeKeyword, storeTypeFilter]);
 
   const effectiveSelectedStoreIds =
     selectorMode === 'all' ? allStoreIds : draftSelectedStoreIds;
 
-  const columns = [
+  const defaultColumns = [
     {
       title: `${entityLabel}名称`,
       dataIndex: 'name',
@@ -213,6 +217,40 @@ function CouponStoreSelector({
       render: () => '-',
     },
   ];
+  const simpleColumns = [
+    {
+      title: '门店名称',
+      dataIndex: 'name',
+      width: 260,
+      render: (_: string, record: ProductStoreItem) => (
+        <div className={styles.storeNameCell}>
+          <div className={styles.storeAvatar}>
+            <IconHome />
+          </div>
+          <button className={styles.storeNameButton} type="button">
+            {record.name}
+          </button>
+        </div>
+      ),
+    },
+    {
+      title: '门店地址',
+      dataIndex: 'address',
+      width: 360,
+    },
+    {
+      title: '门店负责人',
+      dataIndex: 'managerName',
+      width: 220,
+      render: (_: string, record: ProductStoreItem) => (
+        <div className={styles.contactCell}>
+          <span>{record.managerName}</span>
+          <span>{`+86-${maskPhone(record.phone)}`}</span>
+        </div>
+      ),
+    },
+  ];
+  const columns = simple ? simpleColumns : defaultColumns;
 
   function handleModeChange(value: string) {
     const nextMode = value as StoreSelectorMode;
@@ -252,7 +290,7 @@ function CouponStoreSelector({
       autoFocus={false}
       focusLock
       footer={null}
-      style={{ width: 1280 }}
+      style={{ width: simple ? 960 : 1280 }}
       onCancel={onCancel}
     >
       <div className={styles.modalContent}>
@@ -274,62 +312,78 @@ function CouponStoreSelector({
           </Typography.Text>
         </div>
 
-        <div className={styles.filterRow}>
-          <div className={styles.filterActions}>
-            <div className={styles.filterTag}>管理{entityLabel}</div>
-            <Button icon={<IconRefresh />} onClick={resetFilters}>
-              刷新
-            </Button>
+        {simple ? (
+          <div className={styles.simpleFilterRow}>
+            <Input
+              allowClear
+              className={styles.searchInput}
+              placeholder="请输入门店名称"
+              prefix={<IconSearch />}
+              value={storeKeyword}
+              onChange={(value) => {
+                setStoreKeyword(value);
+                setCurrentPage(1);
+              }}
+            />
           </div>
+        ) : (
+          <div className={styles.filterRow}>
+            <div className={styles.filterActions}>
+              <div className={styles.filterTag}>管理{entityLabel}</div>
+              <Button icon={<IconRefresh />} onClick={resetFilters}>
+                刷新
+              </Button>
+            </div>
 
-          <Select
-            className={styles.filterSelect}
-            value={storeDepartmentFilter}
-            onChange={(value) => {
-              setStoreDepartmentFilter(value);
-              setCurrentPage(1);
-            }}
-          >
-            <Select.Option value="all">全部部门</Select.Option>
-            {storeDepartmentOptions.map((item) => (
-              <Select.Option key={item.value} value={item.value}>
-                {item.label}
-              </Select.Option>
-            ))}
-          </Select>
+            <Select
+              className={styles.filterSelect}
+              value={storeDepartmentFilter}
+              onChange={(value) => {
+                setStoreDepartmentFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <Select.Option value="all">全部部门</Select.Option>
+              {storeDepartmentOptions.map((item) => (
+                <Select.Option key={item.value} value={item.value}>
+                  {item.label}
+                </Select.Option>
+              ))}
+            </Select>
 
-          <Select
-            className={styles.filterSelect}
-            value={storeTypeFilter}
-            disabled={effectiveStoreTypes.length === 1}
-            onChange={(value) => {
-              setStoreTypeFilter(value as StoreSelectorFilterType);
-              setCurrentPage(1);
-            }}
-          >
-            {effectiveStoreTypes.length > 1 && (
-              <Select.Option value="all">全部{entityLabel}分类</Select.Option>
-            )}
-            {effectiveStoreTypes.includes('store') && (
-              <Select.Option value="store">门店</Select.Option>
-            )}
-            {effectiveStoreTypes.includes('mall') && (
-              <Select.Option value="mall">商城</Select.Option>
-            )}
-          </Select>
+            <Select
+              className={styles.filterSelect}
+              value={storeTypeFilter}
+              disabled={effectiveStoreTypes.length === 1}
+              onChange={(value) => {
+                setStoreTypeFilter(value as StoreSelectorFilterType);
+                setCurrentPage(1);
+              }}
+            >
+              {effectiveStoreTypes.length > 1 && (
+                <Select.Option value="all">全部{entityLabel}分类</Select.Option>
+              )}
+              {effectiveStoreTypes.includes('store') && (
+                <Select.Option value="store">门店</Select.Option>
+              )}
+              {effectiveStoreTypes.includes('mall') && (
+                <Select.Option value="mall">商城</Select.Option>
+              )}
+            </Select>
 
-          <Input
-            allowClear
-            className={styles.searchInput}
-            placeholder={`店长/联系方式/${entityLabel}名称`}
-            prefix={<IconSearch />}
-            value={storeKeyword}
-            onChange={(value) => {
-              setStoreKeyword(value);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
+            <Input
+              allowClear
+              className={styles.searchInput}
+              placeholder={`店长/联系方式/${entityLabel}名称`}
+              prefix={<IconSearch />}
+              value={storeKeyword}
+              onChange={(value) => {
+                setStoreKeyword(value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        )}
 
         <Table
           rowKey="id"
@@ -366,7 +420,7 @@ function CouponStoreSelector({
               setDraftSelectedStoreIds(keys.map((item) => String(item)));
             },
           }}
-          scroll={{ x: 1140, y: 420 }}
+          scroll={{ x: simple ? 840 : 1140, y: 420 }}
           tableLayoutFixed
         />
 

@@ -86,6 +86,8 @@ import {
   readProductStoreItems,
 } from '../store-config/data';
 import { getProductStatusByStoreConfigs } from '@/lib/product';
+import { formatPriceNumber } from '@/lib/format';
+import type { ProductIndependentPriceRule } from '@/types/product';
 import { GlobalState } from '@/store';
 import { filterStoreItemsByIds } from '@/utils/organization';
 
@@ -111,6 +113,35 @@ type ProductCreateLocationState = {
 type StoreConfigFilterType = 'all' | ProductStoreType;
 type StoreConfigFilterStatus = 'all' | ProductStoreSellStatus;
 type StoreConfigTableItem = ProductStoreItem & ProductStoreConfigItem;
+type ChannelSkuDraftField = 'price' | 'suggestedMin' | 'suggestedMax';
+type ChannelSkuDraftItem = {
+  price?: number;
+  suggestedMin?: number;
+  suggestedMax?: number;
+  disabled?: boolean;
+};
+type ChannelSkuDraftMap = Record<string, ChannelSkuDraftItem>;
+type ChannelSkuTableItem = {
+  key: string;
+  specLabel: string;
+  price?: number;
+  suggestedMin?: number;
+  suggestedMax?: number;
+  disabled: boolean;
+};
+type IndependentPriceRuleDraftField = 'minPrice' | 'maxPrice';
+type IndependentPriceRuleDraftItem = {
+  minPrice?: number;
+  maxPrice?: number;
+};
+type IndependentPriceRuleDraftMap = Record<string, IndependentPriceRuleDraftItem>;
+type IndependentPriceRuleTableItem = {
+  key: string;
+  specLabel: string;
+  sourcePrice?: number;
+  minPrice?: number;
+  maxPrice?: number;
+};
 
 const PRODUCT_TYPE_OPTIONS = [
   {
@@ -249,6 +280,7 @@ const DETAIL_LINE_HEIGHT_OPTIONS = [
 const COPY_PRODUCT_NAME_SUFFIX = '（副本）';
 const STORE_CONFIG_PAGE_SIZE_OPTIONS = [20, 50];
 const EMPTY_STORE_IDS: string[] = [];
+const CHANNEL_SINGLE_SKU_KEY = 'single';
 const PRODUCT_FORM_LAYOUT = {
   layout: 'horizontal' as const,
   labelCol: { flex: '120px' },
@@ -265,6 +297,34 @@ function buildCopyProductName(name: string) {
   }
 
   return `${name.slice(0, baseLength)}${COPY_PRODUCT_NAME_SUFFIX}`;
+}
+
+function buildSpecText(item: SpecItem, index: number) {
+  return (
+    [item.name.trim(), item.value.trim()].filter(Boolean).join('：') ||
+    `规格${index + 1}`
+  );
+}
+
+function buildIndependentPriceRuleDraftMap(
+  rule: ProductIndependentPriceRule | undefined,
+  skus: ProductSkuItem[] = []
+): IndependentPriceRuleDraftMap {
+  const ruleMap = new Map(
+    (rule?.skuRules || []).map((item) => [item.skuId, item])
+  );
+
+  return skus.reduce<IndependentPriceRuleDraftMap>((result, sku) => {
+    const matchedRule = ruleMap.get(sku.id);
+    const key = skus.length === 1 ? CHANNEL_SINGLE_SKU_KEY : sku.id;
+
+    result[key] = {
+      minPrice: matchedRule?.minPrice,
+      maxPrice: matchedRule?.maxPrice,
+    };
+
+    return result;
+  }, {});
 }
 
 function renderCatalogAttributeField(
@@ -336,6 +396,10 @@ function ProductCreatePage() {
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
   const storeItems = useMemo(() => readProductStoreItems(), []);
   const visibleStoreIds = currentOrganization?.storeIds || EMPTY_STORE_IDS;
+  const currentStoreId =
+    currentOrganization?.scope === 'store' && visibleStoreIds.length === 1
+      ? visibleStoreIds[0]
+      : undefined;
   const scopedStoreItems = useMemo(
     () =>
       isHeadquarter ? storeItems : filterStoreItemsByIds(storeItems, visibleStoreIds),
@@ -355,6 +419,7 @@ function ProductCreatePage() {
     return rawMode === 'edit' || rawMode === 'copy' ? rawMode : 'create';
   }, [location.state, locationQuery.mode]);
   const isEditMode = pageMode === 'edit';
+  const channelEnabled = Boolean(currentStoreId) && !isEditMode;
   const sourceProductId = useMemo(() => {
     if (typeof locationQuery.sourceId === 'string') {
       return locationQuery.sourceId;
@@ -392,6 +457,12 @@ function ProductCreatePage() {
   const [singleSpecFileList, setSingleSpecFileList] = useState<UploadItem[]>([]);
   const [singleSpecPrice, setSingleSpecPrice] = useState<number | undefined>();
   const [singleSpecStock, setSingleSpecStock] = useState<number | undefined>();
+  const [priceControlEnabled, setPriceControlEnabled] = useState(false);
+  const [channelSkuDraftMap, setChannelSkuDraftMap] =
+    useState<ChannelSkuDraftMap>({});
+  const [independentPriceEnabled, setIndependentPriceEnabled] = useState(true);
+  const [independentPriceRuleDraftMap, setIndependentPriceRuleDraftMap] =
+    useState<IndependentPriceRuleDraftMap>({});
   const [isLimited, setIsLimited] = useState(false);
   const [limitCount, setLimitCount] = useState<number | undefined>(1);
   const [detailHtml, setDetailHtml] = useState(DEFAULT_DETAIL_HTML);
@@ -449,6 +520,10 @@ function ProductCreatePage() {
       setSingleSpecFileList([]);
       setSingleSpecPrice(undefined);
       setSingleSpecStock(undefined);
+      setPriceControlEnabled(false);
+      setChannelSkuDraftMap({});
+      setIndependentPriceEnabled(true);
+      setIndependentPriceRuleDraftMap({});
       setProductStoreConfigs(
         buildDefaultCreateStoreConfigs(scopedStoreItems, visibleStoreIds)
       );
@@ -473,6 +548,15 @@ function ProductCreatePage() {
     setSingleSpecFileList([]);
     setSingleSpecPrice(sourceProduct.price);
     setSingleSpecStock(sourceProduct.stock);
+    setPriceControlEnabled(false);
+    setChannelSkuDraftMap({});
+    setIndependentPriceEnabled(sourceProduct.independentPriceRule?.enabled !== false);
+    setIndependentPriceRuleDraftMap(
+      buildIndependentPriceRuleDraftMap(
+        sourceProduct.independentPriceRule,
+        sourceProduct.skus || []
+      )
+    );
     setProductStoreConfigs(
       normalizeProductStoreConfigs(
         (sourceProduct.storeConfigs || []).filter((item) =>
@@ -657,6 +741,45 @@ function ProductCreatePage() {
 
   function handleRemoveSpec(id: number) {
     setSpecItems((previous) => previous.filter((item) => item.id !== id));
+  }
+
+  function handleChannelSkuDraftChange(
+    key: string,
+    field: ChannelSkuDraftField,
+    value?: number
+  ) {
+    setChannelSkuDraftMap((previous) => ({
+      ...previous,
+      [key]: {
+        ...previous[key],
+        [field]: typeof value === 'number' && Number.isFinite(value) ? value : undefined,
+      },
+    }));
+  }
+
+  function handleChannelSkuDisabledToggle(key: string) {
+    setChannelSkuDraftMap((previous) => ({
+      ...previous,
+      [key]: {
+        ...previous[key],
+        disabled: !previous[key]?.disabled,
+      },
+    }));
+  }
+
+  function handleIndependentPriceRuleDraftChange(
+    key: string,
+    field: IndependentPriceRuleDraftField,
+    value?: number
+  ) {
+    setIndependentPriceRuleDraftMap((previous) => ({
+      ...previous,
+      [key]: {
+        ...previous[key],
+        [field]:
+          typeof value === 'number' && Number.isFinite(value) ? value : undefined,
+      },
+    }));
   }
 
   function syncDetailHtml() {
@@ -849,6 +972,39 @@ function ProductCreatePage() {
     setStoreConfigModalVisible(false);
   }
 
+  function applyChannelStoreConfig(storeConfigs: ProductStoreConfigItem[]) {
+    if (isEditMode || !channelEnabled || !currentStoreId) {
+      return storeConfigs;
+    }
+
+    let hasCurrentStoreConfig = false;
+    const nextStoreConfigs = storeConfigs.map((item) => {
+      if (item.storeId !== currentStoreId) {
+        return item;
+      }
+
+      hasCurrentStoreConfig = true;
+      return {
+        ...item,
+        sellStatus: 'sellable' as const,
+        channelStatus: 'on' as const,
+      };
+    });
+
+    if (hasCurrentStoreConfig) {
+      return nextStoreConfigs;
+    }
+
+    return [
+      ...nextStoreConfigs,
+      {
+        ...createDefaultProductStoreConfig(currentStoreId),
+        sellStatus: 'sellable' as const,
+        channelStatus: 'on' as const,
+      },
+    ];
+  }
+
   function getSubmitProductSource() {
     if (isEditMode && sourceProduct) {
       return {
@@ -873,6 +1029,60 @@ function ProductCreatePage() {
     };
   }
 
+  function getIndependentPriceRuleDraftKey(
+    sku: ProductSkuItem,
+    index: number
+  ) {
+    if (isEditMode && sourceProduct) {
+      return sku.id;
+    }
+
+    if (specMode === 'single') {
+      return CHANNEL_SINGLE_SKU_KEY;
+    }
+
+    return specItems[index] ? String(specItems[index].id) : sku.id;
+  }
+
+  function buildSubmitIndependentPriceRule(nextSkus: ProductSkuItem[]) {
+    if (!independentPriceEnabled) {
+      return {
+        enabled: false,
+        skuRules: [],
+      };
+    }
+
+    return {
+      enabled: true,
+      skuRules: nextSkus.flatMap((sku, index) => {
+        const draft =
+          independentPriceRuleDraftMap[
+            getIndependentPriceRuleDraftKey(sku, index)
+          ] || {};
+        const minPrice =
+          typeof draft.minPrice === 'number' && Number.isFinite(draft.minPrice)
+            ? draft.minPrice
+            : undefined;
+        const maxPrice =
+          typeof draft.maxPrice === 'number' && Number.isFinite(draft.maxPrice)
+            ? draft.maxPrice
+            : undefined;
+
+        if (typeof minPrice !== 'number' && typeof maxPrice !== 'number') {
+          return [];
+        }
+
+        return [
+          {
+            skuId: sku.id,
+            minPrice,
+            maxPrice,
+          },
+        ];
+      }),
+    };
+  }
+
   function buildSubmitProduct(productId: string, createdAt: string): ProductItem {
     const nextName = productName.trim() || sourceProduct?.name || '未命名商品';
     const nextCatalogId = productCatalogId || sourceProduct?.productCatalogId || '';
@@ -880,11 +1090,14 @@ function ProductCreatePage() {
       productOwnershipId || sourceProduct?.productOwnershipId || '';
     const nextSource = getSubmitProductSource();
     const nextCarouselImages = buildSubmitCarouselImages(carouselImages);
-    const nextStoreConfigs = [
+    let nextStoreConfigs = [
       ...hiddenStoreConfigs.map((item) => ({ ...item })),
       ...productStoreConfigs.map((item) => ({ ...item })),
     ];
+    nextStoreConfigs = applyChannelStoreConfig(nextStoreConfigs);
     const nextStatus = getProductStatusByStoreConfigs(nextStoreConfigs);
+    const shouldApplyChannelPrices =
+      !isEditMode && channelEnabled && priceControlEnabled;
 
     if (isEditMode && sourceProduct) {
       const sourceProductBase = {
@@ -909,6 +1122,9 @@ function ProductCreatePage() {
         carouselImages: nextCarouselImages,
         storeOverrides: sourceProduct.storeOverrides || {},
         storeConfigs: nextStoreConfigs,
+        independentPriceRule: buildSubmitIndependentPriceRule(
+          sourceProduct.skus || []
+        ),
       };
     }
 
@@ -917,7 +1133,12 @@ function ProductCreatePage() {
     let nextStock = 0;
 
     if (specMode === 'single') {
-      nextPrice = Number(singleSpecPrice ?? sourceProduct?.price ?? 0);
+      const singleDraft = channelSkuDraftMap[CHANNEL_SINGLE_SKU_KEY] || {};
+      nextPrice = Number(
+        shouldApplyChannelPrices
+          ? singleDraft.price ?? singleSpecPrice ?? sourceProduct?.price ?? 0
+          : singleSpecPrice ?? sourceProduct?.price ?? 0
+      );
       nextStock = Number(singleSpecStock ?? sourceProduct?.stock ?? 0);
       nextSkus = [
         {
@@ -925,20 +1146,35 @@ function ProductCreatePage() {
           specText: '',
           price: nextPrice,
           stock: nextStock,
-          status: nextStatus,
+          status:
+            shouldApplyChannelPrices && singleDraft.disabled ? 'off' : nextStatus,
         },
       ];
     } else {
-      nextSkus = specItems.map((item, index) => ({
-        id: createProductSkuId(productId, index),
-        specText:
-          [item.name.trim(), item.value.trim()].filter(Boolean).join('：') ||
-          `规格${index + 1}`,
-        price: 0,
-        stock: 0,
-        status: nextStatus,
-      }));
-      nextPrice = nextSkus.length ? Math.min(...nextSkus.map((item) => item.price)) : 0;
+      nextSkus = specItems.map((item, index) => {
+        const draft = channelSkuDraftMap[String(item.id)] || {};
+
+        return {
+          id: createProductSkuId(productId, index),
+          specText: buildSpecText(item, index),
+          price: shouldApplyChannelPrices ? Number(draft.price ?? 0) : 0,
+          stock: 0,
+          status:
+            shouldApplyChannelPrices && draft.disabled ? 'off' : nextStatus,
+        };
+      });
+
+      if (shouldApplyChannelPrices) {
+        const enabledSkuPrices = nextSkus
+          .filter((item) => item.status !== 'off')
+          .map((item) => item.price);
+        nextPrice = enabledSkuPrices.length ? Math.min(...enabledSkuPrices) : 0;
+      } else {
+        nextPrice = nextSkus.length
+          ? Math.min(...nextSkus.map((item) => item.price))
+          : 0;
+      }
+
       nextStock = nextSkus.reduce((total, item) => total + item.stock, 0);
     }
 
@@ -959,6 +1195,7 @@ function ProductCreatePage() {
       carouselImages: nextCarouselImages,
       storeOverrides: {},
       storeConfigs: nextStoreConfigs,
+      independentPriceRule: buildSubmitIndependentPriceRule(nextSkus),
     };
   }
 
@@ -967,6 +1204,66 @@ function ProductCreatePage() {
   }
 
   function handleSubmit() {
+    if (!isEditMode && channelEnabled) {
+      if (!currentStoreId) {
+        Message.warning('请先切换到具体门店后再开启门店渠道');
+        return;
+      }
+
+      if (priceControlEnabled) {
+        const enabledSkuRows = channelSkuTableData.filter((item) => !item.disabled);
+
+        if (!enabledSkuRows.length) {
+          Message.warning('请至少保留一个启用的 SKU');
+          return;
+        }
+
+        const hasInvalidPrice = enabledSkuRows.some(
+          (item) =>
+            typeof item.price !== 'number' ||
+            !Number.isFinite(item.price) ||
+            item.price < 0
+        );
+
+        if (hasInvalidPrice) {
+          Message.warning('请填写完整的 SKU 零售价');
+          return;
+        }
+      }
+    }
+
+    if (independentPriceEnabled) {
+      const hasInvalidRule = independentPriceRuleTableData.some((item) => {
+        const minPrice =
+          typeof item.minPrice === 'number' && Number.isFinite(item.minPrice)
+            ? item.minPrice
+            : undefined;
+        const maxPrice =
+          typeof item.maxPrice === 'number' && Number.isFinite(item.maxPrice)
+            ? item.maxPrice
+            : undefined;
+
+        if (typeof minPrice === 'number' && minPrice < 0) {
+          return true;
+        }
+
+        if (typeof maxPrice === 'number' && maxPrice < 0) {
+          return true;
+        }
+
+        return (
+          typeof minPrice === 'number' &&
+          typeof maxPrice === 'number' &&
+          minPrice > maxPrice
+        );
+      });
+
+      if (hasInvalidRule) {
+        Message.warning('独立售价区间需为非负数，且最低价不能高于最高价');
+        return;
+      }
+    }
+
     const nextProductId =
       pageMode === 'edit' && sourceProduct ? sourceProduct.id : createProductId();
     const nextCreatedAt =
@@ -993,6 +1290,115 @@ function ProductCreatePage() {
     () => getEnabledAttributesByCatalogId(catalogAttributes, productCatalogId),
     [catalogAttributes, productCatalogId]
   );
+  const channelSkuSpecTitle = useMemo(() => {
+    if (specMode !== 'multi') {
+      return '规格';
+    }
+
+    const specNameSet = new Set(
+      specItems.map((item) => item.name.trim()).filter(Boolean)
+    );
+    const [specName] = Array.from(specNameSet);
+
+    return specNameSet.size === 1 ? specName : '规格';
+  }, [specItems, specMode]);
+  const channelSkuTableData = useMemo<ChannelSkuTableItem[]>(() => {
+    if (specMode === 'single') {
+      const draft = channelSkuDraftMap[CHANNEL_SINGLE_SKU_KEY] || {};
+
+      return [
+        {
+          key: CHANNEL_SINGLE_SKU_KEY,
+          specLabel: '单规格',
+          price: draft.price ?? singleSpecPrice,
+          suggestedMin: draft.suggestedMin,
+          suggestedMax: draft.suggestedMax,
+          disabled: Boolean(draft.disabled),
+        },
+      ];
+    }
+
+    return specItems.map((item, index) => {
+      const draft = channelSkuDraftMap[String(item.id)] || {};
+      const specValue = item.value.trim();
+
+      return {
+        key: String(item.id),
+        specLabel:
+          channelSkuSpecTitle !== '规格' && specValue
+            ? specValue
+            : buildSpecText(item, index),
+        price: draft.price,
+        suggestedMin: draft.suggestedMin,
+        suggestedMax: draft.suggestedMax,
+        disabled: Boolean(draft.disabled),
+      };
+    });
+  }, [
+    channelSkuDraftMap,
+    channelSkuSpecTitle,
+    singleSpecPrice,
+    specItems,
+    specMode,
+  ]);
+  const independentPriceRuleTableData = useMemo<
+    IndependentPriceRuleTableItem[]
+  >(() => {
+    if (isEditMode && sourceProduct) {
+      return (sourceProduct.skus || []).map((sku, index) => {
+        const draft = independentPriceRuleDraftMap[sku.id] || {};
+
+        return {
+          key: sku.id,
+          specLabel: sku.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+          sourcePrice: sku.price,
+          minPrice: draft.minPrice,
+          maxPrice: draft.maxPrice,
+        };
+      });
+    }
+
+    if (specMode === 'single') {
+      const draft = independentPriceRuleDraftMap[CHANNEL_SINGLE_SKU_KEY] || {};
+
+      return [
+        {
+          key: CHANNEL_SINGLE_SKU_KEY,
+          specLabel: '默认规格',
+          sourcePrice: singleSpecPrice ?? sourceProduct?.price,
+          minPrice: draft.minPrice,
+          maxPrice: draft.maxPrice,
+        },
+      ];
+    }
+
+    return specItems.map((item, index) => {
+      const key = String(item.id);
+      const draft = independentPriceRuleDraftMap[key] || {};
+      const channelDraft = channelSkuDraftMap[key] || {};
+      const specValue = item.value.trim();
+
+      return {
+        key,
+        specLabel:
+          channelSkuSpecTitle !== '规格' && specValue
+            ? specValue
+            : buildSpecText(item, index),
+        sourcePrice: channelDraft.price,
+        minPrice: draft.minPrice,
+        maxPrice: draft.maxPrice,
+      };
+    });
+  }, [
+    channelSkuDraftMap,
+    channelSkuSpecTitle,
+    independentPriceRuleDraftMap,
+    isEditMode,
+    singleSpecPrice,
+    sourceProduct,
+    specItems,
+    specMode,
+  ]);
   const productStoreSummary = useMemo(
     () => getProductStoreSummary(productStoreConfigs),
     [productStoreConfigs]
@@ -1126,6 +1532,157 @@ function ProductCreatePage() {
             )
           )}
         </Select>
+      ),
+    },
+  ];
+  const channelSkuColumns = [
+    {
+      title: channelSkuSpecTitle,
+      dataIndex: 'specLabel',
+      width: 180,
+      render: (value: string, record: ChannelSkuTableItem) => (
+        <span
+          className={
+            record.disabled
+              ? styles.channelSkuDisabledText
+              : styles.channelSkuSpecText
+          }
+        >
+          {value}
+        </span>
+      ),
+    },
+    {
+      title: (
+        <span>
+          <span className={styles.channelRequiredMark}>*</span> 零售价
+        </span>
+      ),
+      dataIndex: 'price',
+      width: 220,
+      render: (_: number, record: ChannelSkuTableItem) => (
+        <InputNumber
+          className={styles.channelMoneyInput}
+          disabled={record.disabled}
+          min={0}
+          precision={2}
+          prefix="¥"
+          placeholder="请输入"
+          value={record.price}
+          onChange={(value) =>
+            handleChannelSkuDraftChange(record.key, 'price', value)
+          }
+        />
+      ),
+    },
+    {
+      title: '建议零售价区间',
+      dataIndex: 'suggestedPriceRange',
+      width: 340,
+      render: (_: string, record: ChannelSkuTableItem) => (
+        <div className={styles.channelRangeInputGroup}>
+          <InputNumber
+            className={styles.channelRangeInput}
+            disabled={record.disabled}
+            min={0}
+            precision={2}
+            prefix="¥"
+            placeholder="最低价"
+            value={record.suggestedMin}
+            onChange={(value) =>
+              handleChannelSkuDraftChange(record.key, 'suggestedMin', value)
+            }
+          />
+          <span className={styles.channelRangeSeparator}>-</span>
+          <InputNumber
+            className={styles.channelRangeInput}
+            disabled={record.disabled}
+            min={0}
+            precision={2}
+            prefix="¥"
+            placeholder="最高价"
+            value={record.suggestedMax}
+            onChange={(value) =>
+              handleChannelSkuDraftChange(record.key, 'suggestedMax', value)
+            }
+          />
+        </div>
+      ),
+    },
+    {
+      title: '操作',
+      dataIndex: 'operation',
+      width: 120,
+      align: 'right' as const,
+      render: (_: string, record: ChannelSkuTableItem) => (
+        <Button
+          size="small"
+          status={record.disabled ? undefined : 'danger'}
+          type="text"
+          onClick={() => handleChannelSkuDisabledToggle(record.key)}
+        >
+          {record.disabled ? '启用' : '禁用'}
+        </Button>
+      ),
+    },
+  ];
+  const independentPriceRuleColumns = [
+    {
+      title: 'SKU 名称',
+      dataIndex: 'specLabel',
+      width: 220,
+      render: (value: string) => (
+        <Typography.Text className={styles.channelSkuSpecText} ellipsis>
+          {value}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: '源售价',
+      dataIndex: 'sourcePrice',
+      width: 160,
+      render: (value?: number) => (
+        <span className={styles.independentPriceText}>
+          {typeof value === 'number' && Number.isFinite(value)
+            ? `¥${formatPriceNumber(value)}`
+            : '--'}
+        </span>
+      ),
+    },
+    {
+      title: '最低独立售价',
+      dataIndex: 'minPrice',
+      width: 220,
+      render: (_: number, record: IndependentPriceRuleTableItem) => (
+        <InputNumber
+          className={styles.independentMoneyInput}
+          min={0}
+          precision={2}
+          prefix="¥"
+          placeholder="不限"
+          value={record.minPrice}
+          onChange={(value) =>
+            handleIndependentPriceRuleDraftChange(record.key, 'minPrice', value)
+          }
+        />
+      ),
+    },
+    {
+      title: '最高独立售价',
+      dataIndex: 'maxPrice',
+      width: 220,
+      render: (_: number, record: IndependentPriceRuleTableItem) => (
+        <InputNumber
+          className={styles.independentMoneyInput}
+          min={0}
+          precision={2}
+          prefix="¥"
+          placeholder="不限"
+          value={record.maxPrice}
+          onChange={(value) =>
+            handleIndependentPriceRuleDraftChange(record.key, 'maxPrice', value)
+          }
+        />
       ),
     },
   ];
@@ -1786,44 +2343,111 @@ function ProductCreatePage() {
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <Typography.Title className={styles.sectionTitle} heading={6}>
-            店铺配置
+            门店渠道配置
           </Typography.Title>
         </div>
 
-        <div className={styles.storeSummaryPanel}>
-          {productStoreConfigs.length ? (
-            <div className={styles.storeSummaryContent}>
-              <div className={styles.storeSummaryLine}>
-                <span className={styles.storeSummaryLabel}>店铺配置：</span>
-                <span className={styles.storeSummaryValue}>
-                  {isOwnStoresSellableButOff
-                    ? '自己的门店可售但下架'
-                    : `可售店铺：${productStoreSummary.sellable}`}
+        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
+          <div className={styles.formGrid}>
+            {!isEditMode && channelEnabled && (
+              <Form.Item className={styles.fullWidth} label="价格控制">
+                <div className={styles.channelSwitchRow}>
+                  <Switch
+                    checked={priceControlEnabled}
+                    onChange={setPriceControlEnabled}
+                  />
+                  <span className={styles.channelSwitchText}>
+                    {priceControlEnabled ? '已开启' : '未开启'}
+                  </span>
+                </div>
+              </Form.Item>
+            )}
+
+            {!isEditMode && channelEnabled && priceControlEnabled && (
+              <Form.Item className={styles.fullWidth} label="SKU价格">
+                <Table
+                  rowKey="key"
+                  className={styles.channelSkuTable}
+                  columns={channelSkuColumns}
+                  data={channelSkuTableData}
+                  noDataElement="请先添加规格信息"
+                  pagination={false}
+                  rowClassName={(record) =>
+                    record.disabled ? styles.channelSkuRowDisabled : ''
+                  }
+                  scroll={{ x: 860 }}
+                  tableLayoutFixed
+                />
+              </Form.Item>
+            )}
+
+            <Form.Item className={styles.fullWidth} label="独立售价授权">
+              <div className={styles.independentPriceSwitchRow}>
+                <Switch
+                  checked={independentPriceEnabled}
+                  onChange={setIndependentPriceEnabled}
+                />
+                <span className={styles.independentPriceSwitchText}>
+                  {independentPriceEnabled
+                    ? '允许引用门店设置独立售价'
+                    : '不允许引用门店设置独立售价'}
                 </span>
-                <Button
-                  className={styles.storeSummaryAction}
-                  size="mini"
-                  type="text"
-                  onClick={openStoreConfigModal}
-                >
-                  修改
-                </Button>
               </div>
-              <Typography.Paragraph className={styles.storeSummaryHint}>
-                不可售店铺会自动下架，仅可售店铺支持上架。
-              </Typography.Paragraph>
-            </div>
-          ) : (
-            <div className={styles.storeSummaryEmpty}>
-              <Typography.Text className={styles.storeSummaryEmptyText}>
-                暂未配置发布门店
-              </Typography.Text>
-              <Button type="primary" onClick={openStoreConfigModal}>
-                新增
-              </Button>
-            </div>
-          )}
-        </div>
+            </Form.Item>
+
+            {independentPriceEnabled && (
+              <Form.Item className={styles.fullWidth} label="独立售价区间">
+                <Table
+                  rowKey="key"
+                  className={styles.independentPriceRuleTable}
+                  columns={independentPriceRuleColumns}
+                  data={independentPriceRuleTableData}
+                  noDataElement="请先添加规格信息"
+                  pagination={false}
+                  scroll={{ x: 820 }}
+                  tableLayoutFixed
+                />
+              </Form.Item>
+            )}
+
+            <Form.Item className={styles.fullWidth} label="店铺配置">
+              <div className={styles.storeSummaryPanel}>
+                {productStoreConfigs.length ? (
+                  <div className={styles.storeSummaryContent}>
+                    <div className={styles.storeSummaryLine}>
+                      <span className={styles.storeSummaryLabel}>店铺配置：</span>
+                      <span className={styles.storeSummaryValue}>
+                        {isOwnStoresSellableButOff
+                          ? '自己的门店可售但下架'
+                          : `可售店铺：${productStoreSummary.sellable}`}
+                      </span>
+                      <Button
+                        className={styles.storeSummaryAction}
+                        size="mini"
+                        type="text"
+                        onClick={openStoreConfigModal}
+                      >
+                        修改
+                      </Button>
+                    </div>
+                    <Typography.Paragraph className={styles.storeSummaryHint}>
+                      不可售店铺会自动下架，仅可售店铺支持上架。
+                    </Typography.Paragraph>
+                  </div>
+                ) : (
+                  <div className={styles.storeSummaryEmpty}>
+                    <Typography.Text className={styles.storeSummaryEmptyText}>
+                      暂未配置发布门店
+                    </Typography.Text>
+                    <Button type="primary" onClick={openStoreConfigModal}>
+                      新增
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Form.Item>
+          </div>
+        </Form>
       </Card>
 
       <Modal

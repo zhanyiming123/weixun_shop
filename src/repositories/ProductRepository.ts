@@ -3,6 +3,7 @@ import type { ProductItem, ProductSourceType, ProductStoreConfigItem } from '@/t
 import { DEFAULT_PRODUCTS } from '@/repositories/product/defaultProducts';
 import {
   normalizeProductCarouselImages,
+  normalizeProductIndependentPriceRule,
   normalizeProductStoreOverride,
 } from '@/lib/product';
 
@@ -69,6 +70,10 @@ function normalizeProductItem(product: ProductItem): ProductItem {
     ...product,
     sourceType,
     sourceStoreId,
+    independentPriceRule: normalizeProductIndependentPriceRule(
+      product.independentPriceRule,
+      product.skus || []
+    ),
     carouselImages: normalizeProductCarouselImages(product.carouselImages || []),
     storeConfigs: normalizeProductStoreConfigs(
       Array.isArray(product.storeConfigs) ? product.storeConfigs : []

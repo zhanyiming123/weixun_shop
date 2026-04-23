@@ -1,0 +1,239 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterCard,
+.tableCard {
+  border-radius: 8px;
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(180px, 0.8fr) minmax(200px, 0.8fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.filterItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filterLabel {
+  color: var(--color-text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filterInput,
+.filterSelect,
+.fullWidth {
+  width: 100%;
+}
+
+.filterActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.tableToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tableToolbar > div,
+.previewTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle,
+.primaryText {
+  font-weight: 600;
+}
+
+.employeeInfoCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.infoLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.infoValue {
+  color: var(--color-text-1);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.formBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.formRowLabel {
+  flex: none;
+  min-width: 92px;
+  color: var(--color-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 32px;
+}
+
+.requiredMark {
+  margin-right: 4px;
+  color: rgb(var(--red-6));
+}
+
+.formRowControl {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.modeRow,
+.roleBatchRow,
+.personSearchRow,
+.modalPagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.modeRow,
+.personSearchRow,
+.modalPagination {
+  justify-content: space-between;
+}
+
+.roleBatchRow {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.defaultRoleSelect {
+  flex: 1;
+  min-width: 260px;
+}
+
+.roleSelect {
+  width: 100%;
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.personSearchInput {
+  width: 360px;
+}
+
+.pageSizeSelect {
+  width: 120px;
+}
+
+.pageNumber {
+  min-width: 28px;
+  text-align: center;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+:global(.arco-table-th) {
+  background: #f5f7fb;
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+:global(.arco-table-td),
+:global(.arco-table-th) {
+  border-bottom-color: var(--color-border-1);
+}
+
+@media (max-width: 1180px) {
+  .filterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filterActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .tableToolbar,
+  .formRow,
+  .personSearchRow,
+  .modalPagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formRowLabel {
+    min-width: 0;
+    line-height: 20px;
+  }
+
+  .filterGrid,
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterActions,
+  .personSearchInput {
+    width: 100%;
+  }
+}

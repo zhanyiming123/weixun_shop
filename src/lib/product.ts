@@ -2,10 +2,14 @@ import type {
   OrganizationScope,
   ProductCarouselImage,
   ProductFilterValues,
+  ProductIndependentPriceRule,
   ProductItem,
   ProductListItem,
+  ProductSkuIndependentPriceRule,
   ProductSourceType,
   ProductStatus,
+  ProductStoreSkuPriceOverrideItem,
+  ProductStoreSkuViewItem,
   ProductStoreOverrideItem,
   ProductStoreOverrideMap,
   ProductStoreConfigItem,
@@ -140,12 +144,120 @@ export function createDefaultProductStoreOverride(
     storeId,
     priceMode: 'follow',
     currentPrice: undefined,
+    skuPriceOverrides: [],
     nameMode: 'follow',
     overrideName: undefined,
     carouselMode: 'follow',
     overrideCarouselImages: [],
     updatedAt: undefined,
   };
+}
+
+export function normalizeProductIndependentPriceRule(
+  rule?: ProductIndependentPriceRule,
+  skus: Array<{ id: string }> = []
+): ProductIndependentPriceRule {
+  const skuIdSet = new Set(skus.map((item) => item.id).filter(Boolean));
+  const seenSkuIds = new Set<string>();
+  const skuRules = (Array.isArray(rule?.skuRules) ? rule.skuRules : []).flatMap(
+    (item): ProductSkuIndependentPriceRule[] => {
+      const skuId =
+        typeof item?.skuId === 'string' && item.skuId.trim()
+          ? item.skuId.trim()
+          : '';
+
+      if (!skuId || seenSkuIds.has(skuId)) {
+        return [];
+      }
+
+      if (skuIdSet.size && !skuIdSet.has(skuId)) {
+        return [];
+      }
+
+      const minPrice =
+        typeof item.minPrice === 'number' &&
+        Number.isFinite(item.minPrice) &&
+        item.minPrice >= 0
+          ? item.minPrice
+          : undefined;
+      const maxPrice =
+        typeof item.maxPrice === 'number' &&
+        Number.isFinite(item.maxPrice) &&
+        item.maxPrice >= 0
+          ? item.maxPrice
+          : undefined;
+
+      if (
+        typeof minPrice === 'number' &&
+        typeof maxPrice === 'number' &&
+        minPrice > maxPrice
+      ) {
+        return [];
+      }
+
+      seenSkuIds.add(skuId);
+
+      return [
+        {
+          skuId,
+          minPrice,
+          maxPrice,
+        },
+      ];
+    }
+  );
+
+  return {
+    enabled: rule?.enabled !== false,
+    skuRules,
+  };
+}
+
+export function getProductIndependentPriceRule(product: ProductItem) {
+  return normalizeProductIndependentPriceRule(
+    product.independentPriceRule,
+    product.skus || []
+  );
+}
+
+export function getProductSkuIndependentPriceRule(
+  product: ProductItem,
+  skuId: string
+) {
+  return getProductIndependentPriceRule(product).skuRules.find(
+    (item) => item.skuId === skuId
+  );
+}
+
+export function normalizeProductStoreSkuPriceOverrides(
+  skuPriceOverrides?: ProductStoreSkuPriceOverrideItem[]
+) {
+  if (!Array.isArray(skuPriceOverrides)) {
+    return [];
+  }
+
+  const overrideMap = new Map<string, ProductStoreSkuPriceOverrideItem>();
+
+  skuPriceOverrides.forEach((item) => {
+    if (!item || typeof item.skuId !== 'string' || !item.skuId.trim()) {
+      return;
+    }
+
+    if (
+      typeof item.currentPrice !== 'number' ||
+      !Number.isFinite(item.currentPrice) ||
+      item.currentPrice < 0
+    ) {
+      return;
+    }
+
+    overrideMap.set(item.skuId, {
+      skuId: item.skuId.trim(),
+      currentPrice: item.currentPrice,
+    });
+  });
+
+  return Array.from(overrideMap.values());
 }
 
 export function normalizeProductStoreOverride(
@@ -162,6 +274,9 @@ export function normalizeProductStoreOverride(
     typeof override?.currentPrice === 'number' && Number.isFinite(override.currentPrice)
       ? override.currentPrice
       : undefined;
+  const skuPriceOverrides = normalizeProductStoreSkuPriceOverrides(
+    override?.skuPriceOverrides
+  );
   const overrideName =
     typeof override?.overrideName === 'string' && override.overrideName.trim()
       ? override.overrideName.trim()
@@ -173,6 +288,7 @@ export function normalizeProductStoreOverride(
     storeId,
     priceMode,
     currentPrice,
+    skuPriceOverrides,
     nameMode,
     overrideName,
     carouselMode,
@@ -235,10 +351,74 @@ export function hasProductStoreSetting(override?: ProductStoreOverrideItem) {
   );
 }
 
+function getProductSkuOverridePrice(
+  override: ProductStoreOverrideItem | undefined,
+  skuId: string
+) {
+  return (
+    override?.skuPriceOverrides?.find((item) => item.skuId === skuId)?.currentPrice
+  );
+}
+
+export function getProductCurrentSkus(
+  product: ProductItem,
+  storeId?: string
+): ProductStoreSkuViewItem[] {
+  const override = getProductStoreOverride(product, storeId);
+  const independentPriceRule = getProductIndependentPriceRule(product);
+
+  return (product.skus || []).map((sku) => {
+    const overridePrice = getProductSkuOverridePrice(override, sku.id);
+    const skuPriceRule = getProductSkuIndependentPriceRule(product, sku.id);
+    const currentPrice =
+      independentPriceRule.enabled &&
+      override?.priceMode === 'independent' &&
+      typeof overridePrice === 'number' &&
+      Number.isFinite(overridePrice)
+        ? overridePrice
+        : independentPriceRule.enabled &&
+            override?.priceMode === 'independent' &&
+            product.specMode !== 'multi' &&
+            typeof override.currentPrice === 'number' &&
+            Number.isFinite(override.currentPrice)
+          ? override.currentPrice
+          : sku.price;
+
+    return {
+      id: sku.id,
+      specText: sku.specText,
+      stock: sku.stock,
+      status: sku.status,
+      originalPrice: sku.price,
+      currentPrice,
+      minIndependentPrice: skuPriceRule?.minPrice,
+      maxIndependentPrice: skuPriceRule?.maxPrice,
+    };
+  });
+}
+
 export function getProductCurrentPrice(product: ProductItem, storeId?: string) {
   const override = getProductStoreOverride(product, storeId);
+  const independentPriceRule = getProductIndependentPriceRule(product);
 
   if (
+    independentPriceRule.enabled &&
+    override?.priceMode === 'independent' &&
+    product.specMode === 'multi' &&
+    Array.isArray(override.skuPriceOverrides) &&
+    override.skuPriceOverrides.length
+  ) {
+    const currentSkuPrices = getProductCurrentSkus(product, storeId).map(
+      (item) => item.currentPrice
+    );
+
+    if (currentSkuPrices.length) {
+      return Math.min(...currentSkuPrices);
+    }
+  }
+
+  if (
+    independentPriceRule.enabled &&
     override?.priceMode === 'independent' &&
     typeof override.currentPrice === 'number' &&
     Number.isFinite(override.currentPrice)
@@ -398,16 +578,27 @@ export function buildProductListItem(
 ): ProductListItem {
   const currentStoreId = getProductCurrentStoreId(organizationScope, visibleStoreIds);
   const override = getProductStoreOverride(product, currentStoreId);
+  const currentStoreConfig = currentStoreId
+    ? (product.storeConfigs || []).find((item) => item.storeId === currentStoreId)
+    : undefined;
   const resolvedSourceStoreId = options.resolvedSourceStoreId || product.sourceStoreId;
   const isSelfBuilt =
     Boolean(currentStoreId) &&
     resolvedSourceStoreId === currentStoreId;
   const isShared = Boolean(currentStoreId) && !isSelfBuilt;
+  const independentPriceRule = getProductIndependentPriceRule(product);
+  const canManageIndependentPrice = isShared && independentPriceRule.enabled;
+  const priceMode =
+    canManageIndependentPrice && override?.priceMode === 'independent'
+      ? 'independent'
+      : 'follow';
 
   return {
     ...product,
     storeView: {
       currentStoreId,
+      currentStoreSellStatus: currentStoreConfig?.sellStatus,
+      currentStoreChannelStatus: currentStoreConfig?.channelStatus,
       resolvedSourceStoreId,
       sourceLabel:
         options.sourceStoreName ||
@@ -416,7 +607,10 @@ export function buildProductListItem(
       sourceRegionName: options.sourceRegionName || '',
       showOwnershipTag: Boolean(currentStoreId),
       ownershipTag: currentStoreId ? (isSelfBuilt ? '自建' : '引用') : undefined,
+      canManageStoreStatus:
+        Boolean(currentStoreId) && currentStoreConfig?.sellStatus === 'sellable',
       canManageStoreSettings: Boolean(currentStoreId) && isShared,
+      canManageIndependentPrice,
       isShared,
       isSelfBuilt,
       hasStoreSetting: hasProductStoreSetting(override),
@@ -424,13 +618,17 @@ export function buildProductListItem(
         selling: 0,
         off: 0,
       },
-      priceMode: override?.priceMode || 'follow',
+      priceMode,
       nameMode: override?.nameMode || 'follow',
       carouselMode: override?.carouselMode || 'follow',
       originalName: product.name,
       currentName: getProductCurrentName(product, currentStoreId),
       originalPrice: product.price,
       currentPrice: getProductCurrentPrice(product, currentStoreId),
+      originalSkus: (product.skus || []).map((item) => ({
+        ...item,
+      })),
+      currentSkus: getProductCurrentSkus(product, currentStoreId),
       originalCarouselImages: normalizeProductCarouselImages(
         product.carouselImages || []
       ),

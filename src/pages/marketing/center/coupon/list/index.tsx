@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   Link,
+  Modal,
   Popconfirm,
   Select,
   Table,
@@ -16,8 +17,6 @@ import styles from './index.module.less';
 import {
   COUPON_DISCOUNT_LABEL_MAP,
   COUPON_DISCOUNT_OPTIONS,
-  COUPON_OWNERSHIP_OPTIONS,
-  COUPON_OWNERSHIP_SCOPE_LABEL_MAP,
   COUPON_LIST_STATUS_LABEL_MAP,
   COUPON_LIST_STATUS_OPTIONS,
   COUPON_SCOPE_SUMMARY_LABEL_MAP,
@@ -25,26 +24,25 @@ import {
   CouponListFilterValues,
   CouponListItem,
   CouponListStatus,
-  CouponOwnershipScope,
   DEFAULT_COUPON_LIST_FILTER_VALUES,
   deleteCouponById,
   readCouponListItems,
   updateCouponStatus,
 } from '../data';
 import { GlobalState } from '@/store';
+import {
+  maskPhone,
+  ProductStoreItem,
+  readProductStoreItems,
+} from '@/pages/product/store-config/data';
 
 const Option = Select.Option;
 
 function getDefaultFilterValues(): CouponListFilterValues {
-  return {
-    ...DEFAULT_COUPON_LIST_FILTER_VALUES,
-  };
+  return { ...DEFAULT_COUPON_LIST_FILTER_VALUES };
 }
 
-function applyFilters(
-  coupons: CouponListItem[],
-  filters: CouponListFilterValues
-) {
+function applyFilters(coupons: CouponListItem[], filters: CouponListFilterValues) {
   const keyword = filters.keyword.trim().toLowerCase();
 
   return coupons.filter((item) => {
@@ -52,7 +50,10 @@ function applyFilters(
       return false;
     }
 
-    if (filters.ownershipScope && item.ownershipScope !== filters.ownershipScope) {
+    if (
+      filters.ownershipStoreIds.length &&
+      !filters.ownershipStoreIds.includes(item.ownershipStoreId)
+    ) {
       return false;
     }
 
@@ -91,6 +92,34 @@ function CouponListPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [applicableStoresCoupon, setApplicableStoresCoupon] =
+    useState<CouponListItem | null>(null);
+
+  const storeItems = useMemo(() => readProductStoreItems(), []);
+  const storeItemMap = useMemo(
+    () => new Map(storeItems.map((item) => [item.id, item])),
+    [storeItems]
+  );
+  const ownershipStoreOptions = useMemo(() => {
+    const optionMap = new Map<string, string>();
+    coupons.forEach((item) => {
+      optionMap.set(item.ownershipStoreId, item.ownershipLabel);
+    });
+
+    return Array.from(optionMap.entries()).map(([value, label]) => ({
+      label,
+      value,
+    }));
+  }, [coupons]);
+  const applicableStores = useMemo(() => {
+    if (!applicableStoresCoupon) {
+      return [];
+    }
+
+    return applicableStoresCoupon.storeIds
+      .map((storeId) => storeItemMap.get(storeId))
+      .filter((item): item is ProductStoreItem => Boolean(item));
+  }, [applicableStoresCoupon, storeItemMap]);
 
   const filteredCoupons = useMemo(
     () => applyFilters(coupons, appliedFilters),
@@ -113,16 +142,11 @@ function CouponListPage() {
     field: K,
     value: CouponListFilterValues[K]
   ) {
-    setFormValues((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormValues((prev) => ({ ...prev, [field]: value }));
   }
 
   function handleQuery() {
-    setAppliedFilters({
-      ...formValues,
-    });
+    setAppliedFilters({ ...formValues });
     setCurrentPage(1);
   }
 
@@ -148,48 +172,102 @@ function CouponListPage() {
   }
 
   function renderActionLinks(record: CouponListItem) {
+    if (record.ownershipScope === 'shared_in') {
+      return (
+        <span className={styles.actionLinks}>
+          <Link
+            onClick={() =>
+              history.push(`/marketing/center/coupon/detail?id=${record.id}`)
+            }
+          >
+            查看
+          </Link>
+          <span className={styles.actionDivider}>|</span>
+          <Link
+            onClick={() =>
+              history.push(
+                `/marketing/center/coupon/create?sourceId=${record.id}`
+              )
+            }
+          >
+            复制
+          </Link>
+        </span>
+      );
+    }
+
+    const isActive = record.status === 'notStarted' || record.status === 'active';
     const actions: { key: string; node: React.ReactNode }[] = [
       {
         key: 'view',
         node: (
-          <Link onClick={() => history.push(`/marketing/center/coupon/detail?id=${record.id}`)}>查看</Link>
+          <Link
+            onClick={() =>
+              history.push(`/marketing/center/coupon/detail?id=${record.id}`)
+            }
+          >
+            查看
+          </Link>
         ),
       },
     ];
 
-    if (record.status === 'notStarted' || record.status === 'active') {
+    if (isActive) {
       actions.push(
         {
           key: 'edit',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/edit?id=${record.id}`)}>修改</Link>
+            <Link
+              onClick={() =>
+                history.push(`/marketing/center/coupon/edit?id=${record.id}`)
+              }
+            >
+              修改
+            </Link>
           ),
         },
         {
           key: 'copy',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/create?sourceId=${record.id}`)}>复制</Link>
-          ),
-        },
-        {
-          key: 'void',
-          node: (
-            <Popconfirm
-              focusLock
-              title="确认作废该优惠券吗？"
-              onOk={() => handleVoidCoupon(record)}
+            <Link
+              onClick={() =>
+                history.push(
+                  `/marketing/center/coupon/create?sourceId=${record.id}`
+                )
+              }
             >
-              <Link>作废</Link>
-            </Popconfirm>
+              复制
+            </Link>
           ),
         }
       );
+
+      actions.push({
+        key: 'void',
+        node: (
+          <Popconfirm
+            focusLock
+            title="确认作废该优惠券吗？"
+            onOk={() => handleVoidCoupon(record)}
+          >
+            <Link>作废</Link>
+          </Popconfirm>
+        ),
+      });
     } else {
       actions.push(
         {
           key: 'copy',
           node: (
-            <Link onClick={() => history.push(`/marketing/center/coupon/create?sourceId=${record.id}`)}>复制</Link>
+            <Link
+              onClick={() =>
+                history.push(
+                  `/marketing/center/coupon/create?sourceId=${record.id}`
+                )
+              }
+            >
+              复制
+            </Link>
           ),
         },
         {
@@ -200,7 +278,7 @@ function CouponListPage() {
               title="确认删除该优惠券吗？"
               onOk={() => handleDeleteCoupon(record)}
             >
-              <Link>删除</Link>
+              <Link status="error">删除</Link>
             </Popconfirm>
           ),
         }
@@ -258,24 +336,39 @@ function CouponListPage() {
           <Typography.Text className={styles.primaryText}>
             {record.ownershipLabel}
           </Typography.Text>
-          <Typography.Text className={styles.secondaryText}>
-            {COUPON_OWNERSHIP_SCOPE_LABEL_MAP[record.ownershipScope]}
-          </Typography.Text>
         </div>
+      ),
+    },
+    {
+      title: '适用门店',
+      dataIndex: 'storeIds',
+      width: 120,
+      render: (_: string[], record: CouponListItem) => (
+        <Link
+          className={styles.inlineLink}
+          onClick={() => setApplicableStoresCoupon(record)}
+        >
+          {record.storeIds.length} 家门店
+        </Link>
       ),
     },
     {
       title: '领取/发放',
       dataIndex: 'receivedCount',
-      width: 160,
+      width: 170,
       render: (_: number, record: CouponListItem) => (
         <div className={styles.infoCell}>
           <Typography.Text className={styles.primaryText}>
             {record.receivedCount}/{record.issueCount}
           </Typography.Text>
           <Typography.Text className={styles.secondaryText}>
-            领取率{record.receiveRate}%
+            领取率 {record.receiveRate}%
           </Typography.Text>
+          {record.ownershipScope !== 'own' && (
+            <Typography.Text className={styles.secondaryText}>
+              本店已领 {record.localReceivedCount} 张
+            </Typography.Text>
+          )}
         </div>
       ),
     },
@@ -303,7 +396,7 @@ function CouponListPage() {
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 220,
+      width: 260,
       fixed: 'right' as const,
       render: (_: unknown, record: CouponListItem) => renderActionLinks(record),
     },
@@ -340,17 +433,18 @@ function CouponListPage() {
               <div className={styles.filterLabel}>活动归属</div>
               <Select
                 allowClear
+                mode="multiple"
                 className={styles.filterSelect}
                 placeholder="请选择活动归属"
-                value={formValues.ownershipScope}
-                onChange={(value) =>
+                value={formValues.ownershipStoreIds}
+                onChange={(value) => {
                   updateFormValue(
-                    'ownershipScope',
-                    (value || undefined) as CouponOwnershipScope | undefined
-                  )
-                }
+                    'ownershipStoreIds',
+                    Array.isArray(value) ? value.map(String) : []
+                  );
+                }}
               >
-                {COUPON_OWNERSHIP_OPTIONS.map((item) => (
+                {ownershipStoreOptions.map((item) => (
                   <Option key={item.value} value={item.value}>
                     {item.label}
                   </Option>
@@ -430,11 +524,51 @@ function CouponListPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: 1500 }}
+            scroll={{ x: 1710 }}
             tableLayoutFixed
           />
         </div>
       </Card>
+
+      <Modal
+        title="适用门店"
+        visible={Boolean(applicableStoresCoupon)}
+        footer={null}
+        style={{ width: 880 }}
+        onCancel={() => setApplicableStoresCoupon(null)}
+      >
+        <Table
+          rowKey="id"
+          columns={[
+            {
+              title: '门店名称',
+              dataIndex: 'name',
+              width: 220,
+            },
+            {
+              title: '门店地址',
+              dataIndex: 'address',
+              width: 360,
+            },
+            {
+              title: '门店负责人',
+              dataIndex: 'managerName',
+              width: 200,
+              render: (_: string, record: ProductStoreItem) => (
+                <div className={styles.storeContactCell}>
+                  <span>{record.managerName}</span>
+                  <span>{`+86-${maskPhone(record.phone)}`}</span>
+                </div>
+              ),
+            },
+          ]}
+          data={applicableStores}
+          noDataElement="暂无适用门店"
+          pagination={false}
+          scroll={{ y: 420 }}
+          tableLayoutFixed
+        />
+      </Modal>
     </div>
   );
 }

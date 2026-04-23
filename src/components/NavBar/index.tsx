@@ -34,6 +34,7 @@ import defaultLocale from '@/locale';
 import useStorage from '@/utils/useStorage';
 import {
   buildDemoUserInfo,
+  getDefaultDemoIdentityForSystem,
   getDemoIdentityPreset,
   persistDemoSelection,
   resolveDemoSelection,
@@ -47,6 +48,8 @@ function Navbar({ show }: { show: boolean }) {
   const {
     userInfo,
     currentDemoSystem,
+    currentDemoIdentity,
+    currentOrganization,
     demoContext,
   } = useSelector((state: GlobalState) => state);
   const dispatch = useDispatch();
@@ -96,25 +99,25 @@ function Navbar({ show }: { show: boolean }) {
   }, [dispatch]);
 
   useEffect(() => {
-    const expectedIdentity = currentDemoSystem === 'store' ? 'store_staff' : 'merchant_admin';
-    const expectedPreset = getDemoIdentityPreset(expectedIdentity);
     const resolvedSelection = resolveDemoSelection({
       currentDemoSystem,
-      currentDemoIdentity: expectedIdentity,
-      currentOrganizationId: expectedPreset.defaultOrganizationId,
+      currentDemoIdentity,
+      currentOrganizationId: currentOrganization?.id,
       organizationOptions,
     });
 
     const shouldSync =
       resolvedSelection.currentDemoSystem !== currentDemoSystem ||
-      resolvedSelection.currentDemoIdentity !== expectedIdentity ||
-      resolvedSelection.currentOrganization.id !== expectedPreset.defaultOrganizationId;
+      resolvedSelection.currentDemoIdentity !== currentDemoIdentity ||
+      resolvedSelection.currentOrganization.id !== currentOrganization?.id;
 
     if (shouldSync) {
       applyResolvedSelection(resolvedSelection);
     }
   }, [
+    currentDemoIdentity,
     currentDemoSystem,
+    currentOrganization?.id,
     applyResolvedSelection,
     organizationOptions,
   ]);
@@ -133,12 +136,15 @@ function Navbar({ show }: { show: boolean }) {
 
   const handleSystemChange = (value: string) => {
     const targetSystem = value as DemoSystemId;
-    const targetIdentity = targetSystem === 'store' ? 'store_staff' : 'merchant_admin';
+    const targetIdentity = getDefaultDemoIdentityForSystem(targetSystem);
     const targetPreset = getDemoIdentityPreset(targetIdentity);
     const resolvedSelection = resolveDemoSelection({
       currentDemoSystem: targetSystem,
       currentDemoIdentity: targetIdentity,
-      currentOrganizationId: targetPreset.defaultOrganizationId,
+      currentOrganizationId:
+        targetSystem === 'store'
+          ? currentOrganization?.id
+          : targetPreset.defaultOrganizationId,
       organizationOptions,
     });
     applyResolvedSelection(resolvedSelection);

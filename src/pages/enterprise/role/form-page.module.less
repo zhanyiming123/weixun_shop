@@ -161,6 +161,57 @@
   }
 }
 
+.merchantPermissionLayout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 360px;
+}
+
+.permissionSystemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.permissionSystemButton {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-2);
+  font-size: 14px;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+
+  &:hover {
+    color: rgb(var(--primary-6));
+    background: var(--color-fill-2);
+  }
+}
+
+.permissionSystemButtonActive {
+  color: rgb(var(--primary-6));
+  font-weight: 500;
+  background: rgb(var(--primary-1));
+}
+
+.permissionTreePanel {
+  min-width: 0;
+
+  .treeWrapper {
+    height: 100%;
+    min-height: 360px;
+  }
+}
+
 .footerCard {
   position: sticky;
   bottom: 16px;
@@ -192,6 +243,16 @@
   .permissionLabel {
     min-width: 0;
     line-height: 20px;
+  }
+
+  .merchantPermissionLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionTreePanel {
+    .treeWrapper {
+      min-height: 280px;
+    }
   }
 }
 

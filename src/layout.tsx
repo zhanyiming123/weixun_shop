@@ -31,6 +31,13 @@ const SubMenu = Menu.SubMenu;
 const Sider = Layout.Sider;
 const Content = Layout.Content;
 
+type BreadcrumbConfig = {
+  name: React.ReactNode;
+  routeKey: string;
+  path: string;
+  clickable: boolean;
+};
+
 function getIconFromKey(key) {
   if (key.startsWith('dashboard')) {
     return <IconDashboard className={styles.icon} />;
@@ -103,6 +110,97 @@ function isSameArray<T>(left: T[], right: T[]) {
   return left.every((item, index) => item === right[index]);
 }
 
+function isSameBreadcrumb(
+  left: BreadcrumbConfig[],
+  right: BreadcrumbConfig[]
+) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((item, index) => {
+    const current = right[index];
+
+    return (
+      current &&
+      item.name === current.name &&
+      item.routeKey === current.routeKey &&
+      item.path === current.path &&
+      item.clickable === current.clickable
+    );
+  });
+}
+
+function getVisibleMenuChildren(route: IRoute) {
+  return (route.children || []).filter((child) => !child.ignore);
+}
+
+function hasVisibleMenuItem(routeItems: IRoute[], targetKey: string): boolean {
+  for (const route of routeItems) {
+    const visibleChildren = getVisibleMenuChildren(route);
+
+    if (!route.ignore && route.key === targetKey && !visibleChildren.length) {
+      return true;
+    }
+
+    if (route.children?.length && hasVisibleMenuItem(route.children, targetKey)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findVisibleMenuItemKey(
+  routeItems: IRoute[],
+  targetKey: string
+): string | undefined {
+  const candidateSegments = targetKey.split('/');
+
+  while (candidateSegments.length > 0) {
+    const candidateKey = candidateSegments.join('/');
+    if (hasVisibleMenuItem(routeItems, candidateKey)) {
+      return candidateKey;
+    }
+
+    candidateSegments.pop();
+  }
+
+  return undefined;
+}
+
+function findAncestorSubMenuKeys(
+  routeItems: IRoute[],
+  targetKey: string,
+  ancestorKeys: string[] = []
+): string[] | null {
+  for (const route of routeItems) {
+    const visibleChildren = getVisibleMenuChildren(route);
+    const nextAncestorKeys =
+      !route.ignore && visibleChildren.length
+        ? [...ancestorKeys, route.key]
+        : ancestorKeys;
+
+    if (!route.ignore && route.key === targetKey && !visibleChildren.length) {
+      return ancestorKeys;
+    }
+
+    if (route.children?.length) {
+      const matchedKeys = findAncestorSubMenuKeys(
+        route.children,
+        targetKey,
+        nextAncestorKeys
+      );
+
+      if (matchedKeys) {
+        return matchedKeys;
+      }
+    }
+  }
+
+  return null;
+}
+
 function PageLayout() {
   const urlParams = getUrlParams();
   const history = useHistory();
@@ -122,16 +220,24 @@ function PageLayout() {
     currentDemoIdentity
   );
   const activeRouteKey = currentComponent || defaultRoute;
-  const defaultSelectedKeys = activeRouteKey ? [activeRouteKey] : [];
-  const paths = activeRouteKey ? activeRouteKey.split('/') : [];
-  const defaultOpenKeys = paths.slice(0, paths.length - 1);
+  const activeMenuKey = useMemo(
+    () =>
+      activeRouteKey
+        ? findVisibleMenuItemKey(routes, activeRouteKey) || activeRouteKey
+        : '',
+    [activeRouteKey, routes]
+  );
+  const defaultSelectedKeys = activeMenuKey ? [activeMenuKey] : [];
+  const defaultOpenKeys = activeMenuKey
+    ? findAncestorSubMenuKeys(routes, activeMenuKey) || []
+    : [];
 
-  const [breadcrumb, setBreadCrumb] = useState<React.ReactNode[]>([]);
+  const [breadcrumb, setBreadCrumb] = useState<BreadcrumbConfig[]>([]);
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] =
     useState<string[]>(defaultSelectedKeys);
 
-  const routeMap = useRef<Map<string, React.ReactNode[]>>(new Map());
+  const routeMap = useRef<Map<string, BreadcrumbConfig[]>>(new Map());
   const menuMap = useRef<
     Map<string, { menuItem?: boolean; subMenu?: boolean }>
   >(new Map());
@@ -151,14 +257,36 @@ function PageLayout() {
 
   const flattenRoutes = useMemo(() => getFlattenRoutes(routes) || [], [routes]);
 
-  function onClickMenuItem(key) {
-    const currentRoute = flattenRoutes.find((r) => r.key === key);
-    if (!currentRoute) {
+  function resolveRouteTarget(key: string) {
+    const currentRoute = flattenRoutes.find((route) => route.key === key);
+    if (currentRoute) {
+      return {
+        path: currentRoute.path ? currentRoute.path : `/${currentRoute.key}`,
+        component: currentRoute.component,
+      };
+    }
+
+    const fallbackRoute = flattenRoutes.find((route) =>
+      route.key.startsWith(`${key}/`)
+    );
+
+    if (!fallbackRoute) {
+      return null;
+    }
+
+    return {
+      path: fallbackRoute.path ? fallbackRoute.path : `/${fallbackRoute.key}`,
+      component: fallbackRoute.component,
+    };
+  }
+
+  function navigateByRouteKey(key: string) {
+    const targetRoute = resolveRouteTarget(key);
+    if (!targetRoute) {
       return;
     }
 
-    const nextPath = currentRoute.path ? currentRoute.path : `/${key}`;
-    const component = currentRoute.component;
+    const { path: nextPath, component } = targetRoute;
     NProgress.start();
     history.push(nextPath);
 
@@ -169,6 +297,20 @@ function PageLayout() {
       .finally(() => {
         NProgress.done();
       });
+  }
+
+  function onClickMenuItem(key) {
+    navigateByRouteKey(key);
+  }
+
+  function createBreadcrumbItem(route: IRoute): BreadcrumbConfig {
+    const targetRoute = resolveRouteTarget(route.key);
+    return {
+      name: route.name,
+      routeKey: route.key,
+      path: targetRoute?.path || `/${route.key}`,
+      clickable: Boolean(targetRoute),
+    };
   }
 
   function toggleCollapse() {
@@ -182,7 +324,11 @@ function PageLayout() {
   function renderRoutes(locale) {
     routeMap.current.clear();
     menuMap.current.clear();
-    return function travel(_routes: IRoute[], level, parentNode = []) {
+    return function travel(
+      _routes: IRoute[],
+      level: number,
+      parentNode: BreadcrumbConfig[] = []
+    ) {
       return _routes.map((route) => {
         const { breadcrumb = true, ignore } = route;
         const iconDom = getIconFromKey(route.key);
@@ -194,7 +340,7 @@ function PageLayout() {
 
         routeMap.current.set(
           `/${route.key}`,
-          breadcrumb ? [...parentNode, route.name] : []
+          breadcrumb ? [...parentNode, createBreadcrumbItem(route)] : []
         );
 
         const visibleChildren = (route.children || []).filter((child) => {
@@ -202,7 +348,13 @@ function PageLayout() {
           if (ignore || route.ignore) {
             routeMap.current.set(
               `/${child.key}`,
-              breadcrumb ? [...parentNode, route.name, child.name] : []
+              breadcrumb
+                ? [
+                    ...parentNode,
+                    createBreadcrumbItem(route),
+                    createBreadcrumbItem(child),
+                  ]
+                : []
             );
           }
 
@@ -216,7 +368,10 @@ function PageLayout() {
           menuMap.current.set(route.key, { subMenu: true });
           return (
             <SubMenu key={route.key} title={titleDom}>
-              {travel(visibleChildren, level + 1, [...parentNode, route.name])}
+              {travel(visibleChildren, level + 1, [
+                ...parentNode,
+                createBreadcrumbItem(route),
+              ])}
             </SubMenu>
           );
         }
@@ -229,27 +384,14 @@ function PageLayout() {
   useEffect(() => {
     const routeConfig = routeMap.current.get(pathname) || [];
     setBreadCrumb((prev) => (
-      isSameArray(prev, routeConfig) ? prev : routeConfig
+      isSameBreadcrumb(prev, routeConfig) ? prev : routeConfig
     ));
-    const pathKeys = pathname.split('/');
-    const nextSelectedKeys: string[] = [];
-
-    while (pathKeys.length > 0) {
-      const currentRouteKey = pathKeys.join('/');
-      const menuKey = currentRouteKey.replace(/^\//, '');
-      const menuType = menuMap.current.get(menuKey);
-
-      if (menuType && menuType.menuItem) {
-        nextSelectedKeys.push(menuKey);
-      }
-
-      pathKeys.pop();
-    }
+    const nextSelectedKeys = activeMenuKey ? [activeMenuKey] : [];
 
     setSelectedKeys((prev) => (
       isSameArray(prev, nextSelectedKeys) ? prev : nextSelectedKeys
     ));
-  }, [pathname, routes]);
+  }, [activeMenuKey, pathname, routes]);
 
   useEffect(() => {
     if (userLoading || !currentComponent || !defaultRoute) {
@@ -316,11 +458,30 @@ function PageLayout() {
               {!!breadcrumb.length && (
                 <div className={styles['layout-breadcrumb']}>
                   <Breadcrumb>
-                    {breadcrumb.map((node, index) => (
+                    {breadcrumb.map((node, index) => {
+                      const isLast = index === breadcrumb.length - 1;
+                      const canNavigate = !isLast && node.clickable;
+                      const label =
+                        typeof node.name === 'string'
+                          ? locale[node.name] || node.name
+                          : node.name;
+
+                      return (
                       <Breadcrumb.Item key={index}>
-                        {typeof node === 'string' ? locale[node] || node : node}
+                        {canNavigate ? (
+                          <button
+                            type="button"
+                            className={styles['layout-breadcrumb-link']}
+                            onClick={() => navigateByRouteKey(node.routeKey)}
+                          >
+                            {label}
+                          </button>
+                        ) : (
+                          label
+                        )}
                       </Breadcrumb.Item>
-                    ))}
+                      );
+                    })}
                   </Breadcrumb>
                 </div>
               )}

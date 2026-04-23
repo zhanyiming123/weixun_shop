@@ -38,6 +38,7 @@ function EnterpriseRolePage() {
   const [roleItems, setRoleItems] = useEnterpriseRoleItems();
   const [detailVisible, setDetailVisible] = useState(false);
   const [viewingRole, setViewingRole] = useState<EnterpriseRoleItem | null>(null);
+  const isMerchantRolePage = location.pathname.startsWith('/merchant/role');
 
   const visibleScopes = useMemo<EnterpriseRoleScope[]>(() => {
     if (location.pathname.startsWith('/store-config/role')) {
@@ -197,7 +198,8 @@ function EnterpriseRolePage() {
   const viewingRolePermissionTitles = viewingRole
     ? getEnterpriseRolePermissionTitles(
         viewingRole.functionPermissionKeys,
-        viewingRole.scope
+        viewingRole.scope,
+        isMerchantRolePage ? 'merchant' : 'default'
       )
     : [];
 
@@ -208,7 +210,7 @@ function EnterpriseRolePage() {
   return (
     <div className={styles.page}>
       <Card className={styles.panelCard}>
-        {visibleScopes.length > 1 && (
+        {visibleScopes.length > 1 && !isMerchantRolePage && (
           <Tabs
             activeTab={activeTab}
             className={styles.tabs}
@@ -230,29 +232,34 @@ function EnterpriseRolePage() {
           </Tabs>
         )}
 
-        <div className={styles.summaryRow}>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>角色类型</span>
-            <span className={styles.summaryValue}>
-              {ENTERPRISE_ROLE_SCOPE_LABEL_MAP[activeTab]}
-            </span>
-            <span className={styles.summaryHelper}>
-              {ENTERPRISE_ROLE_SCOPE_DESCRIPTION_MAP[activeTab]}
-            </span>
+        {!isMerchantRolePage && (
+          <div className={styles.summaryRow}>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>角色类型</span>
+              <span className={styles.summaryValue}>
+                {ENTERPRISE_ROLE_SCOPE_LABEL_MAP[activeTab]}
+              </span>
+              <span className={styles.summaryHelper}>
+                {ENTERPRISE_ROLE_SCOPE_DESCRIPTION_MAP[activeTab]}
+              </span>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>角色数量</span>
+              <span className={styles.summaryValue}>{currentRoles.length}</span>
+              <span className={styles.summaryHelper}>
+                当前 tab 下已配置的角色数
+              </span>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>员工覆盖</span>
+              <span className={styles.summaryValue}>{totalEmployeeCount} 人</span>
+              <span className={styles.summaryHelper}>
+                默认角色 {defaultRoleCount} 个，自定义角色{' '}
+                {currentRoles.length - defaultRoleCount} 个
+              </span>
+            </div>
           </div>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>角色数量</span>
-            <span className={styles.summaryValue}>{currentRoles.length}</span>
-            <span className={styles.summaryHelper}>当前 tab 下已配置的角色数</span>
-          </div>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>员工覆盖</span>
-            <span className={styles.summaryValue}>{totalEmployeeCount} 人</span>
-            <span className={styles.summaryHelper}>
-              默认角色 {defaultRoleCount} 个，自定义角色 {currentRoles.length - defaultRoleCount} 个
-            </span>
-          </div>
-        </div>
+        )}
 
         <div className={styles.toolbar}>
           <div className={styles.toolbarInfo}>

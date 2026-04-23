@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Empty, Space, Spin, Tag, Typography } from '@arco-design/web-react';
+import { Empty, Spin } from '@arco-design/web-react';
 import { useSelector } from 'react-redux';
 import Overview from './overview';
 import RegionPerformance from './region-performance';
@@ -56,7 +56,7 @@ function applyDashboardDemoScope(data: HeadquartersDashboardData, isDepartmentSc
 
 function Workplace() {
   const t = useLocale(locale);
-  const { currentOrganization, currentDemoSystem, demoContext } = useSelector(
+  const { currentOrganization, demoContext } = useSelector(
     (state: GlobalState) => state
   );
   const [data, setData] = useState<HeadquartersDashboardData | null>(null);
@@ -134,33 +134,6 @@ function Workplace() {
         {data && (
           <div className={styles.page}>
             <div className={styles.main}>
-              <Card className={styles.demoCard}>
-                <Space direction="vertical" size={10} style={{ display: 'flex' }}>
-                  <div className={styles.demoHeader}>
-                    <div>
-                      <Typography.Title heading={5} style={{ margin: 0 }}>
-                        {currentDemoSystem === 'merchant'
-                          ? '商户管理系统首页'
-                          : '门店管理系统首页'}
-                      </Typography.Title>
-                      <Typography.Text type="secondary">
-                        {demoContext?.identityDescription}
-                      </Typography.Text>
-                    </div>
-                    <div className={styles.demoTags}>
-                      <Tag color="arcoblue">{demoContext?.systemLabel}</Tag>
-                      <Tag color="green">{demoContext?.identityLabel}</Tag>
-                      <Tag>{demoContext?.dataScopeLabel}</Tag>
-                    </div>
-                  </div>
-                  <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    当前组织：{currentOrganization?.name || '总部'}
-                    {demoContext?.currentStaffDepartmentName
-                      ? ` · 当前部门：${demoContext.currentStaffDepartmentName}`
-                      : ''}
-                  </Typography.Paragraph>
-                </Space>
-              </Card>
               <Overview
                 updatedAt={data.updatedAt}
                 summary={data.summary}

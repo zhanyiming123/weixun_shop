@@ -1,0 +1,153 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heroCard {
+  overflow: hidden;
+}
+
+.heroHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.heroTitle {
+  margin: 0 !important;
+}
+
+.heroMeta {
+  margin-bottom: 0 !important;
+}
+
+.heroStatus {
+  min-width: 180px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f4f7ff 0%, #f6fbff 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heroStatusLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.heroStatusValue {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summaryLabel {
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.summaryHelper {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.5fr);
+  gap: 16px;
+}
+
+.treeCard,
+.previewCard,
+.relationCard {
+  min-width: 0;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitleDesc {
+  color: var(--color-text-3);
+  font-size: 13px;
+  font-weight: normal;
+}
+
+.treeCard :global(.arco-card-body) {
+  max-height: 620px;
+  overflow: auto;
+}
+
+.tree {
+  padding-right: 8px;
+}
+
+.previewCard :global(.arco-card-body),
+.relationCard :global(.arco-card-body) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.primaryText {
+  font-weight: 600;
+}
+
+.ownerSelect {
+  width: 100%;
+}
+
+.optionPath {
+  margin-left: 8px;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 1024px) {
+  .heroHeader,
+  .contentGrid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+    justify-content: stretch;
+  }
+}
