@@ -54,7 +54,7 @@ function buildDashboardData(): HeadquartersDashboardData {
   const stores: StoreSeed[] = [
     {
       id: 'store_shanghai',
-      name: '上海门店',
+      name: '上海店铺',
       regionId: 'region_east',
       regionName: '华东区',
       managerName: '王璇',
@@ -66,7 +66,7 @@ function buildDashboardData(): HeadquartersDashboardData {
     },
     {
       id: 'store_beijing',
-      name: '北京门店',
+      name: '北京店铺',
       regionId: 'region_north',
       regionName: '华北区',
       managerName: '李航',
@@ -78,7 +78,7 @@ function buildDashboardData(): HeadquartersDashboardData {
     },
     {
       id: 'store_hangzhou',
-      name: '杭州门店',
+      name: '杭州店铺',
       regionId: 'region_east',
       regionName: '华东区',
       managerName: '周宁',
@@ -156,7 +156,7 @@ function buildDashboardData(): HeadquartersDashboardData {
         id: 'alert_1',
         level: 'high',
         title: '库存周转低于安全阈值',
-        targetName: '上海门店',
+        targetName: '上海店铺',
         description: '重点课程套餐库存低于 7 天安全库存，建议今日完成补货。',
       },
       {
@@ -170,15 +170,15 @@ function buildDashboardData(): HeadquartersDashboardData {
         id: 'alert_3',
         level: 'medium',
         title: '转化率低于总部基准',
-        targetName: '北京门店',
-        description: '门店转化率较总部均值低 2.6 个百分点，需要跟进销售脚本。',
+        targetName: '北京店铺',
+        description: '店铺转化率较总部均值低 2.6 个百分点，需要跟进销售脚本。',
       },
       {
         id: 'alert_4',
         level: 'medium',
         title: '人效表现波动',
-        targetName: '杭州门店',
-        description: '本周门店人效连续两日下降，建议排查排班与到店转化。',
+        targetName: '杭州店铺',
+        description: '本周店铺人效连续两日下降，建议排查排班与到店转化。',
       },
       {
         id: 'alert_5',
@@ -198,7 +198,7 @@ function buildDashboardData(): HeadquartersDashboardData {
       },
       {
         id: 'todo_2',
-        title: '跟进北京门店转化提升方案',
+        title: '跟进北京店铺转化提升方案',
         owner: '总部销售运营',
         dueText: '今日 16:30 前',
         status: '待处理',

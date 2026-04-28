@@ -293,7 +293,7 @@ function EnterpriseDepartmentPage() {
 
   function openAddModal(parentId: string | null) {
     if (activeTab === 'store' && !activeStoreId) {
-      Message.info('请先选择门店');
+      Message.info('请先选择店铺');
       return;
     }
 
@@ -348,7 +348,7 @@ function EnterpriseDepartmentPage() {
       }
 
       if (activeTab === 'store' && !storeId) {
-        Message.error('请先选择门店');
+        Message.error('请先选择店铺');
         return;
       }
 
@@ -570,12 +570,12 @@ function EnterpriseDepartmentPage() {
   const emptyText =
     activeTab === 'store'
       ? storeOptions.length
-        ? '当前门店暂无部门数据'
-        : '暂无可选门店，请先在组织管理中新增门店'
+        ? '当前店铺暂无部门数据'
+        : '暂无可选店铺，请先在组织管理中新增店铺'
       : '暂无部门数据';
   const parentTipText =
     activeTab === 'store'
-      ? `所属门店：${currentStoreLabel || '未选择门店'} · 所属层级：${parentDisplayText}`
+      ? `所属店铺：${currentStoreLabel || '未选择店铺'} · 所属层级：${parentDisplayText}`
       : `所属层级：${parentDisplayText}`;
 
   return (
@@ -602,11 +602,11 @@ function EnterpriseDepartmentPage() {
         <div className={styles.toolbarActions}>
           {activeTab === 'store' && !isStoreConfigDepartmentPage && (
             <div className={styles.storeFilter}>
-              <span className={styles.storeFilterLabel}>选择门店</span>
+              <span className={styles.storeFilterLabel}>选择店铺</span>
               <Select
                 className={styles.storeSelector}
                 disabled={!storeOptions.length}
-                placeholder="请选择门店"
+                placeholder="请选择店铺"
                 value={activeStoreId}
                 onChange={(value) =>
                   history.replace(

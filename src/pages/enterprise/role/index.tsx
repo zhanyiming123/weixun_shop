@@ -204,7 +204,7 @@ function EnterpriseRolePage() {
     : [];
 
   const pageTitle = location.pathname.startsWith('/store-config/role')
-    ? '门店角色列表'
+    ? '店铺角色列表'
     : '商户角色列表';
 
   return (

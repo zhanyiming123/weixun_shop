@@ -190,32 +190,6 @@
   font-weight: 500;
 }
 
-.statusSwitch {
-  min-width: 62px;
-}
-
-.salesStatusCell {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.salesStatusRow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.salesStatusLabel {
-  color: var(--color-text-2);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.salesStatusLink {
-  font-weight: 500;
-}
-
 .priceQuickCell {
   display: flex;
   flex-direction: column;
@@ -259,60 +233,14 @@
 }
 
 .actionLinks {
-  display: inline-grid;
-  grid-template-columns: repeat(3, max-content);
-  gap: 6px 12px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   align-items: center;
 }
 
 .actionLinkButton {
   white-space: nowrap;
-}
-
-.salesStoreCell {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.salesStoreMetric {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.salesStoreLabel {
-  color: var(--color-text-2);
-  font-size: 13px;
-}
-
-.salesStoreLink {
-  font-weight: 500;
-}
-
-.storeDetailModal {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.storeDetailName {
-  color: var(--color-text-1);
-  font-weight: 500;
-}
-
-.storeDetailContact {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.emptyModalContent {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  color: var(--color-text-3);
 }
 
 .priceSettingModal {
@@ -328,26 +256,17 @@
 .priceSettingBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .priceSettingSummary {
   display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 6px;
   padding: 14px 16px;
   border: 1px solid var(--color-border-2);
   border-radius: 8px;
   background: var(--color-fill-1);
-}
-
-.priceSettingProduct {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
 }
 
 .priceSettingProductName {
@@ -359,103 +278,210 @@
 
 .priceSettingSource {
   color: var(--color-text-3);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 20px;
 }
 
-.priceSettingMetrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 12px;
-  min-width: 280px;
-}
-
-.priceSettingMetric {
+.storeSettingSection {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: var(--color-bg-2);
+  gap: 12px;
 }
 
-.priceSettingMetricLabel {
-  color: var(--color-text-3);
-  font-size: 12px;
-  line-height: 20px;
+.storeSettingSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.priceSettingMetricValue {
+.storeSettingSectionTitle {
+  display: block;
   color: var(--color-text-1);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
-.priceModeBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 32px;
-}
-
-.quickSkuPricePanel {
-  overflow: hidden;
-  border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-}
-
-.quickSkuPriceHeader,
-.quickSkuPriceRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) 120px minmax(160px, 1fr);
-  gap: 12px;
-  align-items: center;
-}
-
-.quickSkuPriceHeader {
-  padding: 10px 14px;
+.storeSettingSectionHint {
+  margin: 6px 0 0;
   color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
-  background: var(--color-fill-2);
 }
 
-.quickSkuPriceRow {
-  padding: 12px 14px;
-  border-top: 1px solid var(--color-border-2);
-  background: var(--color-bg-2);
+.storeSettingTableWrap {
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  overflow: hidden;
+
+  :global(.arco-table-pagination) {
+    justify-content: flex-end;
+    padding: 12px 16px;
+  }
 }
 
-.quickSkuPriceCell {
-  min-width: 0;
-}
-
-.quickSkuPriceSpec,
-.quickSkuPriceText {
+.storeSettingSkuName {
   color: var(--color-text-1);
   font-weight: 500;
   line-height: 22px;
 }
 
-.quickSkuPriceInput {
+.skuNameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.skuNameTag {
+  flex: none;
+}
+
+.storeSettingRangeText {
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.storeSettingInputCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storeSettingLocalSkuField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storeSettingSpecPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.storeSettingSpecDimensionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.storeSettingSpecDimensionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.storeSettingSpecDimensionTitle {
+  color: var(--color-text-1);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.storeSettingSpecTagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.storeSettingSpecInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.storeSettingSpecInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.storeSettingLegacyIssuePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--danger-6), 0.18);
+  border-radius: 8px;
+  background: var(--color-danger-light-1);
+}
+
+.storeSettingLegacyIssueTitle {
+  color: rgb(var(--danger-6));
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.storeSettingLegacyIssueHint {
+  margin: 0;
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.storeSettingLegacyIssueList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.storeSettingLegacyIssueItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--color-bg-2);
+}
+
+.storeSettingLegacyIssueContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.storeSettingLegacyIssueSpec {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.storeSettingLegacyIssueReason {
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.storeSettingNumberInput {
   width: 100%;
 }
 
-.quickSkuPriceLimit {
-  margin-top: 6px;
-  color: var(--color-text-3);
+.storeSettingInputError {
+  color: rgb(var(--danger-6));
   font-size: 12px;
   line-height: 18px;
 }
 
-.quickSkuPriceError {
+.skuStatusTableWrap {
   margin-top: 4px;
-  color: rgb(var(--danger-6));
-  font-size: 12px;
-  line-height: 18px;
+}
+
+.skuStatusModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 @media (max-width: 1100px) {
@@ -505,20 +531,7 @@
     justify-content: flex-start;
   }
 
-  .priceSettingSummary,
-  .priceModeBar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .priceSettingMetrics,
-  .quickSkuPriceHeader,
-  .quickSkuPriceRow {
-    grid-template-columns: 1fr;
-  }
-
-  .priceSettingMetrics {
+  .storeSettingTableWrap {
     width: 100%;
-    min-width: 0;
   }
 }

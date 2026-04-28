@@ -6,11 +6,16 @@ import usePersistentState, {
 import {
   normalizeProductCarouselImages,
   normalizeProductIndependentPriceRule,
+  normalizeProductIndependentStockRule,
+  normalizeProductStoreChannelRules,
   normalizeProductStoreOverride,
 } from '@/lib/product';
 import type {
   ProductCarouselImage,
+  ProductShareTargetItem,
   ProductIndependentPriceRule,
+  ProductIndependentStockRule,
+  ProductStoreChannelRuleItem,
   ProductStoreOverrideMap,
 } from '@/types/product';
 import { ProductStoreConfigItem } from '../store-config/data';
@@ -42,6 +47,7 @@ export type ProductSkuItem = {
 export type ProductItem = {
   id: string;
   name: string;
+  productKind?: 'standard' | 'bundle';
   productCatalogId: string;
   productOwnershipId: string;
   productType: ProductType;
@@ -55,9 +61,16 @@ export type ProductItem = {
   sourceType: ProductSourceType;
   sourceStoreId?: string;
   storeConfigs: ProductStoreConfigItem[];
+  bundleComponents?: Array<{
+    productId: string;
+    skuId: string;
+  }>;
+  shareTargets?: ProductShareTargetItem[];
   carouselImages?: ProductCarouselImage[];
   storeOverrides?: ProductStoreOverrideMap;
   independentPriceRule?: ProductIndependentPriceRule;
+  independentStockRule?: ProductIndependentStockRule;
+  storeChannelRules?: ProductStoreChannelRuleItem[];
 };
 
 export type ProductFilterValues = {
@@ -90,7 +103,7 @@ export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
 
 export const PRODUCT_SOURCE_LABEL_MAP: Record<ProductSourceType, string> = {
   headquarter: '总部创建',
-  store: '门店创建',
+  store: '店铺创建',
 };
 
 export const PRODUCT_SOURCE_OPTIONS = [
@@ -620,7 +633,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   },
   {
     id: 'G_1260408000000000002',
-    name: '苏州门店自建·周末到店体验课',
+    name: '苏州店铺自建·周末到店体验课',
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
@@ -658,7 +671,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   },
   {
     id: 'G_1260408000000000003',
-    name: '广州门店自建·科研规划答疑营',
+    name: '广州店铺自建·科研规划答疑营',
     productCatalogId: 'international',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
@@ -689,7 +702,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   },
   {
     id: 'G_1260408000000000004',
-    name: '深圳门店自建·语言能力提升营',
+    name: '深圳店铺自建·语言能力提升营',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
@@ -720,7 +733,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   },
   {
     id: 'G_1260408000000000005',
-    name: '苏州门店自建·升学规划体验营',
+    name: '苏州店铺自建·升学规划体验营',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -812,6 +825,14 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     sourceStoreId,
     independentPriceRule: normalizeProductIndependentPriceRule(
       product.independentPriceRule,
+      product.skus || []
+    ),
+    independentStockRule: normalizeProductIndependentStockRule(
+      product.independentStockRule,
+      product.skus || []
+    ),
+    storeChannelRules: normalizeProductStoreChannelRules(
+      product.storeChannelRules,
       product.skus || []
     ),
     carouselImages: normalizeProductCarouselImages(product.carouselImages || []),

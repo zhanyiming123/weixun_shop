@@ -127,7 +127,7 @@ function MerchantOrganizationPage() {
         <Input
           allowClear
           className={styles.searchInput}
-          placeholder="门店名称"
+          placeholder="店铺名称"
           prefix={<IconSearch />}
           value={keyword}
           onChange={setKeyword}
@@ -141,13 +141,13 @@ function MerchantOrganizationPage() {
 
       {/* 卡片网格 */}
       <div className={styles.grid}>
-        {/* 新建门店卡片 */}
+        {/* 新建店铺卡片 */}
         <button type="button" className={styles.createCard} onClick={goToCreate}>
           <IconPlus className={styles.createIcon} />
-          <span className={styles.createLabel}>新建门店</span>
+          <span className={styles.createLabel}>新建店铺</span>
         </button>
 
-        {/* 门店卡片列表 */}
+        {/* 店铺卡片列表 */}
         {storeItems.map((item) => (
           <div key={item.id} className={styles.storeCard}>
             <div className={styles.cardHeader}>
@@ -193,7 +193,7 @@ function MerchantOrganizationPage() {
                 className={styles.footerBtn}
                 onClick={() => goToStoreSystem(item)}
               >
-                进入门店
+                进入店铺
               </button>
               <button
                 type="button"
@@ -208,7 +208,7 @@ function MerchantOrganizationPage() {
       </div>
 
       {appliedKeyword && !storeItems.length && (
-        <div className={styles.emptyHint}>未找到名称含「{appliedKeyword}」的门店</div>
+        <div className={styles.emptyHint}>未找到名称含「{appliedKeyword}」的店铺</div>
       )}
     </div>
   );

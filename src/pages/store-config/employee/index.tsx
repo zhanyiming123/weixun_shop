@@ -456,7 +456,7 @@ function StoreEmployeePage() {
     }
 
     if (!editRoleIds.length) {
-      Message.warning('请至少选择一个门店角色');
+      Message.warning('请至少选择一个店铺角色');
       return;
     }
 
@@ -546,7 +546,7 @@ function StoreEmployeePage() {
     );
 
     if (missingRoleEmployee) {
-      Message.warning('请为新增人员选择门店角色');
+      Message.warning('请为新增人员选择店铺角色');
       return;
     }
 
@@ -623,7 +623,7 @@ function StoreEmployeePage() {
       return;
     }
 
-    Message.info('所选人员已在当前门店中');
+    Message.info('所选人员已在当前店铺中');
   }
 
   function handleExternalAddConfirm() {
@@ -662,7 +662,7 @@ function StoreEmployeePage() {
     }
 
     if (!externalSingleForm.roleIds.length) {
-      Message.warning('请至少选择一个门店角色');
+      Message.warning('请至少选择一个店铺角色');
       return;
     }
 
@@ -732,8 +732,8 @@ function StoreEmployeePage() {
 
   function handleExternalTemplateDownload() {
     const lines = [
-      ['姓名*', '账号*', '手机号*', '门店角色*', '状态(选填)'],
-      ['张三', 'zhangsan', '13800000000', '门店员工', 'enabled'],
+      ['姓名*', '账号*', '手机号*', '店铺角色*', '状态(选填)'],
+      ['张三', 'zhangsan', '13800000000', '店铺员工', 'enabled'],
     ];
     const csvContent = `\uFEFF${lines.map((line) => line.join(',')).join('\n')}`;
     const blob = new Blob([csvContent], {
@@ -782,7 +782,7 @@ function StoreEmployeePage() {
       render: (value: string[]) => value.join(' / ') || '-',
     },
     {
-      title: '门店角色',
+      title: '店铺角色',
       dataIndex: 'roleNames',
       width: 180,
       render: (value: string[]) =>
@@ -849,7 +849,7 @@ function StoreEmployeePage() {
       ),
     },
     {
-      title: '门店角色',
+      title: '店铺角色',
       dataIndex: 'roleIds',
       width: 260,
       render: (_: unknown, record: HrEmployeeItem) => {
@@ -861,7 +861,7 @@ function StoreEmployeePage() {
               {existingEmployee.roleNames.map((roleName) => (
                 <Tag key={roleName}>{roleName}</Tag>
               ))}
-              <Tag color="gray">已在门店</Tag>
+              <Tag color="gray">已在店铺</Tag>
             </Space>
           );
         }
@@ -871,7 +871,7 @@ function StoreEmployeePage() {
             mode="multiple"
             allowClear
             className={styles.roleSelect}
-            placeholder="请选择门店角色"
+            placeholder="请选择店铺角色"
             value={addRoleMap[record.id] || addDefaultRoleIds}
             onChange={(value) => handlePreviewRoleChange(record.id, value)}
           >
@@ -894,7 +894,7 @@ function StoreEmployeePage() {
       render: (value: string, record: HrEmployeeItem) => (
         <div className={styles.employeeInfoCell}>
           <Typography.Text className={styles.primaryText}>{value}</Typography.Text>
-          {managedEmployeeIdSet.has(record.id) && <Tag size="small">已在门店</Tag>}
+          {managedEmployeeIdSet.has(record.id) && <Tag size="small">已在店铺</Tag>}
         </div>
       ),
     },
@@ -929,7 +929,7 @@ function StoreEmployeePage() {
   if (!currentStoreId) {
     return (
       <Card>
-        <Empty description="当前未选择具体门店，暂无法管理门店人员。" />
+        <Empty description="当前未选择具体店铺，暂无法管理店铺人员。" />
       </Card>
     );
   }
@@ -965,7 +965,7 @@ function StoreEmployeePage() {
             </Select>
           </div>
           <div className={styles.filterItem}>
-            <span className={styles.filterLabel}>门店角色</span>
+            <span className={styles.filterLabel}>店铺角色</span>
             <Select
               className={styles.filterSelect}
               value={draftFilters.roleId}
@@ -1008,7 +1008,7 @@ function StoreEmployeePage() {
           rowKey="id"
           columns={columns}
           data={filteredEmployees}
-          noDataElement="当前门店暂无员工"
+          noDataElement="当前店铺暂无员工"
           pagination={{
             current: currentPage,
             pageSize,
@@ -1062,14 +1062,14 @@ function StoreEmployeePage() {
             <div className={styles.formRow}>
               <span className={styles.formRowLabel}>
                 <span className={styles.requiredMark}>*</span>
-                门店角色
+                店铺角色
               </span>
               <div className={styles.formRowControl}>
                 <Select
                   mode="multiple"
                   allowClear
                   className={styles.fullWidth}
-                  placeholder="请选择门店角色"
+                  placeholder="请选择店铺角色"
                   value={editRoleIds}
                   onChange={(value) => setEditRoleIds(normalizeStringArray(value))}
                 >
@@ -1217,7 +1217,7 @@ function StoreEmployeePage() {
                       mode="multiple"
                       allowClear
                       className={styles.defaultRoleSelect}
-                      placeholder="请选择默认门店角色"
+                      placeholder="请选择默认店铺角色"
                       value={addDefaultRoleIds}
                       onChange={(value) => setAddDefaultRoleIds(normalizeStringArray(value))}
                     >
@@ -1236,7 +1236,7 @@ function StoreEmployeePage() {
                 <div className={styles.previewTitle}>
                   <Typography.Text className={styles.sectionTitle}>人员预览</Typography.Text>
                   <Typography.Text type="secondary">
-                    已在当前门店中的人员不会重复添加，也不会覆盖原角色。
+                    已在当前店铺中的人员不会重复添加，也不会覆盖原角色。
                   </Typography.Text>
                 </div>
                 <Table
@@ -1324,14 +1324,14 @@ function StoreEmployeePage() {
                   <div className={styles.formRow}>
                     <span className={styles.formRowLabel}>
                       <span className={styles.requiredMark}>*</span>
-                      门店角色
+                      店铺角色
                     </span>
                     <div className={styles.formRowControl}>
                       <Select
                         mode="multiple"
                         allowClear
                         className={styles.fullWidth}
-                        placeholder="请选择门店角色"
+                        placeholder="请选择店铺角色"
                         value={externalSingleForm.roleIds}
                         onChange={(value) =>
                           updateExternalSingleForm('roleIds', normalizeStringArray(value))

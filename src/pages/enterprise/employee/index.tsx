@@ -101,7 +101,7 @@ function EnterpriseEmployeePage() {
     return filteredEmployees.slice(start, start + pageSize);
   }, [currentPage, filteredEmployees, pageSize]);
   const isStoreConfigPage = location.pathname.startsWith('/store-config/employee');
-  const pageTitle = isStoreConfigPage ? '门店员工' : '商户员工';
+  const pageTitle = isStoreConfigPage ? '店铺员工' : '商户员工';
 
   const currentPageEmployeeIds = useMemo(
     () => currentPageEmployees.map((item) => item.id),
@@ -429,7 +429,7 @@ function EnterpriseEmployeePage() {
                 className={styles.filterSelect}
                 placeholder={
                   isStoreConfigPage
-                    ? `当前门店：${currentOrganization?.name || '门店'}`
+                    ? `当前店铺：${currentOrganization?.name || '店铺'}`
                     : '请选择或搜索店铺名称'
                 }
                 value={formValues.organizationId}

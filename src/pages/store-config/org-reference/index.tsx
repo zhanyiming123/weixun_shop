@@ -55,7 +55,7 @@ function StoreOrgReferencePage() {
   const hrEmployees = useMemo(() => readHrEmployeeItems(), []);
   const currentStoreId =
     currentOrganization?.scope === 'store' ? currentOrganization.id : undefined;
-  const currentStoreName = currentOrganization?.name || '当前门店';
+  const currentStoreName = currentOrganization?.name || '当前店铺';
 
   const savedConfig = useMemo(
     () =>
@@ -143,7 +143,7 @@ function StoreOrgReferencePage() {
   if (!currentStoreId) {
     return (
       <Card>
-        <Empty description="当前未切换到具体门店视角，暂无法配置组织架构引用。" />
+        <Empty description="当前未切换到具体店铺视角，暂无法配置组织架构引用。" />
       </Card>
     );
   }
@@ -236,7 +236,7 @@ function StoreOrgReferencePage() {
           <Space direction="vertical" size={10} style={{ display: 'flex' }}>
             <Space wrap>
               <Tag color="arcoblue" size="large">
-                {demoContext?.systemLabel || '门店管理系统'}
+                {demoContext?.systemLabel || '店铺管理系统'}
               </Tag>
               <Tag>{demoContext?.identityLabel || '区域管理员'}</Tag>
               <Tag color="green">{currentStoreName}</Tag>
@@ -245,7 +245,7 @@ function StoreOrgReferencePage() {
               组织架构引用
             </Typography.Title>
             <Typography.Paragraph className={styles.heroMeta} type="secondary">
-              只读引用人事组织架构，按组织节点动态同步门店员工名单。员工角色和个人数据权限请前往门店员工页按人配置。
+              只读引用人事组织架构，按组织节点动态同步店铺员工名单。员工角色和个人数据权限请前往店铺员工页按人配置。
             </Typography.Paragraph>
           </Space>
 
@@ -270,14 +270,14 @@ function StoreOrgReferencePage() {
           <span className={styles.summaryLabel}>同步人员数</span>
           <span className={styles.summaryValue}>{referencedEmployees.length}</span>
           <span className={styles.summaryHelper}>
-            这批人员会同步显示到门店员工页，后续权限配置以员工编辑页为准。
+            这批人员会同步显示到店铺员工页，后续权限配置以员工编辑页为准。
           </span>
         </Card>
         <Card className={styles.summaryCard}>
           <span className={styles.summaryLabel}>最近保存</span>
           <span className={styles.summaryValue}>{savedConfig?.updatedAt || '尚未保存'}</span>
           <span className={styles.summaryHelper}>
-            保存后会同步清理已移出名单员工的门店角色与个人数据权限配置。
+            保存后会同步清理已移出名单员工的店铺角色与个人数据权限配置。
           </span>
         </Card>
       </div>
@@ -289,7 +289,7 @@ function StoreOrgReferencePage() {
             <div className={styles.cardTitle}>
               <span>人事组织架构</span>
               <span className={styles.cardTitleDesc}>
-                完整只读展示总部与门店组织树，支持按组织节点勾选引用。
+                完整只读展示总部与店铺组织树，支持按组织节点勾选引用。
               </span>
             </div>
           }
@@ -311,7 +311,7 @@ function StoreOrgReferencePage() {
             <div className={styles.cardTitle}>
               <span>同步人员预览</span>
               <span className={styles.cardTitleDesc}>
-                实时展示当前门店会被带入的人员名单，保存后门店员工页将使用这份同步结果。
+                实时展示当前店铺会被带入的人员名单，保存后店铺员工页将使用这份同步结果。
               </span>
             </div>
           }

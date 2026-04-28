@@ -285,13 +285,13 @@ function MerchantStoreEmployeePage() {
     setConfigItems(nextConfigs);
     setSelectedDepartmentIds(nextSavedConfig?.selectedDepartmentIds || []);
     setSelectedEmployeeIds(nextSavedConfig?.selectedEmployeeIds || []);
-    Message.success('门店员工配置已保存');
+    Message.success('店铺员工配置已保存');
   }
 
   if (!storeOptions.length) {
     return (
       <Card>
-        <Empty description="暂无可配置的启用门店，请先到门店管理中启用门店。" />
+        <Empty description="暂无可配置的启用店铺，请先到店铺管理中启用店铺。" />
       </Card>
     );
   }
@@ -302,14 +302,14 @@ function MerchantStoreEmployeePage() {
         <div className={styles.headerTop}>
           <Space direction="vertical" size={8}>
             <Typography.Title heading={4} className={styles.pageTitle}>
-              门店员工
+              店铺员工
             </Typography.Title>
             <Typography.Text type="secondary">
-              按门店引用集团组织架构中的部门或个人，保存后会同步到对应门店系统。
+              按店铺引用集团组织架构中的部门或个人，保存后会同步到对应店铺系统。
             </Typography.Text>
           </Space>
           <div className={styles.storeField}>
-            <span className={styles.storeLabel}>选择门店</span>
+            <span className={styles.storeLabel}>选择店铺</span>
             <Select
               className={styles.storeSelect}
               value={selectedStoreId}
@@ -326,7 +326,7 @@ function MerchantStoreEmployeePage() {
 
         <div className={styles.metaRow}>
           <Space size={20}>
-            <span>当前门店：{selectedStoreName || '-'}</span>
+            <span>当前店铺：{selectedStoreName || '-'}</span>
             <span>已勾选部门：{selectedDepartmentIds.length}</span>
             <span>已勾选个人：{selectedEmployeeIds.length}</span>
             <span>同步人员预览：{previewEmployees.length} 人</span>
@@ -349,7 +349,7 @@ function MerchantStoreEmployeePage() {
                   <div className={styles.cardTitle}>
                     <span>集团组织架构</span>
                     <span className={styles.cardDesc}>
-                      支持独立勾选部门和人员，最终按并集同步到当前门店。
+                      支持独立勾选部门和人员，最终按并集同步到当前店铺。
                     </span>
                   </div>
                 }
@@ -372,7 +372,7 @@ function MerchantStoreEmployeePage() {
                   <div className={styles.cardTitle}>
                     <span>同步人员预览</span>
                     <span className={styles.cardDesc}>
-                      实时展示当前选择会带入门店的人员名单。
+                      实时展示当前选择会带入店铺的人员名单。
                     </span>
                   </div>
                 }
@@ -400,12 +400,12 @@ function MerchantStoreEmployeePage() {
             </div>
           </TabPane>
 
-          <TabPane key="storeConfig" title="门店员工配置">
+          <TabPane key="storeConfig" title="店铺员工配置">
             <Card
               className={styles.resultCard}
               title={
                 <div className={styles.cardTitle}>
-                  <span>当前门店已同步员工</span>
+                  <span>当前店铺已同步员工</span>
                   <span className={styles.cardDesc}>
                     该列表用于确认保存后的同步结果，不在此页编辑角色和数据权限。
                   </span>
@@ -434,7 +434,7 @@ function MerchantStoreEmployeePage() {
                   scroll={{ x: 1100 }}
                 />
               ) : (
-                <Empty description="当前门店暂无同步员工，请先在“组织架构引用”中保存配置。" />
+                <Empty description="当前店铺暂无同步员工，请先在“组织架构引用”中保存配置。" />
               )}
             </Card>
           </TabPane>

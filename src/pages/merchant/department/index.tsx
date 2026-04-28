@@ -1137,7 +1137,7 @@ function MerchantDepartmentPage() {
       )
     );
     setStoreAssignTarget(null);
-    Message.success('门店分配已保存，部门成员门店已同步');
+    Message.success('店铺分配已保存，部门成员店铺已同步');
   }
 
   async function handleDepartmentModalOk() {
@@ -1455,7 +1455,7 @@ function MerchantDepartmentPage() {
                   onClick={(event) => openStoreAssignModal(node, event)}
                 >
                   <IconApps />
-                  <span>负责门店</span>
+                  <span>负责店铺</span>
                 </button>
                 <button
                   type="button"
@@ -1500,7 +1500,7 @@ function MerchantDepartmentPage() {
         getMemberDepartmentNames(record).join(' / '),
     },
     {
-      title: '所在门店',
+      title: '所在店铺',
       dataIndex: 'storeIds',
       width: 260,
       render: (_: string[], record: MerchantDepartmentMember) => {
@@ -1614,7 +1614,7 @@ function MerchantDepartmentPage() {
               </div>
               {selectedDepartmentId !== ROOT_DEPARTMENT_ID && (
                 <div className={styles.managedStoreRow}>
-                  <span className={styles.managedStoreLabel}>负责门店：</span>
+                  <span className={styles.managedStoreLabel}>负责店铺：</span>
                   {selectedDepartmentStoreIds.length ? (
                     <span className={styles.managedStoreTags}>
                       {selectedDepartmentStoreIds.map((storeId) => {
@@ -1977,12 +1977,12 @@ function MerchantDepartmentPage() {
               treeProps={{ defaultExpandedKeys: departmentTreeExpandedKeys }}
             />
           </Form.Item>
-          <Form.Item field="storeIds" label="所在门店">
+          <Form.Item field="storeIds" label="所在店铺">
             <Select
               mode="multiple"
               allowClear
               showSearch
-              placeholder="请选择所在门店"
+              placeholder="请选择所在店铺"
             >
               {storeItems.map((store) => (
                 <Option key={store.id} value={store.id}>
@@ -2043,7 +2043,7 @@ function MerchantDepartmentPage() {
       </Modal>
 
       <Modal
-        title={`负责门店 · ${storeAssignTarget?.name || ''}`}
+        title={`负责店铺 · ${storeAssignTarget?.name || ''}`}
         visible={Boolean(storeAssignTarget)}
         onOk={saveStoreAssignment}
         onCancel={() => setStoreAssignTarget(null)}
@@ -2054,11 +2054,11 @@ function MerchantDepartmentPage() {
         autoFocus={false}
       >
         <p className={styles.storeAssignDesc}>
-          选择该部门负责管理的门店。部门成员进入门店系统后，将只能看到所分配门店的数据。
+          选择该部门负责管理的店铺。部门成员进入店铺系统后，将只能看到所分配店铺的数据。
         </p>
         <Select
           mode="multiple"
-          placeholder="请选择负责门店（不选则不限制）"
+          placeholder="请选择负责店铺（不选则不限制）"
           value={storeAssignSelectedIds}
           onChange={(value) => setStoreAssignSelectedIds(value as string[])}
           style={{ width: '100%' }}

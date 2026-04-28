@@ -219,7 +219,7 @@ function CouponStoreSelector({
   ];
   const simpleColumns = [
     {
-      title: '门店名称',
+      title: '店铺名称',
       dataIndex: 'name',
       width: 260,
       render: (_: string, record: ProductStoreItem) => (
@@ -234,12 +234,12 @@ function CouponStoreSelector({
       ),
     },
     {
-      title: '门店地址',
+      title: '店铺地址',
       dataIndex: 'address',
       width: 360,
     },
     {
-      title: '门店负责人',
+      title: '店铺负责人',
       dataIndex: 'managerName',
       width: 220,
       render: (_: string, record: ProductStoreItem) => (
@@ -317,7 +317,7 @@ function CouponStoreSelector({
             <Input
               allowClear
               className={styles.searchInput}
-              placeholder="请输入门店名称"
+              placeholder="请输入店铺名称"
               prefix={<IconSearch />}
               value={storeKeyword}
               onChange={(value) => {
@@ -364,7 +364,7 @@ function CouponStoreSelector({
                 <Select.Option value="all">全部{entityLabel}分类</Select.Option>
               )}
               {effectiveStoreTypes.includes('store') && (
-                <Select.Option value="store">门店</Select.Option>
+                <Select.Option value="store">店铺</Select.Option>
               )}
               {effectiveStoreTypes.includes('mall') && (
                 <Select.Option value="mall">商城</Select.Option>

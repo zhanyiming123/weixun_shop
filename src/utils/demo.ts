@@ -64,7 +64,7 @@ const DEFAULT_AVATAR =
 
 export const DEMO_SYSTEM_LABEL_MAP: Record<DemoSystemId, string> = {
   merchant: '商户管理系统',
-  store: '门店管理系统',
+  store: '店铺管理系统',
 };
 
 export const DEMO_IDENTITY_PRESET_MAP: Record<DemoIdentityId, DemoIdentityPreset> = {
@@ -79,7 +79,7 @@ export const DEMO_IDENTITY_PRESET_MAP: Record<DemoIdentityId, DemoIdentityPreset
     defaultOrganizationId: HEADQUARTER_ORGANIZATION_ID,
     allowedOrganizationIds: [HEADQUARTER_ORGANIZATION_ID],
     dataScope: 'tenant_all',
-    description: '可查看全商户数据，负责组织架构、门店、商户员工与商户角色配置。',
+    description: '可查看全商户数据，负责组织架构、店铺、商户员工与商户角色配置。',
   },
   region_admin: {
     id: 'region_admin',
@@ -96,20 +96,20 @@ export const DEMO_IDENTITY_PRESET_MAP: Record<DemoIdentityId, DemoIdentityPreset
       'org_store_shenzhen_001',
     ],
     dataScope: 'region_all',
-    description: '查看所辖区域和门店数据，可创建门店并配置门店员工与门店角色。',
+    description: '查看所辖区域和店铺数据，可创建店铺并配置店铺员工与店铺角色。',
   },
   store_staff: {
     id: 'store_staff',
-    label: '门店员工',
+    label: '店铺员工',
     displayName: '黄颖',
-    jobTitle: '门店员工',
+    jobTitle: '店铺员工',
     avatar: DEFAULT_AVATAR,
     email: 'store.staff@weixun.demo',
     defaultSystemId: 'store',
     defaultOrganizationId: 'org_store_guangzhou_001',
     allowedOrganizationIds: ['org_store_guangzhou_001'],
     dataScope: 'department_all',
-    description: '负责门店日常经营，看到的核心经营数据按当前部门全量口径投影。',
+    description: '负责店铺日常经营，看到的核心经营数据按当前部门全量口径投影。',
     currentStaffDepartmentName: '升学顾问部',
     managedDepartmentId: 'dept_guangzhou',
   },
@@ -123,8 +123,8 @@ export const DEMO_DATA_SCOPE_LABEL_MAP: Record<DemoDataScope, string> = {
 
 export const DEMO_DATA_SCOPE_DESCRIPTION_MAP: Record<DemoDataScope, string> = {
   tenant_all: '当前演示身份可查看整个商户范围内的汇总与配置数据。',
-  region_all: '当前演示身份只可查看所辖区域及其门店的全部数据。',
-  department_all: '当前演示身份只查看门店内当前部门的全量经营数据。',
+  region_all: '当前演示身份只可查看所辖区域及其店铺的全部数据。',
+  department_all: '当前演示身份只查看店铺内当前部门的全量经营数据。',
 };
 
 function normalizeDemoSystemId(value: unknown): DemoSystemId {

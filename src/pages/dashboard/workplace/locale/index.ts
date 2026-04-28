@@ -65,13 +65,13 @@ const i18n = {
     'workplace.gmvTrend.description': '跟踪总部销售规模变化，快速识别增长与波动。',
     'workplace.regionPerformance': '区域表现',
     'workplace.regionPerformance.description':
-      '从区域维度查看门店分布、经营产出与异常压力。',
-    'workplace.storeComparison': '门店经营对比',
+      '从区域维度查看店铺分布、经营产出与异常压力。',
+    'workplace.storeComparison': '店铺经营对比',
     'workplace.storeComparison.description':
-      '并排对比 3 家线下门店的经营表现与异常标签。',
-    'workplace.storeComparison.region': '区域内门店对比',
+      '并排对比 3 家线下店铺的经营表现与异常标签。',
+    'workplace.storeComparison.region': '区域内店铺对比',
     'workplace.storeComparison.region.description':
-      '查看当前区域内各门店经营表现与异常标签。',
+      '查看当前区域内各店铺经营表现与异常标签。',
     'workplace.storeComparison.store': '本店铺经营明细',
     'workplace.storeComparison.store.description':
       '聚焦当前店铺经营指标、店长信息与异常标签。',
@@ -84,7 +84,7 @@ const i18n = {
     'workplace.metric.customerCount': '客户数',
     'workplace.metric.averageOrderValue': '客单价',
     'workplace.region.column.name': '区域名称',
-    'workplace.region.column.storeCount': '门店数',
+    'workplace.region.column.storeCount': '店铺数',
     'workplace.region.column.gmv': 'GMV',
     'workplace.region.column.orderCount': '订单数',
     'workplace.region.column.customerCount': '客户数',

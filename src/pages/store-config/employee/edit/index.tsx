@@ -60,7 +60,7 @@ function StoreEmployeeEditPage() {
 
   const currentStoreId =
     currentOrganization?.scope === 'store' ? currentOrganization.id : undefined;
-  const currentStoreName = currentOrganization?.name || '当前门店';
+  const currentStoreName = currentOrganization?.name || '当前店铺';
   const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
   const employeeId = getSingleQueryValue(locationQuery.id);
   const referencedEmployees = useMemo(
@@ -201,7 +201,7 @@ function StoreEmployeeEditPage() {
     }
 
     if (!roleIds.length) {
-      Message.error('请至少选择一个门店角色包');
+      Message.error('请至少选择一个店铺角色包');
       return;
     }
 
@@ -245,10 +245,10 @@ function StoreEmployeeEditPage() {
   if (!currentStoreId) {
     return (
       <Card>
-        <Empty description="当前未切换到具体门店视角，暂无法编辑门店员工权限。" />
+        <Empty description="当前未切换到具体店铺视角，暂无法编辑店铺员工权限。" />
         <div className={styles.emptyAction}>
           <Button type="primary" onClick={handleBack}>
-            返回门店员工
+            返回店铺员工
           </Button>
         </div>
       </Card>
@@ -258,10 +258,10 @@ function StoreEmployeeEditPage() {
   if (!employeeId || !currentEmployee) {
     return (
       <Card>
-        <Empty description="未找到当前员工，可能该员工已不在当前门店同步名单中。" />
+        <Empty description="未找到当前员工，可能该员工已不在当前店铺同步名单中。" />
         <div className={styles.emptyAction}>
           <Button type="primary" onClick={handleBack}>
-            返回门店员工
+            返回店铺员工
           </Button>
         </div>
       </Card>
@@ -275,16 +275,16 @@ function StoreEmployeeEditPage() {
           <Space direction="vertical" size={10} style={{ display: 'flex' }}>
             <Space wrap>
               <Tag color="arcoblue" size="large">
-                {demoContext?.systemLabel || '门店管理系统'}
+                {demoContext?.systemLabel || '店铺管理系统'}
               </Tag>
               <Tag>{demoContext?.identityLabel || '区域管理员'}</Tag>
               <Tag color="green">{currentStoreName}</Tag>
             </Space>
             <Typography.Title heading={4} className={styles.heroTitle}>
-              编辑门店员工
+              编辑店铺员工
             </Typography.Title>
             <Typography.Paragraph className={styles.heroMeta} type="secondary">
-              员工基础资料来自组织架构引用，仅支持查看；当前页可为该员工分配多个门店角色包，并单独配置个人数据查看权限。
+              员工基础资料来自组织架构引用，仅支持查看；当前页可为该员工分配多个店铺角色包，并单独配置个人数据查看权限。
             </Typography.Paragraph>
           </Space>
 
@@ -348,9 +348,9 @@ function StoreEmployeeEditPage() {
         className={styles.sectionCard}
         title={
           <div className={styles.cardTitle}>
-            <span>门店角色包</span>
+            <span>店铺角色包</span>
             <span className={styles.cardTitleDesc}>
-              支持给同一员工叠加多个门店角色包，功能权限按并集预览，数据权限按所选角色中的更高范围说明展示。
+              支持给同一员工叠加多个店铺角色包，功能权限按并集预览，数据权限按所选角色中的更高范围说明展示。
             </span>
           </div>
         }
@@ -359,7 +359,7 @@ function StoreEmployeeEditPage() {
           mode="multiple"
           allowClear
           className={styles.roleSelect}
-          placeholder="请选择门店角色包"
+          placeholder="请选择店铺角色包"
           value={roleIds}
           onChange={(value) => setRoleIds(normalizeStringArray(value))}
         >
@@ -439,7 +439,7 @@ function StoreEmployeeEditPage() {
             </div>
           ) : (
             <div className={styles.permissionPlaceholder}>
-              选择门店角色包后，将在这里展示合并后的数据权限和功能权限。
+              选择店铺角色包后，将在这里展示合并后的数据权限和功能权限。
             </div>
           )}
         </div>
@@ -451,7 +451,7 @@ function StoreEmployeeEditPage() {
           <div className={styles.cardTitle}>
             <span>个人数据权限</span>
             <span className={styles.cardTitleDesc}>
-              从当前门店已同步员工中勾选人员。保存后，当前员工将额外获得这些被勾选员工的业务数据查看权限。
+              从当前店铺已同步员工中勾选人员。保存后，当前员工将额外获得这些被勾选员工的业务数据查看权限。
               {currentEmployee.isManagement
                 ? ' 管理岗会默认带出当前部门整棵树成员，仍可继续手工补充或取消。'
                 : ''}

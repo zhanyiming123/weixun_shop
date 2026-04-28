@@ -233,7 +233,7 @@ function EnterpriseOrganizationPage() {
       return [
         ...baseColumns,
         {
-          title: '圈选门店范围',
+          title: '圈选店铺范围',
           dataIndex: 'selectedStoreIds',
           width: 320,
           render: (_: unknown, record: OrganizationItem) => (
@@ -426,7 +426,7 @@ function EnterpriseOrganizationPage() {
             history.replace(getOrganizationListPath(location.pathname, nextTab));
           }}
         >
-          <TabPane key="store" title="门店" />
+          <TabPane key="store" title="店铺" />
           <TabPane key="partner" title="区域" />
         </Tabs>
 

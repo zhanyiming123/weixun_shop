@@ -69,7 +69,7 @@ export const ENTERPRISE_DEPARTMENT_SCOPE_LABEL_MAP: Record<
   string
 > = {
   headquarter: '总部',
-  store: '门店',
+  store: '店铺',
 };
 
 function padNumber(value: number) {

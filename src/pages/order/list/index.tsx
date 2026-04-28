@@ -36,12 +36,12 @@ function OrderListPage() {
         {
           label: '待跟进订单',
           value: `${pendingCount} 单`,
-          helper: '用于演示门店员工仅看到部门内需要处理的订单。',
+          helper: '用于演示店铺员工仅看到部门内需要处理的订单。',
         },
         {
           label: '退款风险',
           value: `${refundRiskCount} 单`,
-          helper: '可作为商户侧与门店侧差异化看板的占位指标。',
+          helper: '可作为商户侧与店铺侧差异化看板的占位指标。',
         },
       ]}
       modules={[

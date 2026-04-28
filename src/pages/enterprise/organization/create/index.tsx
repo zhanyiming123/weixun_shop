@@ -323,8 +323,8 @@ export function EnterpriseOrganizationFormPage({
       ? '通过两步完成组织信息录入和能力配置，新建完成后将自动回到对应列表页。'
       : '支持修改基础信息与组织能力，保存后将同步更新对应列表数据。'
     : isCreateMode
-      ? '填写区域基础信息并圈选门店，新建完成后将自动回到对应列表页。'
-      : '支持修改区域基础信息和圈选门店，保存后将同步更新对应列表数据。';
+      ? '填写区域基础信息并圈选店铺，新建完成后将自动回到对应列表页。'
+      : '支持修改区域基础信息和圈选店铺，保存后将同步更新对应列表数据。';
   const selectableStoreItems = useMemo(() => readOrganizationSelectableStoreItems(), []);
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
@@ -376,22 +376,22 @@ export function EnterpriseOrganizationFormPage({
   );
   const storeSummaryTitle = useMemo(() => {
     if (!normalizedSelectedStoreIds.length) {
-      return '未圈选门店';
+      return '未圈选店铺';
     }
 
     if (normalizedSelectedStoreIds.length === selectableStoreItems.length) {
-      return '已圈选全部门店';
+      return '已圈选全部店铺';
     }
 
-    return `已圈选 ${normalizedSelectedStoreIds.length} 家门店`;
+    return `已圈选 ${normalizedSelectedStoreIds.length} 家店铺`;
   }, [normalizedSelectedStoreIds, selectableStoreItems.length]);
   const storeSummaryDescription = useMemo(() => {
     if (!normalizedSelectedStoreIds.length) {
-      return '点击右侧按钮圈选当前区域覆盖的门店';
+      return '点击右侧按钮圈选当前区域覆盖的店铺';
     }
 
     if (normalizedSelectedStoreIds.length === selectableStoreItems.length) {
-      return `当前共覆盖 ${selectableStoreItems.length} 家门店`;
+      return `当前共覆盖 ${selectableStoreItems.length} 家店铺`;
     }
 
     return selectedStoreNames.join('、');
@@ -505,7 +505,7 @@ export function EnterpriseOrganizationFormPage({
       return true;
     }
 
-    const nextError = '请至少圈选 1 家门店';
+    const nextError = '请至少圈选 1 家店铺';
     setStoreSelectionError(nextError);
     Message.error(nextError);
     return false;
@@ -913,7 +913,7 @@ export function EnterpriseOrganizationFormPage({
               </Form.Item>
 
               {pageType === 'partner' && (
-                <Form.Item className={styles.fullWidth} required label="圈选门店">
+                <Form.Item className={styles.fullWidth} required label="圈选店铺">
                   <div className={styles.storeSelectorTrigger}>
                     <div className={styles.storeSelectorSummary}>
                       <div
@@ -931,7 +931,7 @@ export function EnterpriseOrganizationFormPage({
                     </div>
 
                     <Button type="outline" onClick={openStoreModal}>
-                      圈选门店
+                      圈选店铺
                     </Button>
                   </div>
                   {storeSelectionError && (
@@ -1180,8 +1180,8 @@ export function EnterpriseOrganizationFormPage({
 
       <CouponStoreSelector
         visible={storeModalVisible}
-        title="圈选门店"
-        entityLabel="门店"
+        title="圈选店铺"
+        entityLabel="店铺"
         allowedStoreTypes={['store']}
         selectedStoreIds={normalizedSelectedStoreIds}
         onCancel={() => setStoreModalVisible(false)}

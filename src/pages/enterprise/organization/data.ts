@@ -115,7 +115,7 @@ export const DEFAULT_ORGANIZATION_FILTER_VALUES: OrganizationFilterValues = {
 };
 
 export const ORGANIZATION_TYPE_LABEL_MAP: Record<OrganizationType, string> = {
-  store: '门店',
+  store: '店铺',
   partner: '区域',
 };
 
@@ -345,7 +345,7 @@ export function getOrganizationSelectedStoreSummary(
   }
 
   if (normalizedStoreIds.length === storeItems.length) {
-    return `全部门店（${storeItems.length}家）`;
+    return `全部店铺（${storeItems.length}家）`;
   }
 
   return getOrganizationSelectedStoreNames(normalizedStoreIds, storeItems).join('、');
@@ -427,7 +427,7 @@ export const DEFAULT_ORGANIZATION_ITEMS: OrganizationItem[] = [
     {
       id: 'org_store_suzhou_001',
       type: 'store',
-      name: '唯寻苏州门店',
+      name: '唯寻苏州店铺',
       code: 'MD-SU-202604080001',
       regionPath: ['jiangsu', 'suzhou', 'sip'],
       address: '江苏省苏州市工业园区星湖街218号创意产业园B1栋',
@@ -471,7 +471,7 @@ export const DEFAULT_ORGANIZATION_ITEMS: OrganizationItem[] = [
     {
       id: 'org_store_guangzhou_001',
       type: 'store',
-      name: '唯寻广州门店',
+      name: '唯寻广州店铺',
       code: 'MD-GZ-202604080001',
       regionPath: ['guangdong', 'guangzhou', 'tianhe'],
       address: '广州市天河区珠江新城华夏路28号富力盈信大厦',
@@ -495,7 +495,7 @@ export const DEFAULT_ORGANIZATION_ITEMS: OrganizationItem[] = [
     {
       id: 'org_store_shenzhen_001',
       type: 'store',
-      name: '唯寻深圳门店',
+      name: '唯寻深圳店铺',
       code: 'MD-SZ-202604080002',
       regionPath: ['guangdong', 'shenzhen', 'nanshan'],
       address: '深圳市南山区海德三道航天科技广场',

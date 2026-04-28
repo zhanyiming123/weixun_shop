@@ -16,11 +16,11 @@ type ShareModalProps = {
   visible: boolean;
   // 券名称（展示在标题中）
   couponName: string;
-  // 创建者门店 ID（排除自身）
+  // 创建者店铺 ID（排除自身）
   ownershipStoreId: string;
-  // 已分享的门店列表（展示为「已分享」状态，禁止重复选择）
+  // 已分享的店铺列表（展示为「已分享」状态，禁止重复选择）
   alreadySharedStoreIds: string[];
-  // 可分享的门店范围（undefined = 不限制，取全量门店）
+  // 可分享的店铺范围（undefined = 不限制，取全量店铺）
   allowedStoreIds?: string[];
   onCancel: () => void;
   onConfirm: (targetStoreIds: string[]) => void;
@@ -39,7 +39,7 @@ function ShareModal({
 
   const allStores = useMemo(() => readProductStoreItems(), []);
 
-  // 可选门店：排除创建者自身，按 allowedStoreIds 过滤
+  // 可选店铺：排除创建者自身，按 allowedStoreIds 过滤
   const availableStores = useMemo(() => {
     const allowedSet = allowedStoreIds ? new Set(allowedStoreIds) : null;
     return allStores.filter((store) => {
@@ -103,14 +103,14 @@ function ShareModal({
       </div>
       <div style={{ marginBottom: 16 }}>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          分享后目标门店立即可见此券，且无法修改券内容。
+          分享后目标店铺立即可见此券，且无法修改券内容。
           {alreadySharedStoreIds.length > 0 &&
-            `当前已分享至 ${alreadySharedStoreIds.length} 家门店。`}
+            `当前已分享至 ${alreadySharedStoreIds.length} 家店铺。`}
         </Typography.Text>
       </div>
 
       {availableStores.length === 0 ? (
-        <Typography.Text type="secondary">暂无可分享的门店</Typography.Text>
+        <Typography.Text type="secondary">暂无可分享的店铺</Typography.Text>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {availableStores.map((store) => {
@@ -171,7 +171,7 @@ function ShareModal({
       {selectedStoreIds.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            本次新增分享 {selectedStoreIds.length} 家门店：
+            本次新增分享 {selectedStoreIds.length} 家店铺：
             {selectedStoreIds
               .map((id) => storeNameMap.get(id) || id)
               .join('、')}

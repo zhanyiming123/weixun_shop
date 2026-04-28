@@ -21,6 +21,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1237036327413878784',
     name: '唯寻2026年IG&AS大考预测课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'virtual',
@@ -68,6 +69,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1231319097741021184',
     name: '[唯寻] 2026年IG&AS大考预测课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
@@ -104,6 +106,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1231318174553739264',
     name: '[唯寻] 2026年IG&AS大考预测课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
@@ -135,6 +138,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1215778084171681792',
     name: 'ALEVEL定制学习服务',
+    productKind: 'standard',
     productCatalogId: 'service',
     productOwnershipId: 'item_06_01_01',
     productType: 'service',
@@ -170,6 +174,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1211793802365374464',
     name: '[唯寻橡沐] AP预测课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
@@ -218,6 +223,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1211793279398580224',
     name: '[唯寻橡沐] IB预测课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
@@ -261,6 +267,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1210999402622266432',
     name: '[唯寻橡沐] AP冲刺班',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
@@ -285,6 +292,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1210998727024709632',
     name: '[唯寻橡沐] IB冲刺班',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
@@ -316,6 +324,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1210997383807242240',
     name: '[唯寻橡沐] AP预习课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'virtual',
@@ -351,6 +360,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1210876543210987654',
     name: '2026年STEP数学冲刺营',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
@@ -394,6 +404,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1210123456789012345',
     name: '雅思一对一提升服务',
+    productKind: 'standard',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -434,6 +445,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1209988776655443322',
     name: '牛津面试模考包',
+    productKind: 'standard',
     productCatalogId: 'thesis',
     productOwnershipId: 'item_05_03_04',
     productType: 'virtual',
@@ -481,6 +493,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1260408000000000001',
     name: '总部下发·春季留学规划诊断包',
+    productKind: 'standard',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -502,7 +515,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     sourceType: 'headquarter',
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
       },
@@ -520,7 +533,8 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   },
   {
     id: 'G_1260408000000000002',
-    name: '苏州门店自建·周末到店体验课',
+    name: '苏州店铺自建·周末到店体验课',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_06_02_01',
     productType: 'course',
@@ -550,15 +564,24 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     sourceStoreId: 'store_suzhou',
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
+      },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 08:20:00',
+        sellableSkuIds: ['sku-G_1260408000000000002-1'],
       },
     ],
   },
   {
     id: 'G_1260408000000000003',
-    name: '广州门店自建·科研规划答疑营',
+    name: '广州店铺自建·科研规划答疑营',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
@@ -586,10 +609,19 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         channelStatus: 'on',
       },
     ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 08:40:00',
+        sellableSkuIds: ['sku-G_1260408000000000003-1'],
+      },
+    ],
   },
   {
     id: 'G_1260408000000000004',
-    name: '深圳门店自建·语言能力提升营',
+    name: '深圳店铺自建·语言能力提升营',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_08',
     productType: 'service',
@@ -617,10 +649,20 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         channelStatus: 'on',
       },
     ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'referenced',
+        sharedAt: '2026-04-15 09:00:00',
+        referencedAt: '2026-04-15 09:30:00',
+        sellableSkuIds: ['sku-G_1260408000000000004-1'],
+      },
+    ],
   },
   {
     id: 'G_1260408000000000005',
-    name: '苏州门店自建·升学规划体验营',
+    name: '苏州店铺自建·升学规划体验营',
+    productKind: 'standard',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -643,15 +685,24 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     sourceStoreId: 'store_suzhou',
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
+      },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 09:20:00',
+        sellableSkuIds: ['sku-G_1260408000000000005-1'],
       },
     ],
   },
   {
     id: 'G_1260413000000000001',
     name: '苏州共享·英本面试冲刺营',
+    productKind: 'standard',
     productCatalogId: 'thesis',
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
@@ -682,18 +733,18 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     carouselImages: [
       {
         id: 'carousel-G_1260413000000000001-1',
-        name: '原门店主图',
+        name: '原店铺主图',
         url: buildMockBannerImage('Suzhou Shared 01', '#2f6fed'),
       },
       {
         id: 'carousel-G_1260413000000000001-2',
-        name: '原门店详情图',
+        name: '原店铺详情图',
         url: buildMockBannerImage('Interview Sprint', '#1f4fb8'),
       },
     ],
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
       },
@@ -722,6 +773,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
       store_guangzhou: {
         storeId: 'store_guangzhou',
         priceMode: 'independent',
+        stockMode: 'follow',
         currentPrice: 299,
         skuPriceOverrides: [
           {
@@ -739,10 +791,19 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         updatedAt: '2026-04-13 10:40:00',
       },
     },
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 09:40:00',
+        sellableSkuIds: ['sku-G_1260413000000000001-1'],
+      },
+    ],
   },
   {
     id: 'G_1260413000000000002',
     name: '深圳共享·雅思规划体验营',
+    productKind: 'standard',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -766,12 +827,12 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     carouselImages: [
       {
         id: 'carousel-G_1260413000000000002-1',
-        name: '原门店主图',
+        name: '原店铺主图',
         url: buildMockBannerImage('Shenzhen Shared 02', '#0f8f74'),
       },
       {
         id: 'carousel-G_1260413000000000002-2',
-        name: '原门店详情图',
+        name: '原店铺详情图',
         url: buildMockBannerImage('Planning Camp', '#0c6a57'),
       },
     ],
@@ -795,28 +856,39 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
       store_guangzhou: {
         storeId: 'store_guangzhou',
         priceMode: 'follow',
+        stockMode: 'follow',
         nameMode: 'override',
-        overrideName: '广州门店专享·雅思规划体验营',
+        overrideName: '广州店铺专享·雅思规划体验营',
         carouselMode: 'override',
         overrideCarouselImages: [
           {
             id: 'carousel-G_1260413000000000002-gz-1',
-            name: '广州门店轮播图1',
+            name: '广州店铺轮播图1',
             url: buildMockBannerImage('Guangzhou Custom 02', '#f26b5b'),
           },
           {
             id: 'carousel-G_1260413000000000002-gz-2',
-            name: '广州门店轮播图2',
+            name: '广州店铺轮播图2',
             url: buildMockBannerImage('Custom Carousel', '#cc4d44'),
           },
         ],
         updatedAt: '2026-04-13 11:45:00',
       },
     },
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'referenced',
+        sharedAt: '2026-04-15 10:00:00',
+        referencedAt: '2026-04-15 10:20:00',
+        sellableSkuIds: ['sku-G_1260413000000000002-1'],
+      },
+    ],
   },
   {
     id: 'G_1260413000000000003',
     name: '苏州共享·升学顾问1对1诊断',
+    productKind: 'standard',
     productCatalogId: 'planning',
     productOwnershipId: 'item_06_03_01',
     productType: 'service',
@@ -840,13 +912,13 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     carouselImages: [
       {
         id: 'carousel-G_1260413000000000003-1',
-        name: '原门店主图',
+        name: '原店铺主图',
         url: buildMockBannerImage('Suzhou Shared 03', '#7b5cff'),
       },
     ],
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
       },
@@ -860,6 +932,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
   {
     id: 'G_1260414000000000001',
     name: '深圳共享·文书冲刺双规格包',
+    productKind: 'standard',
     productCatalogId: 'thesis',
     productOwnershipId: 'item_05_03_04',
     productType: 'course',
@@ -890,12 +963,12 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     carouselImages: [
       {
         id: 'carousel-G_1260414000000000001-1',
-        name: '原门店主图',
+        name: '原店铺主图',
         url: buildMockBannerImage('Shenzhen Shared 04', '#1b7f8a'),
       },
       {
         id: 'carousel-G_1260414000000000001-2',
-        name: '原门店详情图',
+        name: '原店铺详情图',
         url: buildMockBannerImage('Essay Sprint Pack', '#0e5560'),
       },
     ],
@@ -919,6 +992,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
       store_guangzhou: {
         storeId: 'store_guangzhou',
         priceMode: 'independent',
+        stockMode: 'follow',
         currentPrice: 229,
         skuPriceOverrides: [
           {
@@ -936,10 +1010,19 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         updatedAt: '2026-04-14 09:36:00',
       },
     },
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 10:40:00',
+        sellableSkuIds: ['sku-G_1260414000000000001-1'],
+      },
+    ],
   },
   {
     id: 'G_1260414000000000002',
     name: '苏州共享·暑期模考训练营',
+    productKind: 'standard',
     productCatalogId: 'international',
     productOwnershipId: 'item_03_03_07',
     productType: 'course',
@@ -977,18 +1060,18 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     carouselImages: [
       {
         id: 'carousel-G_1260414000000000002-1',
-        name: '原门店主图',
+        name: '原店铺主图',
         url: buildMockBannerImage('Suzhou Shared 05', '#8b5cf6'),
       },
       {
         id: 'carousel-G_1260414000000000002-2',
-        name: '原门店详情图',
+        name: '原店铺详情图',
         url: buildMockBannerImage('Summer Mock Camp', '#6237cf'),
       },
     ],
     storeConfigs: [
       {
-        storeId: 'store_suzhou',
+        storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
       },
@@ -1022,6 +1105,7 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
       store_guangzhou: {
         storeId: 'store_guangzhou',
         priceMode: 'independent',
+        stockMode: 'follow',
         currentPrice: 169,
         skuPriceOverrides: [
           {
@@ -1043,6 +1127,411 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         updatedAt: '2026-04-14 10:28:00',
       },
     },
+  },
+  // ── Bundle products ──────────────────────────────────────────────────────
+  {
+    id: 'B_1260420000000000001',
+    name: 'AP全程备考套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000001-1',
+        specText: '[唯寻橡沐] AP预测课-录播班 + [唯寻橡沐] AP冲刺班',
+        price: 159,
+        stock: 200,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 159,
+    stock: 200,
+    createdAt: '2026-04-10 09:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shanghai',
+    storeConfigs: [
+      { storeId: 'store_shanghai', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1211793802365374464', skuId: 'sku-G_1211793802365374464-1' },
+      { productId: 'G_1210999402622266432', skuId: 'sku-G_1210999402622266432-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 09:00:00',
+        sellableSkuIds: ['sku-B_1260420000000000001-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000002',
+    name: 'AP精品直播套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000002-1',
+        specText: '[唯寻橡沐] AP预测课-直播班 + [唯寻橡沐] AP冲刺班',
+        price: 179,
+        stock: 150,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 179,
+    stock: 150,
+    createdAt: '2026-04-10 09:30:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shanghai',
+    storeConfigs: [
+      { storeId: 'store_shanghai', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1211793802365374464', skuId: 'sku-G_1211793802365374464-2' },
+      { productId: 'G_1210999402622266432', skuId: 'sku-G_1210999402622266432-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 09:20:00',
+        sellableSkuIds: ['sku-B_1260420000000000002-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000003',
+    name: 'IB全程备考套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000003-1',
+        specText: '[唯寻橡沐] IB预测课-录播班 + [唯寻橡沐] IB冲刺班',
+        price: 149,
+        stock: 120,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 149,
+    stock: 120,
+    createdAt: '2026-04-10 10:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_beijing',
+    storeConfigs: [
+      { storeId: 'store_beijing', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1211793279398580224', skuId: 'sku-G_1211793279398580224-1' },
+      { productId: 'G_1210998727024709632', skuId: 'sku-G_1210998727024709632-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 09:40:00',
+        sellableSkuIds: ['sku-B_1260420000000000003-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000004',
+    name: 'IG大考冲刺套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000004-1',
+        specText: '[唯寻] 2026年IG&AS大考预测课 + [唯寻橡沐] AP预习课',
+        price: 219,
+        stock: 500,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 219,
+    stock: 500,
+    createdAt: '2026-04-11 09:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_beijing',
+    storeConfigs: [
+      { storeId: 'store_beijing', sellStatus: 'sellable', channelStatus: 'on' },
+      { storeId: 'mall_online', sellStatus: 'sellable', channelStatus: 'off' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1231319097741021184', skuId: 'sku-G_1231319097741021184-1' },
+      { productId: 'G_1210997383807242240', skuId: 'sku-G_1210997383807242240-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 10:00:00',
+        sellableSkuIds: ['sku-B_1260420000000000004-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000005',
+    name: 'STEP数学+IB联报套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_05_02_05',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000005-1',
+        specText: '2026年STEP数学冲刺营-直播班 + [唯寻橡沐] IB预测课-录播班',
+        price: 369,
+        stock: 36,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 369,
+    stock: 36,
+    createdAt: '2026-04-11 10:30:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_beijing',
+    storeConfigs: [
+      { storeId: 'store_beijing', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1210876543210987654', skuId: 'sku-G_1210876543210987654-2' },
+      { productId: 'G_1211793279398580224', skuId: 'sku-G_1211793279398580224-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 10:20:00',
+        sellableSkuIds: ['sku-B_1260420000000000005-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000006',
+    name: '雅思冲刺+留学规划套餐',
+    productKind: 'bundle',
+    productCatalogId: 'planning',
+    productOwnershipId: 'item_06_03_01',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000006-1',
+        specText: '雅思一对一提升服务 + 总部下发·春季留学规划诊断包',
+        price: 1098,
+        stock: 30,
+        status: 'off',
+      },
+    ],
+    status: 'off',
+    price: 1098,
+    stock: 30,
+    createdAt: '2026-04-11 14:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_hangzhou',
+    storeConfigs: [
+      { storeId: 'store_hangzhou', sellStatus: 'sellable', channelStatus: 'off' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1210123456789012345', skuId: 'sku-G_1210123456789012345-1' },
+      { productId: 'G_1260408000000000001', skuId: 'sku-G_1260408000000000001-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'referenced',
+        sharedAt: '2026-04-15 10:40:00',
+        referencedAt: '2026-04-15 11:10:00',
+        sellableSkuIds: ['sku-B_1260420000000000006-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000007',
+    name: '广州科研升学套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_05_02_05',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000007-1',
+        specText: '广州店铺自建·科研规划答疑营 + 苏州店铺自建·升学规划体验营',
+        price: 379,
+        stock: 50,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 379,
+    stock: 50,
+    createdAt: '2026-04-12 09:15:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_guangzhou',
+    storeConfigs: [
+      { storeId: 'store_guangzhou', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1260408000000000003', skuId: 'sku-G_1260408000000000003-1' },
+      { productId: 'G_1260408000000000005', skuId: 'sku-G_1260408000000000005-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'referenced',
+        sharedAt: '2026-04-15 11:00:00',
+        referencedAt: '2026-04-15 11:30:00',
+        sellableSkuIds: ['sku-B_1260420000000000007-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000008',
+    name: '苏州体验+规划联报套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000008-1',
+        specText: '苏州店铺自建·周末到店体验课-基础班 + 苏州店铺自建·升学规划体验营',
+        price: 299,
+        stock: 55,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 299,
+    stock: 55,
+    createdAt: '2026-04-12 10:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    storeConfigs: [
+      { storeId: 'store_suzhou', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1260408000000000002', skuId: 'sku-G_1260408000000000002-1' },
+      { productId: 'G_1260408000000000005', skuId: 'sku-G_1260408000000000005-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'referenced',
+        sharedAt: '2026-04-15 11:20:00',
+        referencedAt: '2026-04-15 11:45:00',
+        sellableSkuIds: ['sku-B_1260420000000000008-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000009',
+    name: '深圳语言+AP预习套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_08',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000009-1',
+        specText: '深圳店铺自建·语言能力提升营 + [唯寻橡沐] AP预习课',
+        price: 189,
+        stock: 76,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 189,
+    stock: 76,
+    createdAt: '2026-04-13 09:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    storeConfigs: [
+      { storeId: 'store_shenzhen', sellStatus: 'sellable', channelStatus: 'on' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1260408000000000004', skuId: 'sku-G_1260408000000000004-1' },
+      { productId: 'G_1210997383807242240', skuId: 'sku-G_1210997383807242240-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 11:40:00',
+        sellableSkuIds: ['sku-B_1260420000000000009-1'],
+      },
+    ],
+  },
+  {
+    id: 'B_1260420000000000010',
+    name: 'AP+IG联报优惠套餐',
+    productKind: 'bundle',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_07',
+    productType: 'virtual',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-B_1260420000000000010-1',
+        specText: '[唯寻橡沐] AP预测课-直播班 + [唯寻] 2026年IG&AS大考预测课',
+        price: 239,
+        stock: 400,
+        status: 'off',
+      },
+    ],
+    status: 'off',
+    price: 239,
+    stock: 400,
+    createdAt: '2026-04-14 09:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shanghai',
+    storeConfigs: [
+      { storeId: 'store_shanghai', sellStatus: 'sellable', channelStatus: 'off' },
+    ],
+    bundleComponents: [
+      { productId: 'G_1211793802365374464', skuId: 'sku-G_1211793802365374464-2' },
+      { productId: 'G_1231318174553739264', skuId: 'sku-G_1231318174553739264-1' },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_suzhou',
+        status: 'pending',
+        sharedAt: '2026-04-15 12:00:00',
+        sellableSkuIds: ['sku-B_1260420000000000010-1'],
+      },
+    ],
   },
 ];
 

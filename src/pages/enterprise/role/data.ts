@@ -59,7 +59,7 @@ const ROLE_SCOPE_VALUES: EnterpriseRoleScope[] = ['headquarter', 'store', 'regio
 
 export const ENTERPRISE_ROLE_SCOPE_LABEL_MAP: Record<EnterpriseRoleScope, string> = {
   headquarter: '总部角色',
-  store: '门店角色',
+  store: '店铺角色',
   region: '区域角色',
 };
 
@@ -68,7 +68,7 @@ export const ENTERPRISE_ROLE_SCOPE_DESCRIPTION_MAP: Record<
   string
 > = {
   headquarter: '管理总部职能部门和平台级权限配置',
-  store: '管理门店日常经营和一线岗位权限配置',
+  store: '管理店铺日常经营和一线岗位权限配置',
   region: '管理区域巡店、督导和区域运营权限配置',
 };
 
@@ -253,7 +253,7 @@ export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
 export const MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS: MerchantRolePermissionSystemOption[] =
   [
     {
-      label: '门店管理系统',
+      label: '店铺管理系统',
       value: 'store',
     },
     {
@@ -321,11 +321,11 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
   },
   {
     key: 'store-system.config',
-    title: '门店配置',
+    title: '店铺配置',
     children: [
       {
         key: 'store-config/department',
-        title: '门店组织',
+        title: '店铺组织',
       },
       {
         key: 'store-config/org-reference',
@@ -333,15 +333,15 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
       {
         key: 'store-config/employee',
-        title: '门店员工',
+        title: '店铺员工',
       },
       {
         key: 'store-config/role',
-        title: '门店角色',
+        title: '店铺角色',
       },
       {
         key: 'store-config/basic',
-        title: '门店基础配置',
+        title: '店铺基础配置',
       },
     ],
   },
@@ -354,7 +354,7 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
   },
   {
     key: 'merchant/organization',
-    title: '门店管理',
+    title: '店铺管理',
   },
   {
     key: 'merchant-system.product-config',
@@ -384,7 +384,7 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
       {
         key: 'merchant/store-employee',
-        title: '门店员工',
+        title: '店铺员工',
       },
       {
         key: 'merchant/role',
@@ -870,7 +870,7 @@ export function getMerchantRoleSystemNames(
   const merchantKeys = normalizeEnterpriseRolePermissionKeys(keys, scope, 'merchant');
   const systems: string[] = [];
   if (merchantKeys.some((k) => MERCHANT_ROLE_STORE_KEY_SET.has(k))) {
-    systems.push('门店管理系统');
+    systems.push('店铺管理系统');
   }
   if (merchantKeys.some((k) => MERCHANT_ROLE_MERCHANT_KEY_SET.has(k))) {
     systems.push('商户管理系统');
@@ -1108,7 +1108,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_store_manager',
       scope: 'store',
       name: '店长',
-      description: '负责门店经营、员工安排、商品与订单的日常管理。',
+      description: '负责店铺经营、员工安排、商品与订单的日常管理。',
       employeeCount: 8,
       isDefault: true,
       dataPermissions: {
@@ -1132,7 +1132,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_store_cashier',
       scope: 'store',
       name: '收银员',
-      description: '负责门店收银、订单核销和基础会员服务。',
+      description: '负责店铺收银、订单核销和基础会员服务。',
       employeeCount: 14,
       isDefault: true,
       dataPermissions: {
@@ -1153,7 +1153,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_store_staff',
       scope: 'store',
       name: '店员',
-      description: '负责商品陈列、客户接待和门店基础运营事务。',
+      description: '负责商品陈列、客户接待和店铺基础运营事务。',
       employeeCount: 21,
       isDefault: true,
       dataPermissions: {
@@ -1174,7 +1174,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_region_business_admin',
       scope: 'region',
       name: '事业部管理员',
-      description: '负责事业部经营目标拆解、区域资源协调、门店策略落地和跨店协同。',
+      description: '负责事业部经营目标拆解、区域资源协调、店铺策略落地和跨店协同。',
       employeeCount: 3,
       isDefault: true,
       dataPermissions: {
@@ -1191,7 +1191,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_region_director',
       scope: 'region',
       name: '区域总监',
-      description: '负责区域经营目标、门店巡检和跨店资源统筹。',
+      description: '负责区域经营目标、店铺巡检和跨店资源统筹。',
       employeeCount: 4,
       isDefault: true,
       dataPermissions: {
@@ -1214,7 +1214,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_region_operation',
       scope: 'region',
       name: '区域运营',
-      description: '负责区域门店运营分析、活动执行和问题跟进。',
+      description: '负责区域店铺运营分析、活动执行和问题跟进。',
       employeeCount: 6,
       isDefault: true,
       dataPermissions: {
@@ -1236,7 +1236,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_region_supervisor',
       scope: 'region',
       name: '区域督导',
-      description: '负责区域门店巡店、服务标准检查和整改闭环跟进。',
+      description: '负责区域店铺巡店、服务标准检查和整改闭环跟进。',
       employeeCount: 7,
       isDefault: true,
       dataPermissions: {
@@ -1257,7 +1257,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_merchant_super_admin',
       scope: 'headquarter',
       name: '商户超级管理员',
-      description: '拥有门店管理系统和商户管理系统全量权限，负责商户级别最终决策与兜底。',
+      description: '拥有店铺管理系统和商户管理系统全量权限，负责商户级别最终决策与兜底。',
       employeeCount: 1,
       isDefault: true,
       dataPermissions: { viewScope: 'all' },
@@ -1302,7 +1302,7 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_merchant_branch_gm',
       scope: 'headquarter',
       name: '商户分总',
-      description: '负责所辖区域内门店整体经营管理，兼顾商户系统权限配置与门店运营监控。',
+      description: '负责所辖区域内店铺整体经营管理，兼顾商户系统权限配置与店铺运营监控。',
       employeeCount: 3,
       isDefault: true,
       dataPermissions: { viewScope: 'all' },
@@ -1336,8 +1336,8 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
     {
       id: 'role_merchant_product_ops',
       scope: 'headquarter',
-      name: '门店商品运营',
-      description: '负责门店商品上架维护、库存调整及优惠券关联配置，保障商品供给质量。',
+      name: '店铺商品运营',
+      description: '负责店铺商品上架维护、库存调整及优惠券关联配置，保障商品供给质量。',
       employeeCount: 5,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
@@ -1359,8 +1359,8 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
     {
       id: 'role_merchant_marketing_ops',
       scope: 'headquarter',
-      name: '门店营销运营',
-      description: '负责门店活动策划与执行、优惠券发放及订单数据跟踪，驱动门店增长。',
+      name: '店铺营销运营',
+      description: '负责店铺活动策划与执行、优惠券发放及订单数据跟踪，驱动店铺增长。',
       employeeCount: 4,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
@@ -1384,8 +1384,8 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
     {
       id: 'role_merchant_store_admin',
       scope: 'region',
-      name: '门店管理员',
-      description: '负责门店日常运营管理，覆盖商品、订单、售后和营销等核心业务模块。',
+      name: '店铺管理员',
+      description: '负责店铺日常运营管理，覆盖商品、订单、售后和营销等核心业务模块。',
       employeeCount: 12,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
@@ -1411,8 +1411,8 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
     {
       id: 'role_merchant_customer_service',
       scope: 'region',
-      name: '门店客服',
-      description: '负责订单跟进、退换货处理及客户投诉受理，保障门店服务体验达标。',
+      name: '店铺客服',
+      description: '负责订单跟进、退换货处理及客户投诉受理，保障店铺服务体验达标。',
       employeeCount: 18,
       isDefault: true,
       dataPermissions: { viewScope: 'self' },

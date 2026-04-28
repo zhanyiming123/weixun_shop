@@ -27,7 +27,7 @@ export type ProductStoreDepartmentOption = {
 };
 
 export const PRODUCT_STORE_TYPE_LABEL_MAP: Record<ProductStoreType, string> = {
-  store: '门店',
+  store: '店铺',
   mall: '商城',
 };
 
@@ -50,30 +50,30 @@ export const PRODUCT_STORE_CHANNEL_STATUS_LABEL_MAP: Record<
 export const DEFAULT_PRODUCT_STORE_ITEMS: ProductStoreItem[] = [
   {
     id: 'store_suzhou',
-    name: '唯寻苏州门店',
+    name: '唯寻苏州店铺',
     type: 'store',
     departmentId: 'dept_offline',
-    departmentName: '线下门店部',
+    departmentName: '线下店铺部',
     address: '苏州市工业园区星湖街218号创意产业园B1栋',
     managerName: '陈老师',
     phone: '13855667788',
   },
   {
     id: 'store_guangzhou',
-    name: '唯寻广州门店',
+    name: '唯寻广州店铺',
     type: 'store',
     departmentId: 'dept_offline',
-    departmentName: '线下门店部',
+    departmentName: '线下店铺部',
     address: '广州市天河区珠江新城华夏路28号富力盈信大厦',
     managerName: '黄老师',
     phone: '13688991234',
   },
   {
     id: 'store_shenzhen',
-    name: '唯寻深圳门店',
+    name: '唯寻深圳店铺',
     type: 'store',
     departmentId: 'dept_offline',
-    departmentName: '线下门店部',
+    departmentName: '线下店铺部',
     address: '深圳市南山区海德三道航天科技广场',
     managerName: '刘老师',
     phone: '13761234567',

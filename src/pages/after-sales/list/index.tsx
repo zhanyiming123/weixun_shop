@@ -31,7 +31,7 @@ function AfterSalesListPage() {
         {
           label: '处理中工单',
           value: `${processingCount} 单`,
-          helper: '门店员工看到的是本部门范围内的售后工单。',
+          helper: '店铺员工看到的是本部门范围内的售后工单。',
         },
         {
           label: '今日结案',

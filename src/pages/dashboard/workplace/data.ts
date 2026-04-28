@@ -8,9 +8,9 @@ type StoreSeed = HeadquartersDashboardStore & {
 const STORE_SEEDS: StoreSeed[] = [
   {
     id: 'store_suzhou',
-    name: '苏州门店',
+    name: '苏州店铺',
     regionId: 'region_direct',
-    regionName: '总部直属门店',
+    regionName: '总部直属店铺',
     managerName: '陈晨',
     gmv: 328600,
     orderCount: 920,
@@ -20,7 +20,7 @@ const STORE_SEEDS: StoreSeed[] = [
   },
   {
     id: 'store_guangzhou',
-    name: '广州门店',
+    name: '广州店铺',
     regionId: 'region_south',
     regionName: '唯寻华南',
     managerName: '黄颖',
@@ -32,7 +32,7 @@ const STORE_SEEDS: StoreSeed[] = [
   },
   {
     id: 'store_shenzhen',
-    name: '深圳门店',
+    name: '深圳店铺',
     regionId: 'region_south',
     regionName: '唯寻华南',
     managerName: '赵琪',
@@ -49,7 +49,7 @@ const ALERT_SEEDS = [
     id: 'alert_1',
     level: 'high' as const,
     title: '库存周转低于安全阈值',
-    targetName: '广州门店',
+    targetName: '广州店铺',
     description: '重点课程套餐库存低于 7 天安全库存，建议今日完成补货。',
   },
   {
@@ -63,15 +63,15 @@ const ALERT_SEEDS = [
     id: 'alert_3',
     level: 'medium' as const,
     title: '转化率低于总部基准',
-    targetName: '深圳门店',
-    description: '门店转化率较总部均值低 2.6 个百分点，需要跟进销售脚本。',
+    targetName: '深圳店铺',
+    description: '店铺转化率较总部均值低 2.6 个百分点，需要跟进销售脚本。',
   },
   {
     id: 'alert_4',
     level: 'medium' as const,
     title: '人效表现波动',
-    targetName: '苏州门店',
-    description: '本周门店人效连续两日下降，建议排查排班与到店转化。',
+    targetName: '苏州店铺',
+    description: '本周店铺人效连续两日下降，建议排查排班与到店转化。',
   },
   {
     id: 'alert_5',
@@ -83,8 +83,8 @@ const ALERT_SEEDS = [
   {
     id: 'alert_6',
     level: 'medium' as const,
-    title: '直属门店到店转化波动',
-    targetName: '苏州门店',
+    title: '直属店铺到店转化波动',
+    targetName: '苏州店铺',
     description: '近 3 日到店转化率低于阶段目标，建议复盘预约到访与接待流程。',
   },
 ];
@@ -203,7 +203,7 @@ function buildTodos(
     return [
       {
         id: 'todo_region_1',
-        title: `确认${currentRegionName}重点门店补货计划`,
+        title: `确认${currentRegionName}重点店铺补货计划`,
         owner: `${currentRegionName}商品运营`,
         dueText: '今日 14:00 前',
         status: '待处理',
@@ -235,7 +235,7 @@ function buildTodos(
     },
     {
       id: 'todo_2',
-      title: '跟进北京门店转化提升方案',
+      title: '跟进北京店铺转化提升方案',
       owner: '总部销售运营',
       dueText: '今日 16:30 前',
       status: '待处理',

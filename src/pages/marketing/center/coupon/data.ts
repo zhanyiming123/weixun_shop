@@ -24,11 +24,12 @@ export type CouponValidityType =
   | 'afterReceiveDays'
   | 'custom';
 export type CouponListStatus = 'notStarted' | 'active' | 'expired' | 'voided';
+export type CouponOwnershipType = 'platform' | 'shop';
 
-// 从当前门店视角描述这张券的归属关系
-// own        = 本店创建，未分享给其他门店
-// shared_out = 本店创建，已分享给一个或多个其他门店
-// shared_in  = 从其他门店接收到的分享券
+// 从当前店铺视角描述这张券的归属关系
+// own        = 本店创建，未分享给其他店铺
+// shared_out = 本店创建，已分享给一个或多个其他店铺
+// shared_in  = 从其他店铺接收到的分享券
 export type CouponOwnershipScope = 'own' | 'shared_out' | 'shared_in';
 
 export type CouponProductCategoryOption = {
@@ -90,6 +91,7 @@ export type CouponFormValues = {
 export type CouponListFilterValues = {
   discountType?: CouponDiscountType;
   ownershipStoreIds: string[];
+  ownershipType?: CouponOwnershipType;
   status?: CouponListStatus;
   keyword: string;
 };
@@ -101,7 +103,7 @@ export type CouponListItem = {
   discountType: CouponDiscountType;
   productScope: CouponProductScope;
   discountSummary: string;
-  // 全局领取/发放数据（所有分享门店共用同一额度池）
+  // 全局领取/发放数据（所有分享店铺共用同一额度池）
   receivedCount: number;
   issueCount: number;
   // 本店领取数量
@@ -113,17 +115,22 @@ export type CouponListItem = {
   useEndAt: string;
   // 当前视角下的归属状态（own / shared_out / shared_in）
   ownershipScope: CouponOwnershipScope;
-  // 创建者门店 ID（必填）
+  // 创建者店铺 ID（必填）
   ownershipStoreId: string;
-  // 创建者门店名称（用于展示）
+  // 创建者店铺名称（用于展示）
   ownershipLabel: string;
-  // 已分享的目标门店列表
+  // 已分享的目标店铺列表
   sharedToStoreIds: string[];
-  // 适用门店列表（含创建门店自身）
+  // 适用店铺列表（含创建店铺自身）
   storeIds: string[];
-  // 若为 shared_in，来源门店名称
+  ownershipType: CouponOwnershipType;
+  // 若为 shared_in，来源店铺名称
   sourceStoreName?: string;
   status: CouponListStatus;
+};
+
+export type CouponReadOptions = {
+  isStoreSystem?: boolean;
 };
 
 export type CouponDetailRecord = {
@@ -140,7 +147,7 @@ export type CouponDetailRecord = {
   conditionCategoryPaths: string[][];
   conditionOwnershipSelections: CouponConditionOwnershipSelection[];
   selectedSkuIds: string[];
-  // 全局领取/发放（所有门店共享额度池）
+  // 全局领取/发放（所有店铺共享额度池）
   receivedCount: number;
   issueCount: number;
   // 本店领取数量
@@ -151,9 +158,9 @@ export type CouponDetailRecord = {
   receiveEndAt: string;
   useStartAt: string;
   useEndAt: string;
-  // 创建者门店 ID（必填，总部门店也是一个门店）
+  // 创建者店铺 ID（必填，总部店铺也是一个店铺）
   ownershipStoreId: string;
-  // 已分享到的目标门店列表（不含创建者自身）
+  // 已分享到的目标店铺列表（不含创建者自身）
   sharedToStoreIds: string[];
   status: CouponListStatus;
   validityType: CouponValidityType;
@@ -208,6 +215,16 @@ export const COUPON_OWNERSHIP_SCOPE_LABEL_MAP: Record<CouponOwnershipScope, stri
   shared_out: '本店创建',
   shared_in: '接收分享',
 };
+
+export const COUPON_OWNERSHIP_TYPE_LABEL_MAP: Record<CouponOwnershipType, string> = {
+  platform: '平台券',
+  shop: '店铺券',
+};
+
+export const COUPON_OWNERSHIP_TYPE_OPTIONS = [
+  { label: '平台券', value: 'platform' as CouponOwnershipType },
+  { label: '店铺券', value: 'shop' as CouponOwnershipType },
+];
 
 export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> = {
   all: '全部商品',
@@ -309,13 +326,13 @@ function buildCopyCouponName(name: string) {
   return `${trimmedName.slice(0, baseLength)}${COUPON_COPY_NAME_SUFFIX}`;
 }
 
-// 广州门店（store_guangzhou）在 Demo 中充当"总部门店"，
-// 负责创建标准券并分享给其他门店。
+// 广州店铺（store_guangzhou）在 Demo 中充当"总部店铺"，
+// 负责创建标准券并分享给其他店铺。
 const HQ_STORE_ID = 'store_guangzhou';
 const ALL_STORE_IDS_EXCEPT_HQ = ALL_COUPON_STORE_IDS.filter((id) => id !== HQ_STORE_ID);
 
 const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
-  // ─── 广州门店（总部门店）创建并分享给其他门店的券 ────────────────────────────
+  // ─── 广州店铺（总部店铺）创建并分享给其他店铺的券 ────────────────────────────
 
   {
     id: '122661783977',
@@ -599,7 +616,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     customUseTimeRange: [],
   },
 
-  // ─── 各门店自建券 ─────────────────────────────────────────────────────────────
+  // ─── 各店铺自建券 ─────────────────────────────────────────────────────────────
 
   {
     id: '122661783979',
@@ -767,7 +784,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   {
     id: '122661783990',
     couponKind: 'general',
-    name: '苏州门店周末转化券',
+    name: '苏州店铺周末转化券',
     discountType: 'discount',
     discountRate: 8.8,
     storeIds: ['store_suzhou'],
@@ -794,7 +811,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   {
     id: '122661783992',
     couponKind: 'general',
-    name: '广州门店升学咨询券',
+    name: '广州店铺升学咨询券',
     discountType: 'directReduction',
     directReductionAmount: 60,
     storeIds: ['store_guangzhou'],
@@ -821,7 +838,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   {
     id: '122661783994',
     couponKind: 'general',
-    name: '深圳门店语言提升礼券',
+    name: '深圳店铺语言提升礼券',
     discountType: 'directReduction',
     directReductionAmount: 40,
     storeIds: ['store_shenzhen'],
@@ -848,7 +865,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
   {
     id: '122661783996',
     couponKind: 'general',
-    name: '苏州门店到店转化券',
+    name: '苏州店铺到店转化券',
     discountType: 'discount',
     discountRate: 8.5,
     storeIds: ['store_suzhou'],
@@ -873,7 +890,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     customUseTimeRange: [],
   },
 
-  // ─── 门店之间相互分享的券（演示跨店分享功能）─────────────────────────────────
+  // ─── 店铺之间相互分享的券（演示跨店分享功能）─────────────────────────────────
 
   {
     id: '122661784001',
@@ -896,7 +913,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     receiveEndAt: '2026/05/15 23:59:59',
     useStartAt: '2026/04/01 00:00:00',
     useEndAt: '2026/06/01 23:59:59',
-    // 苏州门店创建，分享给广州和深圳（从苏州视角看为 shared_out）
+    // 苏州店铺创建，分享给广州和深圳（从苏州视角看为 shared_out）
     ownershipStoreId: 'store_suzhou',
     sharedToStoreIds: ['store_guangzhou', 'store_shenzhen'],
     status: 'active',
@@ -924,7 +941,7 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     receiveEndAt: '2026/05/20 23:59:59',
     useStartAt: '2026/04/05 00:00:00',
     useEndAt: '2026/06/05 23:59:59',
-    // 深圳门店创建，分享给苏州（从苏州视角看为 shared_in）
+    // 深圳店铺创建，分享给苏州（从苏州视角看为 shared_in）
     ownershipStoreId: 'store_shenzhen',
     sharedToStoreIds: ['store_suzhou'],
     status: 'active',
@@ -932,6 +949,94 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     validDays: 1,
     customUseTimeRange: [],
   },
+  {
+    id: '122661784101',
+    couponKind: 'general',
+    name: '店铺冲刺引流券A',
+    discountType: 'directReduction',
+    directReductionAmount: 30,
+    storeIds: [...ALL_COUPON_STORE_IDS],
+    productScope: 'all',
+    conditionCategoryPaths: [],
+    conditionOwnershipSelections: [],
+    selectedSkuIds: [],
+    receivedCount: 112,
+    issueCount: 240,
+    localReceivedCount: 47,
+    limitPerUser: 1,
+    receiveRate: 47,
+    receiveStartAt: '2026/04/18 00:00:00',
+    receiveEndAt: '2026/05/20 23:59:59',
+    useStartAt: '2026/04/18 00:00:00',
+    useEndAt: '2026/06/01 23:59:59',
+    ownershipStoreId: 'store_suzhou',
+    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_suzhou'),
+    status: 'active',
+    validityType: 'sameAsReceive',
+    validDays: 1,
+    customUseTimeRange: [],
+  },
+  {
+    id: '122661784102',
+    couponKind: 'general',
+    name: '店铺周末转化券B',
+    discountType: 'discount',
+    discountRate: 8.8,
+    storeIds: [...ALL_COUPON_STORE_IDS],
+    productScope: 'all',
+    conditionCategoryPaths: [],
+    conditionOwnershipSelections: [],
+    selectedSkuIds: [],
+    receivedCount: 86,
+    issueCount: 180,
+    localReceivedCount: 39,
+    limitPerUser: 1,
+    receiveRate: 48,
+    receiveStartAt: '2026/04/20 00:00:00',
+    receiveEndAt: '2026/05/22 23:59:59',
+    useStartAt: '2026/04/20 00:00:00',
+    useEndAt: '2026/06/05 23:59:59',
+    ownershipStoreId: 'store_shenzhen',
+    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_shenzhen'),
+    status: 'active',
+    validityType: 'afterReceiveDays',
+    validDays: 10,
+    customUseTimeRange: [],
+  },
+  {
+    id: '122661784103',
+    couponKind: 'general',
+    name: '店铺拉新福利券C',
+    discountType: 'fullReduction',
+    fullReductionThreshold: 300,
+    fullReductionAmount: 60,
+    storeIds: [...ALL_COUPON_STORE_IDS],
+    productScope: 'all',
+    conditionCategoryPaths: [],
+    conditionOwnershipSelections: [],
+    selectedSkuIds: [],
+    receivedCount: 74,
+    issueCount: 200,
+    localReceivedCount: 33,
+    limitPerUser: 1,
+    receiveRate: 37,
+    receiveStartAt: '2026/04/22 00:00:00',
+    receiveEndAt: '2026/05/28 23:59:59',
+    useStartAt: '2026/04/22 00:00:00',
+    useEndAt: '2026/06/10 23:59:59',
+    ownershipStoreId: 'store_suzhou',
+    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_suzhou'),
+    status: 'notStarted',
+    validityType: 'sameAsReceive',
+    validDays: 1,
+    customUseTimeRange: [],
+  },
+];
+
+const STORE_SYSTEM_PAGE_ONE_MOCK_COUPON_IDS = [
+  '122661784101',
+  '122661784102',
+  '122661784103',
 ];
 
 function cloneConditionCategoryPaths(conditionCategoryPaths: string[][]) {
@@ -949,7 +1054,7 @@ function cloneConditionOwnershipSelections(
   }));
 }
 
-// 根据当前查看者的门店 IDs，计算这张券的归属状态
+// 根据当前查看者的店铺 IDs，计算这张券的归属状态
 function computeOwnershipScope(
   record: CouponDetailRecord,
   visibleStoreIds?: string[]
@@ -963,6 +1068,36 @@ function computeOwnershipScope(
     return record.sharedToStoreIds.length > 0 ? 'shared_out' : 'own';
   }
   return 'shared_in';
+}
+
+export function getCouponOwnershipType(
+  record: Pick<CouponDetailRecord, 'ownershipStoreId'>
+): CouponOwnershipType {
+  return record.ownershipStoreId === HQ_STORE_ID ? 'platform' : 'shop';
+}
+
+function prioritizeStoreSystemPageOneCoupons(records: CouponDetailRecord[]) {
+  const rankMap = new Map(
+    STORE_SYSTEM_PAGE_ONE_MOCK_COUPON_IDS.map((id, index) => [id, index])
+  );
+  const prioritized: Array<CouponDetailRecord | undefined> = new Array(
+    STORE_SYSTEM_PAGE_ONE_MOCK_COUPON_IDS.length
+  );
+  const rest: CouponDetailRecord[] = [];
+
+  records.forEach((record) => {
+    const rank = rankMap.get(record.id);
+    if (typeof rank === 'number') {
+      prioritized[rank] = record;
+      return;
+    }
+    rest.push(record);
+  });
+
+  return [
+    ...prioritized.filter((item): item is CouponDetailRecord => Boolean(item)),
+    ...rest,
+  ];
 }
 
 export function formatCouponOwnershipLabel(
@@ -1044,6 +1179,7 @@ function toCouponListItem(
     ownershipLabel: formatCouponOwnershipLabel(record),
     sharedToStoreIds: [...record.sharedToStoreIds],
     storeIds: [...record.storeIds],
+    ownershipType: getCouponOwnershipType(record),
     sourceStoreName,
     status: record.status,
   };
@@ -1051,24 +1187,45 @@ function toCouponListItem(
 
 let couponDetailStore = COUPON_RECORD_SEEDS.map(cloneCouponDetailRecord);
 
-function getVisibleCouponRecords(visibleStoreIds?: string[]) {
+function getVisibleCouponRecords(
+  visibleStoreIds?: string[],
+  options?: CouponReadOptions
+) {
   if (typeof visibleStoreIds === 'undefined') {
     return couponDetailStore;
   }
 
-  return couponDetailStore.filter((item) =>
-    hasStoreIntersection(item.storeIds, visibleStoreIds)
-  );
+  if (options?.isStoreSystem) {
+    return couponDetailStore.filter(
+      (item) =>
+        visibleStoreIds.includes(item.ownershipStoreId) ||
+        hasStoreIntersection(item.sharedToStoreIds, visibleStoreIds)
+    );
+  }
+
+  return couponDetailStore.filter((item) => hasStoreIntersection(item.storeIds, visibleStoreIds));
 }
 
-export function readCouponListItems(visibleStoreIds?: string[]) {
-  return getVisibleCouponRecords(visibleStoreIds).map((record) =>
+export function readCouponListItems(
+  visibleStoreIds?: string[],
+  options?: CouponReadOptions
+) {
+  const visibleRecords = getVisibleCouponRecords(visibleStoreIds, options);
+  const orderedRecords = options?.isStoreSystem
+    ? prioritizeStoreSystemPageOneCoupons(visibleRecords)
+    : visibleRecords;
+
+  return orderedRecords.map((record) =>
     toCouponListItem(record, visibleStoreIds)
   );
 }
 
-export function readCouponById(id: string, visibleStoreIds?: string[]) {
-  const matched = getVisibleCouponRecords(visibleStoreIds).find(
+export function readCouponById(
+  id: string,
+  visibleStoreIds?: string[],
+  options?: CouponReadOptions
+) {
+  const matched = getVisibleCouponRecords(visibleStoreIds, options).find(
     (item) => item.id === id
   );
   return matched ? cloneCouponDetailRecord(matched) : undefined;
@@ -1110,7 +1267,8 @@ export function updateCouponQuota(
 
 export function updateCouponById(
   id: string,
-  values: CouponFormValues
+  values: CouponFormValues,
+  options?: CouponReadOptions
 ): CouponDetailRecord | undefined {
   const target = couponDetailStore.find((item) => item.id === id);
   if (!target) {
@@ -1148,10 +1306,12 @@ export function updateCouponById(
       : undefined;
   target.discountRate =
     values.discountType === 'discount' ? values.discountRate : undefined;
-  target.storeIds = nextStoreIds;
-  target.sharedToStoreIds = nextStoreIds.filter(
-    (storeId) => storeId !== target.ownershipStoreId
-  );
+  if (!options?.isStoreSystem) {
+    target.storeIds = nextStoreIds;
+    target.sharedToStoreIds = nextStoreIds.filter(
+      (storeId) => storeId !== target.ownershipStoreId
+    );
+  }
   target.productScope = values.productScope;
   target.conditionCategoryPaths = cloneConditionCategoryPaths(
     values.conditionCategoryPaths
@@ -1207,8 +1367,12 @@ export function buildCouponFormValuesFromRecord(
   };
 }
 
-export function buildCreateValuesFromCoupon(id: string, visibleStoreIds?: string[]) {
-  const source = readCouponById(id, visibleStoreIds);
+export function buildCreateValuesFromCoupon(
+  id: string,
+  visibleStoreIds?: string[],
+  options?: CouponReadOptions
+) {
+  const source = readCouponById(id, visibleStoreIds, options);
   if (!source) {
     return undefined;
   }
@@ -1241,6 +1405,7 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
 export const DEFAULT_COUPON_LIST_FILTER_VALUES: CouponListFilterValues = {
   discountType: undefined,
   ownershipStoreIds: [],
+  ownershipType: undefined,
   status: undefined,
   keyword: '',
 };

@@ -27,6 +27,7 @@ import {
   CouponDetailRecord,
   CouponDiscountType,
   CouponFormValues,
+  getCouponOwnershipType,
   CouponOwnershipScope,
   CouponPageMode,
   CouponProductScope,
@@ -192,6 +193,9 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   const currentOrganization = useSelector(
     (state: GlobalState) => state.currentOrganization
   );
+  const isStoreSystem = useSelector(
+    (state: GlobalState) => state.currentDemoSystem === 'store'
+  );
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const sourceId = query.get('sourceId')?.trim() || '';
   const couponId = query.get('id')?.trim() || '';
@@ -232,18 +236,18 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   const [formValues, setFormValues] = useState<CouponFormValues>(createDefaultFormValues);
   const [loadedRecord, setLoadedRecord] = useState<CouponDetailRecord | null>(null);
 
-  // 根据当前可见门店计算该券的归属类型（仅详情模式下有意义）
+  // 根据当前可见店铺计算该券的归属类型（仅详情模式下有意义）
   const couponOwnershipScope = useMemo((): CouponOwnershipScope | null => {
     if (!loadedRecord) return null;
     const visibleSet = visibleStoreIds ? new Set(visibleStoreIds) : null;
-    // 总部视角（visibleSet 为 null）或创建者门店在可见范围内 → 本店创建
+    // 总部视角（visibleSet 为 null）或创建者店铺在可见范围内 → 本店创建
     if (!visibleSet || visibleSet.has(loadedRecord.ownershipStoreId)) {
       return loadedRecord.sharedToStoreIds.length > 0 ? 'shared_out' : 'own';
     }
     return 'shared_in';
   }, [loadedRecord, visibleStoreIds]);
 
-  // 已分享门店的名称映射（用于详情展示）
+  // 已分享店铺的名称映射（用于详情展示）
   const storeNameMap = useMemo(
     () => new Map(storeItems.map((s) => [s.id, s.name])),
     [storeItems]
@@ -289,7 +293,9 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         setFormErrors({});
         return;
       }
-      const sourceValues = buildCreateValuesFromCoupon(sourceId, visibleStoreIds);
+      const sourceValues = buildCreateValuesFromCoupon(sourceId, visibleStoreIds, {
+        isStoreSystem,
+      });
       if (!sourceValues) {
         Message.error('复制来源优惠券不存在');
         history.replace('/marketing/center/coupon/list');
@@ -307,7 +313,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       return;
     }
 
-    const record = readCouponById(couponId, visibleStoreIds);
+    const record = readCouponById(couponId, visibleStoreIds, { isStoreSystem });
     if (!record) {
       Message.error('优惠券不存在或已删除');
       history.replace('/marketing/center/coupon/list');
@@ -322,10 +328,20 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       return;
     }
 
+    if (
+      isEditMode &&
+      isStoreSystem &&
+      getCouponOwnershipType(record) === 'platform'
+    ) {
+      Message.error('店铺管理系统中的平台券仅支持查看和复制');
+      history.replace(`/marketing/center/coupon/detail?id=${record.id}`);
+      return;
+    }
+
     setFormValues(buildCouponFormValuesFromRecord(record));
     setLoadedRecord(record);
     setFormErrors({});
-  }, [couponId, history, isCreateMode, isEditMode, sourceId, visibleStoreIds]);
+  }, [couponId, history, isCreateMode, isEditMode, isStoreSystem, sourceId, visibleStoreIds]);
 
   const selectedSkuCount = formValues.selectedSkuIds.length;
   const selectedStoreIds = useMemo(
@@ -345,19 +361,19 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
   }, [selectedStoreIds, storeItems]);
   const storeSummaryTitle = useMemo(() => {
     if (!selectedStoreIds.length) {
-      return '未选择门店';
+      return '未选择店铺';
     }
 
     return isAllCouponStoresSelected(
       selectedStoreIds,
       storeItems.map((item) => item.id)
     )
-      ? '全部门店'
-      : `已选 ${selectedStoreIds.length} 家门店`;
+      ? '全部店铺'
+      : `已选 ${selectedStoreIds.length} 家店铺`;
   }, [selectedStoreIds, storeItems]);
   const storeSummaryDescription = useMemo(() => {
     if (!selectedStoreIds.length) {
-      return '点击右侧按钮选择优惠券可使用的门店';
+      return '点击右侧按钮选择优惠券可使用的店铺';
     }
 
     if (
@@ -366,7 +382,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         storeItems.map((item) => item.id)
       )
     ) {
-      return `当前共覆盖 ${storeItems.length} 家门店`;
+      return `当前共覆盖 ${storeItems.length} 家店铺`;
     }
 
     return selectedStoreNames.join('、');
@@ -732,8 +748,8 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
       }
     }
 
-    if (!formValues.storeIds.length) {
-      errors.storeIds = '请选择适用门店';
+    if (!isStoreSystem && !formValues.storeIds.length) {
+      errors.storeIds = '请选择适用店铺';
     }
 
     if (!formValues.productScope) {
@@ -805,7 +821,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         Message.error('缺少优惠券 ID');
         return;
       }
-      const updated = updateCouponById(couponId, formValues);
+      const updated = updateCouponById(couponId, formValues, { isStoreSystem });
       if (!updated) {
         Message.error('优惠券不存在或已删除');
         return;
@@ -846,7 +862,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               </Typography.Title>
 
               {couponOwnershipScope === 'shared_in' && (
-                <Form.Item label="来源门店">
+                <Form.Item label="来源店铺">
                   <Space>
                     <IconShareInternal style={{ color: 'var(--color-success-6)' }} />
                     <Typography.Text>
@@ -856,7 +872,7 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
                   </Space>
                   <div style={{ marginTop: 4 }}>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      此券由来源门店统一管理，本店无法修改内容。
+                      此券由来源店铺统一管理，本店无法修改内容。
                     </Typography.Text>
                   </div>
                 </Form.Item>
@@ -990,28 +1006,30 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
               )}
             </Form.Item>
 
-            <Form.Item required label="适用门店">
-              <div className={styles.storeSelectorTrigger}>
-                <div className={styles.storeSelectorSummary}>
-                  <div
-                    className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
-                      }`}
-                  >
-                    {storeSummaryTitle}
+            {!isStoreSystem && (
+              <Form.Item required label="适用店铺">
+                <div className={styles.storeSelectorTrigger}>
+                  <div className={styles.storeSelectorSummary}>
+                    <div
+                      className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
+                        }`}
+                    >
+                      {storeSummaryTitle}
+                    </div>
+                    <div className={styles.storeSelectorDescription}>
+                      {storeSummaryDescription}
+                    </div>
                   </div>
-                  <div className={styles.storeSelectorDescription}>
-                    {storeSummaryDescription}
-                  </div>
-                </div>
 
-                <Button type="outline" onClick={openStoreModal}>
-                  {canEditCoupon ? '选择门店' : '查看门店'}
-                </Button>
-              </div>
-              {formErrors.storeIds && (
-                <div className={styles.fieldError}>{formErrors.storeIds}</div>
-              )}
-            </Form.Item>
+                  <Button type="outline" onClick={openStoreModal}>
+                    {canEditCoupon ? '选择店铺' : '查看店铺'}
+                  </Button>
+                </div>
+                {formErrors.storeIds && (
+                  <div className={styles.fieldError}>{formErrors.storeIds}</div>
+                )}
+              </Form.Item>
+            )}
 
             <Form.Item required label="选择商品">
               <div className={styles.scopeBlock}>
@@ -1377,16 +1395,18 @@ export function CouponFormPage({ mode = 'create' }: CouponFormPageProps) {
         onConfirm={handleSkuModalConfirm}
       />
 
-      <CouponStoreSelector
-        visible={storeModalVisible}
-        readonly={!canEditCoupon}
-        title="选择门店"
-        entityLabel="门店"
-        simple
-        selectedStoreIds={selectedStoreIds}
-        onCancel={() => setStoreModalVisible(false)}
-        onConfirm={handleStoreModalConfirm}
-      />
+      {!isStoreSystem && (
+        <CouponStoreSelector
+          visible={storeModalVisible}
+          readonly={!canEditCoupon}
+          title="选择店铺"
+          entityLabel="店铺"
+          simple
+          selectedStoreIds={selectedStoreIds}
+          onCancel={() => setStoreModalVisible(false)}
+          onConfirm={handleStoreModalConfirm}
+        />
+      )}
     </div>
   );
 }

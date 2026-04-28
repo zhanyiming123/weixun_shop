@@ -103,7 +103,7 @@ function StoreBasicConfigPage() {
   if (!currentStore || !currentConfig) {
     return (
       <Card>
-        <Empty description="当前未匹配到可配置的门店，请先切换到具体门店视角。" />
+        <Empty description="当前未匹配到可配置的店铺，请先切换到具体店铺视角。" />
       </Card>
     );
   }
@@ -131,7 +131,7 @@ function StoreBasicConfigPage() {
     const nextItems = upsertStoreBasicConfigItem(nextItem, configItems);
 
     setConfigItems(nextItems);
-    Message.success('门店基础配置已保存');
+    Message.success('店铺基础配置已保存');
   }
 
   function handleReset() {
@@ -145,13 +145,13 @@ function StoreBasicConfigPage() {
         <div className={styles.heroHeader}>
           <Space direction="vertical" size={10} style={{ display: 'flex' }}>
             <Tag color="arcoblue" size="large">
-              {demoContext?.systemLabel || '门店管理系统'}
+              {demoContext?.systemLabel || '店铺管理系统'}
             </Tag>
             <Typography.Title className={styles.heroTitle} heading={4}>
-              门店基础配置
+              店铺基础配置
             </Typography.Title>
             <Typography.Paragraph className={styles.heroMeta} type="secondary">
-              维护当前门店的基础信息与营业设置。基础字段默认继承门店档案，修改后会以本地配置方式单独保存。
+              维护当前店铺的基础信息与营业设置。基础字段默认继承店铺档案，修改后会以本地配置方式单独保存。
             </Typography.Paragraph>
           </Space>
 
@@ -167,24 +167,24 @@ function StoreBasicConfigPage() {
 
       <div className={styles.summaryGrid}>
         <Card className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>当前门店</span>
+          <span className={styles.summaryLabel}>当前店铺</span>
           <span className={styles.summaryValue}>{currentConfig.storeName}</span>
           <span className={styles.summaryHelper}>
-            当前组织下的唯一门店视角，配置保存后仅影响该门店的展示与营业参数。
+            当前组织下的唯一店铺视角，配置保存后仅影响该店铺的展示与营业参数。
           </span>
         </Card>
         <Card className={styles.summaryCard}>
           <span className={styles.summaryLabel}>负责人</span>
           <span className={styles.summaryValue}>{currentConfig.managerName}</span>
           <span className={styles.summaryHelper}>
-            适合用于门店联系人、负责人和门店值班管理的基础档案维护。
+            适合用于店铺联系人、负责人和店铺值班管理的基础档案维护。
           </span>
         </Card>
         <Card className={styles.summaryCard}>
           <span className={styles.summaryLabel}>最近保存</span>
           <span className={styles.summaryValue}>{currentConfig.updatedAt}</span>
           <span className={styles.summaryHelper}>
-            第一版使用本地持久化存储，刷新页面后仍会保留当前门店的已保存配置。
+            第一版使用本地持久化存储，刷新页面后仍会保留当前店铺的已保存配置。
           </span>
         </Card>
       </div>
@@ -194,26 +194,26 @@ function StoreBasicConfigPage() {
           className={styles.formCard}
           title={
             <div className={styles.cardTitle}>
-              <span>门店基础信息</span>
+              <span>店铺基础信息</span>
               <span className={styles.cardTitleDesc}>
-                可覆盖门店名称、地址、负责人与联系电话，不会直接改写门店基础常量表。
+                可覆盖店铺名称、地址、负责人与联系电话，不会直接改写店铺基础常量表。
               </span>
             </div>
           }
         >
           <Form.Item
             field="storeName"
-            label="门店名称"
-            rules={[{ required: true, message: '请输入门店名称' }]}
+            label="店铺名称"
+            rules={[{ required: true, message: '请输入店铺名称' }]}
           >
-            <Input placeholder="请输入门店名称" />
+            <Input placeholder="请输入店铺名称" />
           </Form.Item>
           <Form.Item
             field="address"
-            label="门店地址"
-            rules={[{ required: true, message: '请输入门店地址' }]}
+            label="店铺地址"
+            rules={[{ required: true, message: '请输入店铺地址' }]}
           >
-            <Input.TextArea placeholder="请输入门店地址" autoSize={{ minRows: 2 }} />
+            <Input.TextArea placeholder="请输入店铺地址" autoSize={{ minRows: 2 }} />
           </Form.Item>
           <Form.Item
             field="managerName"
@@ -285,7 +285,7 @@ function StoreBasicConfigPage() {
         <div className={styles.actions}>
           <Button onClick={handleReset}>恢复已保存配置</Button>
           <Button type="primary" onClick={handleSave}>
-            保存门店基础配置
+            保存店铺基础配置
           </Button>
         </div>
       </Form>

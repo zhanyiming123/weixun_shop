@@ -1,0 +1,184 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.warningText {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.warningDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-warning-6, #ff7d00);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 180px;
+}
+
+.table {
+  :global(.arco-table-th) {
+    background: #f7f8fa;
+    font-size: 13px;
+  }
+
+  :global(.arco-table-tr:hover .arco-table-td) {
+    background: #f2f3f5;
+  }
+}
+
+.productCell {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.skuProductCell {
+  padding-left: 8px;
+}
+
+.productImage {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e5e6eb;
+  flex-shrink: 0;
+}
+
+.productImagePlaceholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  background: #f2f3f5;
+  flex-shrink: 0;
+}
+
+.productInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.productTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.productName {
+  font-size: 13px;
+  color: #1d2129;
+  line-height: 1.4;
+}
+
+.productCode {
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.4;
+}
+
+.priceText {
+  font-size: 13px;
+  color: #1d2129;
+}
+
+.requiredMark {
+  color: #f53f3f;
+  margin-right: 2px;
+}
+
+.discountInput {
+  width: 120px;
+}
+
+.removeButton {
+  color: #165dff;
+  padding: 0;
+
+  &:hover {
+    color: #0e42d2;
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spuCountBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spuCountDot {
+  display: inline-block;
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #00b42a 0%, #00b42a 100%);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #00b42a;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #00b42a;
+  }
+}
+
+.footerRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 13px;
+}

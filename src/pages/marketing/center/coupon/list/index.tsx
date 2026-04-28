@@ -19,11 +19,14 @@ import {
   COUPON_DISCOUNT_OPTIONS,
   COUPON_LIST_STATUS_LABEL_MAP,
   COUPON_LIST_STATUS_OPTIONS,
+  COUPON_OWNERSHIP_TYPE_LABEL_MAP,
+  COUPON_OWNERSHIP_TYPE_OPTIONS,
   COUPON_SCOPE_SUMMARY_LABEL_MAP,
   CouponDiscountType,
   CouponListFilterValues,
   CouponListItem,
   CouponListStatus,
+  CouponOwnershipType,
   DEFAULT_COUPON_LIST_FILTER_VALUES,
   deleteCouponById,
   readCouponListItems,
@@ -42,7 +45,11 @@ function getDefaultFilterValues(): CouponListFilterValues {
   return { ...DEFAULT_COUPON_LIST_FILTER_VALUES };
 }
 
-function applyFilters(coupons: CouponListItem[], filters: CouponListFilterValues) {
+function applyFilters(
+  coupons: CouponListItem[],
+  filters: CouponListFilterValues,
+  isStoreSystem: boolean
+) {
   const keyword = filters.keyword.trim().toLowerCase();
 
   return coupons.filter((item) => {
@@ -50,11 +57,17 @@ function applyFilters(coupons: CouponListItem[], filters: CouponListFilterValues
       return false;
     }
 
-    if (
-      filters.ownershipStoreIds.length &&
-      !filters.ownershipStoreIds.includes(item.ownershipStoreId)
-    ) {
-      return false;
+    if (isStoreSystem) {
+      if (filters.ownershipType && item.ownershipType !== filters.ownershipType) {
+        return false;
+      }
+    } else {
+      if (
+        filters.ownershipStoreIds.length &&
+        !filters.ownershipStoreIds.includes(item.ownershipStoreId)
+      ) {
+        return false;
+      }
     }
 
     if (filters.status && item.status !== filters.status) {
@@ -74,6 +87,9 @@ function CouponListPage() {
   const currentOrganization = useSelector(
     (state: GlobalState) => state.currentOrganization
   );
+  const isStoreSystem = useSelector(
+    (state: GlobalState) => state.currentDemoSystem === 'store'
+  );
   const visibleStoreIds = useMemo(
     () =>
       currentOrganization?.scope === 'headquarter'
@@ -82,7 +98,7 @@ function CouponListPage() {
     [currentOrganization?.scope, currentOrganization?.storeIds]
   );
   const [coupons, setCoupons] = useState<CouponListItem[]>(() =>
-    readCouponListItems(visibleStoreIds)
+    readCouponListItems(visibleStoreIds, { isStoreSystem })
   );
   const [formValues, setFormValues] = useState<CouponListFilterValues>(
     getDefaultFilterValues()
@@ -122,8 +138,8 @@ function CouponListPage() {
   }, [applicableStoresCoupon, storeItemMap]);
 
   const filteredCoupons = useMemo(
-    () => applyFilters(coupons, appliedFilters),
-    [appliedFilters, coupons]
+    () => applyFilters(coupons, appliedFilters, isStoreSystem),
+    [appliedFilters, coupons, isStoreSystem]
   );
 
   useEffect(() => {
@@ -134,9 +150,9 @@ function CouponListPage() {
   }, [currentPage, filteredCoupons.length, pageSize]);
 
   useEffect(() => {
-    setCoupons(readCouponListItems(visibleStoreIds));
+    setCoupons(readCouponListItems(visibleStoreIds, { isStoreSystem }));
     setCurrentPage(1);
-  }, [currentOrganization?.id, visibleStoreIds]);
+  }, [currentOrganization?.id, isStoreSystem, visibleStoreIds]);
 
   function updateFormValue<K extends keyof CouponListFilterValues>(
     field: K,
@@ -158,7 +174,7 @@ function CouponListPage() {
   }
 
   function refreshCoupons() {
-    setCoupons(readCouponListItems(visibleStoreIds));
+    setCoupons(readCouponListItems(visibleStoreIds, { isStoreSystem }));
   }
 
   function handleVoidCoupon(record: CouponListItem) {
@@ -172,7 +188,10 @@ function CouponListPage() {
   }
 
   function renderActionLinks(record: CouponListItem) {
-    if (record.ownershipScope === 'shared_in') {
+    const isStorePlatformCoupon =
+      isStoreSystem && record.ownershipType === 'platform';
+
+    if (record.ownershipScope === 'shared_in' || isStorePlatformCoupon) {
       return (
         <span className={styles.actionLinks}>
           <Link
@@ -327,31 +346,48 @@ function CouponListPage() {
       dataIndex: 'discountSummary',
       width: 140,
     },
-    {
-      title: '活动归属',
-      dataIndex: 'ownershipLabel',
-      width: 180,
-      render: (_: string, record: CouponListItem) => (
-        <div className={styles.infoCell}>
-          <Typography.Text className={styles.primaryText}>
-            {record.ownershipLabel}
-          </Typography.Text>
-        </div>
-      ),
-    },
-    {
-      title: '适用门店',
-      dataIndex: 'storeIds',
-      width: 120,
-      render: (_: string[], record: CouponListItem) => (
-        <Link
-          className={styles.inlineLink}
-          onClick={() => setApplicableStoresCoupon(record)}
-        >
-          {record.storeIds.length} 家门店
-        </Link>
-      ),
-    },
+    isStoreSystem
+      ? {
+          title: '券归属类型',
+          dataIndex: 'ownershipType',
+          width: 140,
+          render: (_: string, record: CouponListItem) => (
+            <div className={styles.infoCell}>
+              <Typography.Text className={styles.primaryText}>
+                {COUPON_OWNERSHIP_TYPE_LABEL_MAP[record.ownershipType]}
+              </Typography.Text>
+            </div>
+          ),
+        }
+      : {
+          title: '活动归属',
+          dataIndex: 'ownershipLabel',
+          width: 180,
+          render: (_: string, record: CouponListItem) => (
+            <div className={styles.infoCell}>
+              <Typography.Text className={styles.primaryText}>
+                {record.ownershipLabel}
+              </Typography.Text>
+            </div>
+          ),
+        },
+    ...(!isStoreSystem
+      ? [
+          {
+            title: '适用店铺',
+            dataIndex: 'storeIds',
+            width: 120,
+            render: (_: string[], record: CouponListItem) => (
+              <Link
+                className={styles.inlineLink}
+                onClick={() => setApplicableStoresCoupon(record)}
+              >
+                {record.storeIds.length} 家店铺
+              </Link>
+            ),
+          },
+        ]
+      : []),
     {
       title: '领取/发放',
       dataIndex: 'receivedCount',
@@ -429,28 +465,52 @@ function CouponListPage() {
               </Select>
             </div>
 
-            <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>活动归属</div>
-              <Select
-                allowClear
-                mode="multiple"
-                className={styles.filterSelect}
-                placeholder="请选择活动归属"
-                value={formValues.ownershipStoreIds}
-                onChange={(value) => {
-                  updateFormValue(
-                    'ownershipStoreIds',
-                    Array.isArray(value) ? value.map(String) : []
-                  );
-                }}
-              >
-                {ownershipStoreOptions.map((item) => (
-                  <Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
-            </div>
+            {isStoreSystem ? (
+              <div className={styles.filterItem}>
+                <div className={styles.filterLabel}>券归属类型</div>
+                <Select
+                  allowClear
+                  className={styles.filterSelect}
+                  placeholder="请选择券归属类型"
+                  value={formValues.ownershipType}
+                  onChange={(value) =>
+                    updateFormValue(
+                      'ownershipType',
+                      (value || undefined) as CouponOwnershipType | undefined
+                    )
+                  }
+                >
+                  {COUPON_OWNERSHIP_TYPE_OPTIONS.map((item) => (
+                    <Option key={item.value} value={item.value}>
+                      {item.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            ) : (
+              <div className={styles.filterItem}>
+                <div className={styles.filterLabel}>活动归属</div>
+                <Select
+                  allowClear
+                  mode="multiple"
+                  className={styles.filterSelect}
+                  placeholder="请选择活动归属"
+                  value={formValues.ownershipStoreIds}
+                  onChange={(value) => {
+                    updateFormValue(
+                      'ownershipStoreIds',
+                      Array.isArray(value) ? value.map(String) : []
+                    );
+                  }}
+                >
+                  {ownershipStoreOptions.map((item) => (
+                    <Option key={item.value} value={item.value}>
+                      {item.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            )}
 
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>券状态</div>
@@ -524,51 +584,53 @@ function CouponListPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: 1710 }}
+            scroll={{ x: isStoreSystem ? 1530 : 1710 }}
             tableLayoutFixed
           />
         </div>
       </Card>
 
-      <Modal
-        title="适用门店"
-        visible={Boolean(applicableStoresCoupon)}
-        footer={null}
-        style={{ width: 880 }}
-        onCancel={() => setApplicableStoresCoupon(null)}
-      >
-        <Table
-          rowKey="id"
-          columns={[
-            {
-              title: '门店名称',
-              dataIndex: 'name',
-              width: 220,
-            },
-            {
-              title: '门店地址',
-              dataIndex: 'address',
-              width: 360,
-            },
-            {
-              title: '门店负责人',
-              dataIndex: 'managerName',
-              width: 200,
-              render: (_: string, record: ProductStoreItem) => (
-                <div className={styles.storeContactCell}>
-                  <span>{record.managerName}</span>
-                  <span>{`+86-${maskPhone(record.phone)}`}</span>
-                </div>
-              ),
-            },
-          ]}
-          data={applicableStores}
-          noDataElement="暂无适用门店"
-          pagination={false}
-          scroll={{ y: 420 }}
-          tableLayoutFixed
-        />
-      </Modal>
+      {!isStoreSystem && (
+        <Modal
+          title="适用店铺"
+          visible={Boolean(applicableStoresCoupon)}
+          footer={null}
+          style={{ width: 880 }}
+          onCancel={() => setApplicableStoresCoupon(null)}
+        >
+          <Table
+            rowKey="id"
+            columns={[
+              {
+                title: '店铺名称',
+                dataIndex: 'name',
+                width: 220,
+              },
+              {
+                title: '店铺地址',
+                dataIndex: 'address',
+                width: 360,
+              },
+              {
+                title: '店铺负责人',
+                dataIndex: 'managerName',
+                width: 200,
+                render: (_: string, record: ProductStoreItem) => (
+                  <div className={styles.storeContactCell}>
+                    <span>{record.managerName}</span>
+                    <span>{`+86-${maskPhone(record.phone)}`}</span>
+                  </div>
+                ),
+              },
+            ]}
+            data={applicableStores}
+            noDataElement="暂无适用店铺"
+            pagination={false}
+            scroll={{ y: 420 }}
+            tableLayoutFixed
+          />
+        </Modal>
+      )}
     </div>
   );
 }

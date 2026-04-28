@@ -70,7 +70,7 @@ export function getOrganizationScopeLabel(scope: OrganizationScope) {
     case 'region':
       return '区域';
     case 'store':
-      return '门店';
+      return '店铺';
     default:
       return '总部';
   }
