@@ -53,6 +53,7 @@ import {
   createDefaultFilterValues,
   DEFAULT_INVENTORY_UNIT,
   getProductCurrentStoreId,
+  getProductStoreChannelConfig,
   getProductStoreOverride,
   resolveSourceStoreMetaById,
 } from '@/lib/product';
@@ -97,6 +98,7 @@ type ProductSourceFilterOption = {
 type ProductRowActionItem = {
   key: string;
   label: string;
+  disabled?: boolean;
   onClick: () => void;
 };
 
@@ -115,8 +117,8 @@ const SELL_STATUS_FILTER_OPTIONS = [
 const SKU_STATE_ACTION_LABEL_MAP: Record<ProductSkuStateAction, string> = {
   sellable: '设为可售',
   unsellable: '设为不可售',
-  on: '设为可售',
-  off: '设为不可售',
+  on: '设为上架',
+  off: '设为下架',
 };
 const PRODUCT_STATUS_LABEL_MAP: Record<ProductStatus, string> = {
   on: '已上架',
@@ -129,6 +131,16 @@ const RangePicker = DatePicker.RangePicker;
 
 function getDateTimestamp(dateTime: string) {
   return new Date(dateTime.replace(' ', 'T')).getTime();
+}
+
+function getProductShareModeLabel(product: ProductListItem) {
+  const config = getProductStoreChannelConfig(product);
+
+  if (!config) {
+    return '-';
+  }
+
+  return config.shareMode === 'shared_pool' ? '商品共享池' : '商品库';
 }
 
 function normalizePath(value: (string | string[])[] | undefined): string[] {
@@ -1182,20 +1194,16 @@ function ProductListPage() {
           <Typography.Text type="secondary">--</Typography.Text>
         ),
     },
-    ...(!currentStoreId
-      ? [
-          {
-            title: '上架状态',
-            dataIndex: 'status',
-            width: 116,
-            render: (_: ProductStatus, record: ProductListItem) => (
-              <Tag color={getRecordDisplayStatus(record) === 'on' ? 'green' : 'gray'}>
-                {PRODUCT_STATUS_LABEL_MAP[getRecordDisplayStatus(record)]}
-              </Tag>
-            ),
-          },
-        ]
-      : []),
+    {
+      title: '上架状态',
+      dataIndex: 'status',
+      width: 116,
+      render: (_: ProductStatus, record: ProductListItem) => (
+        <Tag color={getRecordDisplayStatus(record) === 'on' ? 'green' : 'gray'}>
+          {PRODUCT_STATUS_LABEL_MAP[getRecordDisplayStatus(record)]}
+        </Tag>
+      ),
+    },
     {
       title: '商品售价',
       dataIndex: 'price',
@@ -1249,6 +1257,12 @@ function ProductListPage() {
         getDateTimestamp(a.createdAt) - getDateTimestamp(b.createdAt),
     },
     {
+      title: '共享形式',
+      dataIndex: 'shareMode',
+      width: 120,
+      render: (_: unknown, record: ProductListItem) => getProductShareModeLabel(record),
+    },
+    {
       title: '操作',
       dataIndex: 'operations',
       width: 240,
@@ -1290,7 +1304,8 @@ function ProductListPage() {
                   label: '复制',
                   onClick: () => goToProductCreate('copy', record),
                 },
-                ...(record.storeView.isSelfBuilt
+                ...(record.storeView.isSelfBuilt &&
+                getProductShareModeLabel(record) !== '商品共享池'
                   ? [
                       {
                         key: 'sales-store',
@@ -1314,16 +1329,13 @@ function ProductListPage() {
                 },
               ]
             : []),
-          ...(!currentStoreId
-            ? [
-                {
-                  key: 'channel-status',
-                  label: currentStatus === 'on' ? '下架' : '上架',
-                  onClick: () =>
-                    handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
-                },
-              ]
-            : []),
+          {
+            key: 'channel-status',
+            label: currentStatus === 'on' ? '设为下架' : '设为上架',
+            disabled: currentStoreId ? currentSellStatus !== 'sellable' : false,
+            onClick: () =>
+              handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
+          },
           ...(currentStoreId
             ? [
                 {
@@ -1361,7 +1373,8 @@ function ProductListPage() {
               <Link
                 key={action.key}
                 className={styles.actionLinkButton}
-                onClick={action.onClick}
+                disabled={action.disabled}
+                onClick={action.disabled ? undefined : action.onClick}
               >
                 {action.label}
               </Link>
@@ -1376,7 +1389,9 @@ function ProductListPage() {
                     }
                   >
                     {overflowActions.map((action) => (
-                      <Menu.Item key={action.key}>{action.label}</Menu.Item>
+                      <Menu.Item key={action.key} disabled={action.disabled}>
+                        {action.label}
+                      </Menu.Item>
                     ))}
                   </Menu>
                 }
@@ -1479,6 +1494,16 @@ function ProductListPage() {
       render: (value: ProductStoreSellStatus) => (
         <Tag color={value === 'sellable' ? 'green' : 'red'}>
           {PRODUCT_STORE_SELL_STATUS_LABEL_MAP[value]}
+        </Tag>
+      ),
+    },
+    {
+      title: '上架状态',
+      dataIndex: 'currentStatus',
+      width: 120,
+      render: (value: ProductStatus) => (
+        <Tag color={value === 'on' ? 'green' : 'gray'}>
+          {PRODUCT_STATUS_LABEL_MAP[value]}
         </Tag>
       ),
     },
@@ -1859,6 +1884,23 @@ function ProductListPage() {
         focusLock
         footer={
           <div className={styles.skuStatusModalFooter}>
+            <Button
+              disabled={!skuStatusSelectedRowKeys.length || Boolean(skuStatusSubmitting)}
+              loading={skuStatusSubmitting === 'on'}
+              type="primary"
+              onClick={() => handleSkuStatusBatchSubmit('on')}
+            >
+              设为上架
+            </Button>
+            <Button
+              disabled={!skuStatusSelectedRowKeys.length || Boolean(skuStatusSubmitting)}
+              loading={skuStatusSubmitting === 'off'}
+              type="primary"
+              status="warning"
+              onClick={() => handleSkuStatusBatchSubmit('off')}
+            >
+              设为下架
+            </Button>
             <Button
               disabled={!skuStatusSelectedRowKeys.length || Boolean(skuStatusSubmitting)}
               loading={skuStatusSubmitting === 'sellable'}
