@@ -197,4 +197,27 @@ describe('ProductRepository seeded mock recovery', () => {
     });
     expect(unlimitedProduct?.limitCount).toBeUndefined();
   });
+
+  it('backfills newly seeded shared-pool products into stale persisted snapshots', () => {
+    persistentStateMocks.readPersistentValue.mockReturnValue(
+      DEFAULT_PRODUCTS.filter(
+        (item) =>
+          item.id !== 'G_1260601000000000010' && item.id !== 'C_1260601000000000010'
+      )
+    );
+
+    const repository = new ProductRepository();
+    const snapshot = repository.readSnapshot();
+
+    expect(snapshot.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['G_1260601000000000010', 'C_1260601000000000010'])
+    );
+    expect(
+      snapshot.find((item) => item.id === 'G_1260601000000000010')?.storeChannelConfig
+    ).toMatchObject({
+      shareMode: 'shared_pool',
+      storeIds: ['mall_online', 'mall_mini_program'],
+    });
+    expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
+  });
 });
