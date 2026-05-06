@@ -5913,6 +5913,52 @@ function ProductCreatePage() {
                       </div>
                     </Form.Item>
                   )}
+
+                  {storeChannelConfigDraft.shareMode === 'shared_pool' && (
+                    <>
+                      <Form.Item className={styles.fullWidth} label="可售 SKU">
+                        <TreeSelect
+                          multiple
+                          treeCheckable
+                          allowClear
+                          placeholder="请选择可售 SKU（默认全部）"
+                          treeData={storeChannelProductPoolSkuTreeData}
+                          value={buildTreeSelectDisplaySkuKeys(
+                            storeChannelConfigDraft.sharedPoolSellableSkuKeys || [],
+                            storeChannelAvailableSkuKeys
+                          )}
+                          onChange={(value) => {
+                            const nextKeys = normalizeTreeSelectSkuKeys(
+                              value,
+                              storeChannelAvailableSkuKeys
+                            );
+                            patchStoreChannelConfig({
+                              sharedPoolSellableSkuKeys: nextKeys,
+                            });
+                          }}
+                        />
+                      </Form.Item>
+                      <Form.Item className={styles.fullWidth} label="自主定价">
+                        <div className={styles.storeChannelSwitchRow}>
+                          <Switch
+                            checked={
+                              storeChannelConfigDraft.sharedPoolAllowSelfPrice === true
+                            }
+                            onChange={(checked) =>
+                              patchStoreChannelConfig({
+                                sharedPoolAllowSelfPrice: checked,
+                              })
+                            }
+                          />
+                        </div>
+                        <Typography.Paragraph
+                          className={styles.storeChannelTableHint}
+                        >
+                          开启后，引用该商品的店铺可以自主定价。
+                        </Typography.Paragraph>
+                      </Form.Item>
+                    </>
+                  )}
                 </>
               )}
             </div>

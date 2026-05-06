@@ -49,6 +49,8 @@ export type StoreChannelConfigDraftItem = {
   storeScope: ProductStoreChannelStoreScope;
   storeIds: string[];
   productPoolStoreConfigs: StoreChannelProductPoolStoreConfigDraftItem[];
+  sharedPoolSellableSkuKeys?: string[];
+  sharedPoolAllowSelfPrice?: boolean;
 };
 
 export type StoreChannelSkuMetaItem = {
@@ -264,13 +266,19 @@ export function syncStoreChannelConfigDraft(
   skuKeys: string[],
   targetStoreIds: string[] = []
 ) {
+  const normalizedSkuKeys = uniqueStringArray(skuKeys);
+  const skuKeySet = new Set(normalizedSkuKeys);
+
   return {
     ...previous,
     storeIds: uniqueStringArray(previous.storeIds),
+    sharedPoolSellableSkuKeys: uniqueStringArray(
+      (previous.sharedPoolSellableSkuKeys || []).filter((key) => skuKeySet.has(key))
+    ),
     productPoolStoreConfigs: normalizeProductPoolStoreConfigs(
       previous.productPoolStoreConfigs || [],
       targetStoreIds,
-      uniqueStringArray(skuKeys)
+      normalizedSkuKeys
     ),
   };
 }
@@ -403,10 +411,23 @@ function expandStoreChannelConfig(
     targets:
       config.shareMode === 'product_pool'
         ? productPoolTargets
-        : sharedPoolTargetStoreIds.map((storeId) => ({
-            storeId,
-            skuIds: uniqueStringArray(skuMetaItems.map((item) => item.skuId)),
-          })),
+        : sharedPoolTargetStoreIds.map((storeId) => {
+            const allSkuIds = uniqueStringArray(skuMetaItems.map((item) => item.skuId));
+            const selectedSkuIds =
+              config.sharedPoolSellableSkuKeys?.length
+                ? uniqueStringArray(
+                    config.sharedPoolSellableSkuKeys
+                      .map((skuKey) => skuIdMap.get(skuKey) || '')
+                      .filter(Boolean)
+                  )
+                : allSkuIds;
+
+            return {
+              storeId,
+              skuIds: selectedSkuIds.length ? selectedSkuIds : allSkuIds,
+              ...(config.sharedPoolAllowSelfPrice ? { allowSelfPrice: true } : {}),
+            };
+          }),
   };
 }
 
