@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Input, Tag, Typography } from '@arco-design/web-react';
+import {
+  Button,
+  Input,
+  Message,
+  Modal,
+  Tag,
+  Typography,
+} from '@arco-design/web-react';
 import { IconPlus, IconSearch } from '@arco-design/web-react/icon';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,7 +14,10 @@ import {
   OrganizationItem,
   ORGANIZATION_STATUS_LABEL_MAP,
   useOrganizationItems,
+  writeOrganizationItems,
 } from '@/pages/enterprise/organization/data';
+import StoreDetailModal from '@/pages/enterprise/organization/store-detail-modal';
+import { getStoreCloseCheckResult } from '@/pages/enterprise/organization/store-close';
 import { GlobalState } from '@/store';
 import {
   buildDemoUserInfo,
@@ -28,12 +38,15 @@ function MerchantOrganizationPage() {
   const dispatch = useDispatch();
   const history = useHistory();
   const location = useLocation();
-  const [organizationItems] = useOrganizationItems();
+  const [organizationItems, setOrganizationItems] = useOrganizationItems();
   const { currentDemoSystem, currentDemoIdentity, demoContext } =
     useSelector((state: GlobalState) => state);
 
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [viewingOrganization, setViewingOrganization] =
+    useState<OrganizationItem | null>(null);
   const allowedOrganizationIds = demoContext?.allowedOrganizationIds || [];
   const hasOrganizationLimit = Boolean(allowedOrganizationIds.length);
   const allowedOrganizationIdSet = useMemo(
@@ -62,6 +75,11 @@ function MerchantOrganizationPage() {
   function handleReset() {
     setKeyword('');
     setAppliedKeyword('');
+  }
+
+  function openStoreDetail(item: OrganizationItem) {
+    setViewingOrganization(item);
+    setDetailVisible(true);
   }
 
   function goToEdit(item: OrganizationItem) {
@@ -120,6 +138,92 @@ function MerchantOrganizationPage() {
     history.push(`/${nextSelection.demoContext.defaultHomeRoute}`);
   }
 
+  function handleStoreDisable(item: OrganizationItem) {
+    const closeCheckResult = getStoreCloseCheckResult(item.id);
+
+    if (!closeCheckResult.canClose) {
+      Modal.warning({
+        title: '暂无法停用店铺',
+        content: '当前店铺已存在业务数据，暂无法停用。',
+      });
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认停用店铺',
+      content: '停用后该店铺将变为停用状态，是否继续？',
+      onOk: () => {
+        const nextItems = organizationItems.map((record) =>
+          record.id === item.id
+            ? {
+                ...record,
+                status: 'disabled' as const,
+              }
+            : record
+        );
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        setViewingOrganization((current) =>
+          current?.id === item.id
+            ? {
+                ...current,
+                status: 'disabled',
+              }
+            : current
+        );
+        Message.success('店铺已停用');
+      },
+    });
+  }
+
+  function handleStoreEnable(item: OrganizationItem) {
+    Modal.confirm({
+      title: '确认启用店铺',
+      content: `确定启用店铺「${item.name}」吗？`,
+      onOk: () => {
+        const nextItems = organizationItems.map((record) =>
+          record.id === item.id
+            ? {
+                ...record,
+                status: 'enabled' as const,
+              }
+            : record
+        );
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        setViewingOrganization((current) =>
+          current?.id === item.id
+            ? {
+                ...current,
+                status: 'enabled',
+              }
+            : current
+        );
+        Message.success('店铺已启用');
+      },
+    });
+  }
+
+  function handleStoreDelete(item: OrganizationItem) {
+    Modal.confirm({
+      title: '确认删除店铺',
+      content: `删除后将无法恢复，确定删除店铺「${item.name}」吗？`,
+      onOk: () => {
+        const nextItems = organizationItems.filter((record) => record.id !== item.id);
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        if (viewingOrganization?.id === item.id) {
+          setViewingOrganization(null);
+          setDetailVisible(false);
+        }
+        Message.success('店铺删除成功');
+      },
+    });
+  }
+
   return (
     <div className={styles.page}>
       {/* 筛选栏 */}
@@ -168,7 +272,7 @@ function MerchantOrganizationPage() {
 
             <div className={styles.cardInfo}>
               <div className={styles.cardRow}>
-                <span className={styles.cardRowLabel}>地址</span>
+                <span className={styles.cardRowLabel}>联系地址</span>
                 <span className={styles.cardRowValue}>{item.address || '-'}</span>
               </div>
               <div className={styles.cardRow}>
@@ -181,6 +285,13 @@ function MerchantOrganizationPage() {
             </div>
 
             <div className={styles.cardFooter}>
+              <button
+                type="button"
+                className={styles.footerBtn}
+                onClick={() => openStoreDetail(item)}
+              >
+                详情
+              </button>
               <button
                 type="button"
                 className={styles.footerBtn}
@@ -202,6 +313,33 @@ function MerchantOrganizationPage() {
               >
                 编辑
               </button>
+              {item.status === 'enabled' && (
+                <button
+                  type="button"
+                  className={styles.footerBtn}
+                  onClick={() => handleStoreDisable(item)}
+                >
+                  停用
+                </button>
+              )}
+              {item.status === 'disabled' && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.footerBtn}
+                    onClick={() => handleStoreEnable(item)}
+                  >
+                    启用
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.footerBtn}
+                    onClick={() => handleStoreDelete(item)}
+                  >
+                    删除
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -210,6 +348,12 @@ function MerchantOrganizationPage() {
       {appliedKeyword && !storeItems.length && (
         <div className={styles.emptyHint}>未找到名称含「{appliedKeyword}」的店铺</div>
       )}
+
+      <StoreDetailModal
+        visible={detailVisible}
+        organization={viewingOrganization}
+        onCancel={() => setDetailVisible(false)}
+      />
     </div>
   );
 }

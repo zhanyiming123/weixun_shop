@@ -7,6 +7,7 @@ import {
   getStoreSettingLocalSkuSpecValidationError,
   normalizeStoreSettingLocalSkuSpecText,
   parseStoreSettingLocalSkuSpecValues,
+  resolveStoreSettingSourceSkuConfigState,
   restoreStoreSettingLocalSkuState,
   syncStoreSettingLocalSkuRows,
   type StoreSettingLocalSkuDraftRow,
@@ -17,6 +18,17 @@ type SpecTextItem = {
 };
 
 describe('product list store setting helpers', () => {
+  it('shows source sku price config only when the store can manage independent price', () => {
+    expect(resolveStoreSettingSourceSkuConfigState(true)).toEqual({
+      mode: 'price',
+      hint: '源 SKU 保持只读，仅支持调整独立售价。',
+    });
+    expect(resolveStoreSettingSourceSkuConfigState(false)).toEqual({
+      mode: 'empty',
+      emptyText: '该商品无自定义配置项。',
+    });
+  });
+
   it('infers named spec fields from consistent source sku texts', () => {
     expect(
       buildStoreSettingSpecFields([
@@ -188,6 +200,12 @@ describe('product list store setting helpers', () => {
         stock: 10,
         sellStatus: 'sellable',
         status: 'on',
+        image: {
+          id: 'image_1',
+          name: 'IP图',
+          url: 'https://example.com/ip.png',
+        },
+        isDefaultSelected: true,
       },
       {
         skuId: 'local_2',
@@ -224,6 +242,12 @@ describe('product list store setting helpers', () => {
         stock: 10,
         sellStatus: 'sellable',
         status: 'on',
+        image: {
+          id: 'image_1',
+          name: 'IP图',
+          url: 'https://example.com/ip.png',
+        },
+        isDefaultSelected: true,
       },
       {
         skuId: 'generated:年级：11年级 / 课程体系：IB',
@@ -256,6 +280,12 @@ describe('product list store setting helpers', () => {
           stock: 10,
           sellStatus: 'sellable',
           status: 'on',
+          image: {
+            id: 'image_1',
+            name: 'ALEVEL图',
+            url: 'https://example.com/alevel.png',
+          },
+          isDefaultSelected: true,
         },
       ])
     ).toEqual({
@@ -272,6 +302,12 @@ describe('product list store setting helpers', () => {
           stock: 10,
           sellStatus: 'sellable',
           status: 'on',
+          image: {
+            id: 'image_1',
+            name: 'ALEVEL图',
+            url: 'https://example.com/alevel.png',
+          },
+          isDefaultSelected: true,
         },
       ],
       legacyIssues: [],

@@ -18,18 +18,27 @@ import {
 } from '@arco-design/web-react';
 import {
   IconApps,
-  IconDelete,
   IconDown,
   IconDragDotVertical,
-  IconEdit,
   IconMoreVertical,
-  IconPlus,
   IconRight,
   IconSearch,
 } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
 import { readProductStoreItems } from '@/pages/product/store-config/data';
 import { readDeptStoreAssignments, writeDeptStoreAssignments } from '@/utils/data-scope';
+import {
+  getMemberEffectiveRoleDisplay,
+  getMemberStatusLabel,
+  matchesMemberStatusFilter,
+  type MemberStatus,
+  type MemberStatusFilter,
+} from './member-status';
+import {
+  isDepartmentHeaderActionVisible,
+  isDepartmentNodeActionVisible,
+  isMemberMoreActionVisible,
+} from './visibility';
 
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -44,6 +53,7 @@ type MerchantDepartmentNode = {
 type MerchantDepartmentMember = {
   id: string;
   name: string;
+  status: MemberStatus;
   departmentId: string;
   departmentName: string;
   departmentIds?: string[];
@@ -82,12 +92,6 @@ type DepartmentFormValues = {
   parentId: string;
 };
 
-type ActiveMemberAction = {
-  record: MerchantDepartmentMember;
-  top: number;
-  left: number;
-};
-
 type DataScopeTreeNode = {
   key: string;
   title: string;
@@ -101,8 +105,6 @@ const MERCHANT_COMPANY_NAME = '上海唯寻教育科技有限公司';
 const ROOT_DEPARTMENT_ID = 'dept_root';
 const MEMBER_ROLE_OPTIONS = ['超级管理员', '普通用户', '部门管理员'];
 const IMPORT_DEFAULT_ROLE = '普通用户';
-const MEMBER_MORE_CARD_WIDTH = 108;
-const MEMBER_MORE_CARD_HEIGHT = 150;
 const DATA_SCOPE_DEPARTMENT_KEY_PREFIX = 'data_scope_dept:';
 const DATA_SCOPE_MEMBER_KEY_PREFIX = 'data_scope_member:';
 
@@ -253,6 +255,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_01',
     name: '超级管理员',
+    status: 'active',
     departmentId: ROOT_DEPARTMENT_ID,
     departmentName: MERCHANT_COMPANY_NAME,
     storeIds: [],
@@ -264,6 +267,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_02',
     name: '测试1',
+    status: 'active',
     departmentId: 'dept_group_center',
     departmentName: MERCHANT_COMPANY_NAME,
     storeIds: [],
@@ -275,6 +279,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_03',
     name: '倪苗苗',
+    status: 'active',
     departmentId: 'dept_shanghai_study',
     departmentName: '留学中心',
     storeIds: [],
@@ -286,6 +291,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_04',
     name: '王斐曼',
+    status: 'active',
     departmentId: 'dept_shanghai_future',
     departmentName: '唯寻未来学院',
     storeIds: [],
@@ -297,6 +303,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_05',
     name: '胡俊',
+    status: 'active',
     departmentId: 'dept_north_language',
     departmentName: '语培项目中心',
     storeIds: [],
@@ -308,6 +315,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_06',
     name: '黄静远',
+    status: 'active',
     departmentId: 'dept_uk',
     departmentName: '唯寻英国',
     storeIds: [],
@@ -319,6 +327,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_07',
     name: '申梦辰',
+    status: 'active',
     departmentId: 'dept_shanghai_master',
     departmentName: '英硕项目中心',
     storeIds: [],
@@ -330,6 +339,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_08',
     name: '刘舒婷',
+    status: 'active',
     departmentId: 'dept_north_marketing',
     departmentName: '市场运营中心',
     storeIds: [],
@@ -341,6 +351,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_09',
     name: '刘晓洁',
+    status: 'active',
     departmentId: 'dept_shanghai_young',
     departmentName: '青少项目中心',
     storeIds: [],
@@ -352,6 +363,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_10',
     name: '何忆雯',
+    status: 'active',
     departmentId: 'dept_uk_service',
     departmentName: '后端质检部',
     storeIds: [],
@@ -363,6 +375,7 @@ const MEMBER_ITEMS: MerchantDepartmentMember[] = [
   {
     id: 'member_11',
     name: '刘承伶',
+    status: 'active',
     departmentId: 'dept_north_planning',
     departmentName: '升学规划中心',
     storeIds: [],
@@ -680,11 +693,11 @@ function MerchantDepartmentPage() {
   const [actionDepartmentId, setActionDepartmentId] = useState<string | null>(
     null
   );
-  const [activeMemberAction, setActiveMemberAction] =
-    useState<ActiveMemberAction | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<(string | number)[]>(
     []
   );
+  const [memberStatusFilter, setMemberStatusFilter] =
+    useState<MemberStatusFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [memberItems, setMemberItems] =
@@ -874,24 +887,22 @@ function MerchantDepartmentPage() {
   }, [dataScopeTargetMember, departmentPathIdMap, departmentLabelMap]);
 
   const tableData = useMemo(() => {
-    if (!selectedDepartment) {
-      return memberItems;
-    }
-
-    if (selectedDepartment.id === ROOT_DEPARTMENT_ID) {
-      return memberItems;
-    }
-
-    const availableDepartmentIds = new Set(
-      collectDepartmentIds(selectedDepartment)
+    const membersByStatus = memberItems.filter((member) =>
+      matchesMemberStatusFilter(member.status, memberStatusFilter)
     );
 
-    return memberItems.filter((member) =>
+    if (!selectedDepartment || selectedDepartment.id === ROOT_DEPARTMENT_ID) {
+      return membersByStatus;
+    }
+
+    const availableDepartmentIds = new Set(collectDepartmentIds(selectedDepartment));
+
+    return membersByStatus.filter((member) =>
       getMemberDepartmentIds(member).some((departmentId) =>
         availableDepartmentIds.has(departmentId)
       )
     );
-  }, [memberItems, selectedDepartment]);
+  }, [memberItems, memberStatusFilter, selectedDepartment]);
 
   const currentPageMembers = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -902,7 +913,7 @@ function MerchantDepartmentPage() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedRowKeys([]);
-  }, [selectedDepartmentId]);
+  }, [memberStatusFilter, selectedDepartmentId]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(tableData.length / pageSize));
@@ -924,7 +935,6 @@ function MerchantDepartmentPage() {
   useEffect(() => {
     function closeActionCards() {
       setActionDepartmentId(null);
-      setActiveMemberAction(null);
     }
 
     document.addEventListener('click', closeActionCards);
@@ -948,69 +958,17 @@ function MerchantDepartmentPage() {
     });
   }
 
-  function handleDepartmentAction(
-    event: React.MouseEvent,
-    actionText: string,
-    nodeName: string
-  ) {
-    event.stopPropagation();
-    setActionDepartmentId(null);
-    showPendingMessage(`${actionText}「${nodeName}」`);
-  }
-
   function closeDepartmentModal() {
     setDepartmentModalVisible(false);
     departmentForm.resetFields();
   }
 
-  function openCreateDepartmentModal(parentId: string = selectedDepartmentId) {
-    const hasParent = Boolean(findDepartmentNode(departmentTree, parentId));
-    const nextParentId = hasParent ? parentId : ROOT_DEPARTMENT_ID;
-
-    setActionDepartmentId(null);
-    departmentForm.resetFields();
-    departmentForm.setFieldsValue({
-      name: '',
-      parentId: nextParentId,
-    });
-    setDepartmentModalVisible(true);
-  }
-
-  function handleMemberMoreAction(
+  function openMemberDataScope(
     event: React.MouseEvent,
-    actionText: string,
     record: MerchantDepartmentMember
   ) {
     event.stopPropagation();
-    setActiveMemberAction(null);
-
-    if (actionText === '数据从属') {
-      openDataScopeDrawer(record);
-      return;
-    }
-
-    showPendingMessage(`员工「${record.name}」${actionText}`);
-  }
-
-  function toggleMemberMoreCard(
-    event: React.MouseEvent<HTMLElement>,
-    record: MerchantDepartmentMember
-  ) {
-    event.stopPropagation();
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const left = Math.min(
-      Math.max(12, rect.right - MEMBER_MORE_CARD_WIDTH),
-      window.innerWidth - MEMBER_MORE_CARD_WIDTH - 12
-    );
-    const top = Math.min(
-      Math.max(12, rect.bottom + 8),
-      window.innerHeight - MEMBER_MORE_CARD_HEIGHT - 12
-    );
-
-    setActiveMemberAction((current) =>
-      current?.record.id === record.id ? null : { record, top, left }
-    );
+    openDataScopeDrawer(record);
   }
 
   function closeMemberModal() {
@@ -1037,9 +995,9 @@ function MerchantDepartmentPage() {
       const departmentStoreBinding = getDepartmentStoreBinding(selectedDepartmentId);
       const nextEmployeeCode = memberItems.length + 1;
       const importedMembers: MerchantDepartmentMember[] = [
-        { id: createMemberId(), name: '张华', phone: '13800001111', employeeCode: `WX${String(nextEmployeeCode).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
-        { id: createMemberId(), name: '李敏', phone: '13800002222', employeeCode: `WX${String(nextEmployeeCode + 1).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
-        { id: createMemberId(), name: '王磊', phone: '13800003333', employeeCode: `WX${String(nextEmployeeCode + 2).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
+        { id: createMemberId(), name: '张华', status: 'active', phone: '13800001111', employeeCode: `WX${String(nextEmployeeCode).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
+        { id: createMemberId(), name: '李敏', status: 'active', phone: '13800002222', employeeCode: `WX${String(nextEmployeeCode + 1).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
+        { id: createMemberId(), name: '王磊', status: 'active', phone: '13800003333', employeeCode: `WX${String(nextEmployeeCode + 2).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
       ];
       setMemberItems((prev) => [...prev, ...importedMembers]);
       Message.success(`已导入 ${importedMembers.length} 名员工，默认角色：${role}`);
@@ -1252,23 +1210,6 @@ function MerchantDepartmentPage() {
     });
   }
 
-  function openCreateMemberModal() {
-    const selectedDepartmentStoreBinding =
-      getDepartmentStoreBinding(selectedDepartmentId);
-
-    setEditingMember(null);
-    memberForm.resetFields();
-    memberForm.setFieldsValue({
-      name: '',
-      phone: '',
-      employeeCode: `WX${String(memberItems.length + 1).padStart(4, '0')}`,
-      departmentIds: [selectedDepartmentId],
-      storeIds: selectedDepartmentStoreBinding.storeIds,
-      role: '普通用户',
-    });
-    setMemberModalVisible(true);
-  }
-
   function openEditMemberModal(record: MerchantDepartmentMember) {
     const memberStoreIds = getMemberEffectiveStoreIds(record);
 
@@ -1293,9 +1234,13 @@ function MerchantDepartmentPage() {
       const normalizedDepartmentIds = normalizeTreeSelectValueArray(
         values.departmentIds
       );
+      const finalDepartmentIds =
+        editingMember && getMemberDepartmentIds(editingMember).length
+          ? getMemberDepartmentIds(editingMember)
+          : normalizedDepartmentIds;
       const normalizedStoreIdsInput = normalizeMemberStoreIds(values.storeIds);
       const normalizedRole = String(values.role || '').trim();
-      const nextDepartments = normalizedDepartmentIds.flatMap((departmentId) => {
+      const nextDepartments = finalDepartmentIds.flatMap((departmentId) => {
         const option = getDepartmentOption(departmentId);
         return option ? [option] : [];
       });
@@ -1306,12 +1251,12 @@ function MerchantDepartmentPage() {
         ? departmentStoreBinding.storeIds
         : normalizedStoreIdsInput;
 
-      if (!normalizedDepartmentIds.length || !primaryDepartment) {
+      if (!finalDepartmentIds.length || !primaryDepartment) {
         Message.error('请选择所在部门');
         return;
       }
 
-      if (nextDepartments.length !== normalizedDepartmentIds.length) {
+      if (nextDepartments.length !== finalDepartmentIds.length) {
         Message.error('所选部门无效，请重新选择');
         return;
       }
@@ -1325,6 +1270,7 @@ function MerchantDepartmentPage() {
                   name: normalizedName,
                   phone: normalizedPhone,
                   employeeCode: normalizedEmployeeCode,
+                  status: member.status,
                   departmentId: primaryDepartment.value,
                   departmentName: primaryDepartment.label,
                   departmentIds: nextDepartments.map((department) => department.value),
@@ -1344,6 +1290,7 @@ function MerchantDepartmentPage() {
             name: normalizedName,
             phone: normalizedPhone,
             employeeCode: normalizedEmployeeCode,
+            status: 'active',
             departmentId: primaryDepartment.value,
             departmentName: primaryDepartment.label,
             departmentIds: nextDepartments.map((department) => department.value),
@@ -1431,42 +1378,15 @@ function MerchantDepartmentPage() {
 
             {actionDepartmentId === node.id && (
               <span className={styles.departmentActionCard}>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openCreateDepartmentModal(node.id);
-                  }}
-                >
-                  <IconPlus />
-                  <span>新建</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) =>
-                    handleDepartmentAction(event, '编辑部门', node.name)
-                  }
-                >
-                  <IconEdit />
-                  <span>编辑</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => openStoreAssignModal(node, event)}
-                >
-                  <IconApps />
-                  <span>负责店铺</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.departmentDangerAction}
-                  onClick={(event) =>
-                    handleDepartmentAction(event, '删除部门', node.name)
-                  }
-                >
-                  <IconDelete />
-                  <span>删除</span>
-                </button>
+                {isDepartmentNodeActionVisible('负责店铺') && (
+                  <button
+                    type="button"
+                    onClick={(event) => openStoreAssignModal(node, event)}
+                  >
+                    <IconApps />
+                    <span>负责店铺</span>
+                  </button>
+                )}
               </span>
             )}
           </span>
@@ -1527,6 +1447,14 @@ function MerchantDepartmentPage() {
       title: '角色',
       dataIndex: 'role',
       width: 150,
+      render: (value: string, record: MerchantDepartmentMember) =>
+        getMemberEffectiveRoleDisplay(record.status, value),
+    },
+    {
+      title: '员工状态',
+      dataIndex: 'status',
+      width: 120,
+      render: (value: MemberStatus) => getMemberStatusLabel(value),
     },
     {
       title: '手机号',
@@ -1546,19 +1474,28 @@ function MerchantDepartmentPage() {
       render: (_: unknown, record: MerchantDepartmentMember) => (
         <span className={styles.tableActions}>
           <Link onClick={() => openEditMemberModal(record)}>编辑</Link>
-          <span
-            className={styles.memberMoreWrap}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Link onClick={(event) => toggleMemberMoreCard(event, record)}>
-              更多
-              <IconDown className={styles.moreIcon} />
+          {isMemberMoreActionVisible('数据从属') && (
+            <Link onClick={(event) => openMemberDataScope(event, record)}>
+              数据从属
             </Link>
-          </span>
+          )}
         </span>
       ),
     },
   ];
+
+  const headerActions = [
+    {
+      key: 'set-admin',
+      label: '设置管理员',
+      onClick: () => showPendingMessage('设置管理员'),
+    },
+    {
+      key: 'import-employee',
+      label: '导入员工',
+      onClick: openImportModal,
+    },
+  ].filter((action) => isDepartmentHeaderActionVisible(action.label));
   const selectedDepartmentStoreIds =
     getDepartmentStoreBinding(selectedDepartmentId).storeIds;
 
@@ -1570,13 +1507,6 @@ function MerchantDepartmentPage() {
             <Typography.Title heading={6} className={styles.sidebarTitle}>
               部门列表
             </Typography.Title>
-            <Button
-              type="text"
-              shape="circle"
-              icon={<IconPlus />}
-              className={styles.sidebarCreateButton}
-              onClick={() => openCreateDepartmentModal()}
-            />
           </div>
 
           <Input
@@ -1662,15 +1592,11 @@ function MerchantDepartmentPage() {
             </div>
 
             <div className={styles.headerActions}>
-              <Button onClick={() => showPendingMessage('设置管理员')}>
-                设置管理员
-              </Button>
-              <Button onClick={openImportModal}>
-                导入员工
-              </Button>
-              <Button type="primary" onClick={openCreateMemberModal}>
-                新建员工
-              </Button>
+              {headerActions.map((action) => (
+                <Button key={action.key} onClick={action.onClick}>
+                  {action.label}
+                </Button>
+              ))}
             </div>
           </section>
 
@@ -1686,8 +1612,10 @@ function MerchantDepartmentPage() {
           <section className={styles.filterBar}>
             <Select
               className={styles.statusSelect}
-              value="all"
-              onChange={() => showPendingMessage('成员状态筛选')}
+              value={memberStatusFilter}
+              onChange={(value) =>
+                setMemberStatusFilter(value as MemberStatusFilter)
+              }
             >
               <Option value="all">全部</Option>
               <Option value="active">在职员工</Option>
@@ -1747,66 +1675,6 @@ function MerchantDepartmentPage() {
         </main>
       </div>
 
-      {activeMemberAction && (
-        <span
-          className={styles.memberMoreCard}
-          style={{
-            top: activeMemberAction.top,
-            left: activeMemberAction.left,
-          }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={(event) =>
-              handleMemberMoreAction(
-                event,
-                '数据从属',
-                activeMemberAction.record
-              )
-            }
-          >
-            数据从属
-          </button>
-          <button
-            type="button"
-            onClick={(event) =>
-              handleMemberMoreAction(
-                event,
-                '重置密码',
-                activeMemberAction.record
-              )
-            }
-          >
-            重置密码
-          </button>
-          <button
-            type="button"
-            onClick={(event) =>
-              handleMemberMoreAction(
-                event,
-                '修改密码',
-                activeMemberAction.record
-              )
-            }
-          >
-            修改密码
-          </button>
-          <button
-            type="button"
-            onClick={(event) =>
-              handleMemberMoreAction(
-                event,
-                '离职处理',
-                activeMemberAction.record
-              )
-            }
-          >
-            离职处理
-          </button>
-        </span>
-      )}
-
       <Drawer
         title={`数据从属 · ${dataScopeTargetMember?.name || ''}`}
         visible={dataScopeDrawerVisible}
@@ -1829,8 +1697,15 @@ function MerchantDepartmentPage() {
             <div className={styles.dataScopeMemberMeta}>
               <span>姓名：{dataScopeTargetMember.name}</span>
               <span>部门：{dataScopeTargetDepartmentPath}</span>
+              <span>状态：{getMemberStatusLabel(dataScopeTargetMember.status)}</span>
               <span>岗位：{dataScopeTargetMember.position || '-'}</span>
-              <span>职级：{dataScopeTargetMember.role || '-'}</span>
+              <span>
+                职级：
+                {getMemberEffectiveRoleDisplay(
+                  dataScopeTargetMember.status,
+                  dataScopeTargetMember.role
+                )}
+              </span>
             </div>
 
             <div className={styles.dataScopeGrid}>
@@ -1949,17 +1824,32 @@ function MerchantDepartmentPage() {
             label="员工姓名"
             rules={[{ required: true, message: '请输入员工姓名' }]}
           >
-            <Input placeholder="请输入员工姓名" maxLength={20} showWordLimit />
+            <Input
+              disabled={Boolean(editingMember)}
+              placeholder="请输入员工姓名"
+              maxLength={20}
+              showWordLimit
+            />
           </Form.Item>
           <Form.Item
             field="phone"
             label="员工账号"
             rules={[{ required: true, message: '请输入员工账号' }]}
           >
-            <Input placeholder="请输入手机号" maxLength={20} showWordLimit />
+            <Input
+              disabled={Boolean(editingMember)}
+              placeholder="请输入手机号"
+              maxLength={20}
+              showWordLimit
+            />
           </Form.Item>
           <Form.Item field="employeeCode" label="员工编号">
-            <Input placeholder="请输入员工编号" maxLength={30} showWordLimit />
+            <Input
+              disabled={Boolean(editingMember)}
+              placeholder="请输入员工编号"
+              maxLength={30}
+              showWordLimit
+            />
           </Form.Item>
           <Form.Item
             field="departmentIds"
@@ -1967,6 +1857,7 @@ function MerchantDepartmentPage() {
             rules={[{ required: true, message: '请选择所在部门' }]}
           >
             <TreeSelect
+              disabled={Boolean(editingMember)}
               showSearch
               allowClear
               treeCheckable

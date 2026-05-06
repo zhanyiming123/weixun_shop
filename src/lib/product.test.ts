@@ -4,13 +4,13 @@ import {
   applyBundleRuntime,
   getProductCurrentSkus,
   getProductIndependentStockRule,
-  getProductStoreChannelRules,
+  getProductStoreChannelConfig,
   markShareTargetReferenced,
   normalizeProductKind,
   normalizeProductIndependentStockRule,
   normalizeProductShareTargets,
   normalizeProductStoreLocalSkuItems,
-  normalizeProductStoreChannelRules,
+  normalizeProductStoreChannelConfig,
   resolveBundleAvailability,
   syncReferencedStoreConfigsBySourceSellStatus,
   upsertPendingShareTargets,
@@ -84,6 +84,7 @@ describe('product domain rules', () => {
         sharedAt: ' 2026-04-23 10:00:00 ',
         referencedAt: ' 2026-04-23 11:00:00 ',
         sellableSkuIds: [' sku-1 ', 'sku-1', ' ', 'sku-2'] as unknown as string[],
+        allowSelfPrice: true,
       },
     ]);
 
@@ -94,6 +95,7 @@ describe('product domain rules', () => {
       sharedAt: '2026-04-23 10:00:00',
       referencedAt: undefined,
       sellableSkuIds: ['sku-1', 'sku-2'],
+      allowSelfPrice: true,
     });
   });
 
@@ -139,7 +141,7 @@ describe('product domain rules', () => {
     });
   });
 
-  it('resolves SKU price/stock/status overrides for target store', () => {
+  it('resolves SKU price/stock overrides for target store while deriving display status from sell status', () => {
     const product = createBaseProduct({
       storeOverrides: {
         store_target: {
@@ -160,7 +162,7 @@ describe('product domain rules', () => {
     const currentSku = getProductCurrentSkus(product, 'store_target')[0];
     expect(currentSku.currentPrice).toBe(88);
     expect(currentSku.currentStock).toBe(8);
-    expect(currentSku.currentStatus).toBe('off');
+    expect(currentSku.currentStatus).toBe('on');
   });
 
   it('normalizes local sku items and filters duplicates and collisions', () => {
@@ -233,6 +235,59 @@ describe('product domain rules', () => {
     ]);
   });
 
+  it('preserves local sku image and a single default-selected flag when normalizing', () => {
+    expect(
+      normalizeProductStoreLocalSkuItems([
+        {
+          skuId: 'local-1',
+          specText: '红色',
+          price: 88.25,
+          stock: 5,
+          sellStatus: 'sellable',
+          status: 'on',
+          image: {
+            id: ' image_1 ',
+            name: ' 红色图 ',
+            url: ' https://example.com/red.png ',
+          },
+          isDefaultSelected: true,
+        },
+        {
+          skuId: 'local-2',
+          specText: '蓝色',
+          price: 90,
+          stock: 3,
+          sellStatus: 'sellable',
+          status: 'on',
+          isDefaultSelected: true,
+        },
+      ])
+    ).toEqual([
+      {
+        skuId: 'local-1',
+        specText: '红色',
+        price: 88.25,
+        stock: 5,
+        sellStatus: 'sellable',
+        status: 'on',
+        image: {
+          id: 'image_1',
+          name: '红色图',
+          url: 'https://example.com/red.png',
+        },
+        isDefaultSelected: true,
+      },
+      {
+        skuId: 'local-2',
+        specText: '蓝色',
+        price: 90,
+        stock: 3,
+        sellStatus: 'sellable',
+        status: 'on',
+      },
+    ]);
+  });
+
   it('includes local sku items in current sku view and product summary', () => {
     const product = createBaseProduct({
       specMode: 'multi',
@@ -269,6 +324,12 @@ describe('product domain rules', () => {
               stock: 4,
               sellStatus: 'sellable',
               status: 'on',
+              image: {
+                id: 'image_1',
+                name: '红色图',
+                url: 'https://example.com/red.png',
+              },
+              isDefaultSelected: true,
             },
           ],
           nameMode: 'follow',
@@ -297,11 +358,134 @@ describe('product domain rules', () => {
       currentStock: 4,
       currentSellStatus: 'sellable',
       currentStatus: 'on',
+      image: {
+        id: 'image_1',
+        name: '红色图',
+        url: 'https://example.com/red.png',
+      },
+      isDefaultSelected: true,
       isLocalSku: true,
     });
     expect(listItem.stock).toBe(22);
     expect(listItem.storeView.currentPrice).toBe(90);
     expect(listItem.storeView.currentSkus).toHaveLength(3);
+  });
+
+  it('allows shared stores with allowSelfPrice to manage independent price without legacy price rules', () => {
+    const product = createBaseProduct({
+      independentPriceRule: {
+        enabled: false,
+        skuRules: [],
+      },
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 10:00:00',
+          referencedAt: '2026-04-23 10:05:00',
+          sellableSkuIds: ['sku-1'],
+          allowSelfPrice: true,
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'independent',
+          stockMode: 'follow',
+          currentPrice: 88,
+          skuPriceOverrides: [{ skuId: 'sku-1', currentPrice: 88 }],
+          skuStockOverrides: [],
+          skuStatusOverrides: [],
+          nameMode: 'follow',
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+        },
+      },
+    });
+
+    const listItem = buildProductListItem(product, 'store', ['store_target'], {
+      resolvedSourceStoreId: 'store_source',
+      sourceStoreName: '源店铺',
+      sourceRegionName: '华东',
+      salesStatusCounts: {
+        selling: 1,
+        off: 0,
+      },
+    });
+
+    expect(listItem.storeView.canManageIndependentPrice).toBe(true);
+    expect(listItem.storeView.priceMode).toBe('independent');
+    expect(listItem.storeView.currentPrice).toBe(88);
+  });
+
+  it('keeps shared stores without allowSelfPrice on follow price when legacy price rules are disabled', () => {
+    const product = createBaseProduct({
+      independentPriceRule: {
+        enabled: false,
+        skuRules: [],
+      },
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 10:00:00',
+          referencedAt: '2026-04-23 10:05:00',
+          sellableSkuIds: ['sku-1'],
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'independent',
+          stockMode: 'follow',
+          currentPrice: 88,
+          skuPriceOverrides: [{ skuId: 'sku-1', currentPrice: 88 }],
+          skuStockOverrides: [],
+          skuStatusOverrides: [],
+          nameMode: 'follow',
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+        },
+      },
+    });
+
+    const listItem = buildProductListItem(product, 'store', ['store_target'], {
+      resolvedSourceStoreId: 'store_source',
+      sourceStoreName: '源店铺',
+      sourceRegionName: '华东',
+      salesStatusCounts: {
+        selling: 1,
+        off: 0,
+      },
+    });
+
+    expect(listItem.storeView.canManageIndependentPrice).toBe(false);
+    expect(listItem.storeView.priceMode).toBe('follow');
+    expect(listItem.storeView.currentPrice).toBe(100);
   });
 
   it('exposes product independent stock rule through helper', () => {
@@ -330,61 +514,41 @@ describe('product domain rules', () => {
     });
   });
 
-  it('normalizes store channel rules and filters invalid values', () => {
+  it('normalizes single store channel config and filters invalid values', () => {
     expect(
-      normalizeProductStoreChannelRules(
-        [
-          {
-            id: ' rule_1 ',
-            fieldKeys: ['productPrice', 'bad_key' as never],
-            storeScope: 'specificStores',
-            storeIds: [' store_target ', 'store_target'],
-            skuScope: 'specificSkus',
-            skuIds: [' sku-1 ', 'sku-1', 'sku-3'],
-            shareMode: 'shared_pool',
-            skuConfigs: [
-              {
-                skuId: ' sku-1 ',
-                minSuggestedPrice: 90,
-                maxSuggestedPrice: 110,
-              },
-              {
-                skuId: 'sku-1',
-                minSuggestedPrice: 1,
-                maxSuggestedPrice: 2,
-              },
-              {
-                skuId: 'sku-2',
-                minSuggestedStock: 8,
-                maxSuggestedStock: 4,
-              },
-            ],
-          },
-        ],
+      normalizeProductStoreChannelConfig(
+        {
+          shareMode: 'shared_pool',
+          storeScope: 'specificStores',
+          storeIds: [' store_target ', 'store_target', 'store_missing'],
+          productPoolStoreConfigs: [
+            {
+              storeId: 'store_target',
+              sellStatus: 'sellable',
+              sellableSkuIds: [' sku-1 ', 'sku-1', 'sku-3'],
+              allowSelfPrice: true,
+            },
+            {
+              storeId: 'store_target',
+              sellStatus: 'sellable',
+              sellableSkuIds: ['sku-2'],
+            },
+          ],
+        },
+        undefined,
+        [],
         [{ id: 'sku-1' }, { id: 'sku-2' }],
         ['store_target']
       )
-    ).toEqual([
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice'],
-        storeScope: 'specificStores',
-        storeIds: ['store_target'],
-        skuScope: 'specificSkus',
-        skuIds: ['sku-1'],
-        shareMode: 'shared_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-1',
-            minSuggestedPrice: 90,
-            maxSuggestedPrice: 110,
-          },
-        ],
-      },
-    ]);
+    ).toEqual({
+      shareMode: 'shared_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_target'],
+      productPoolStoreConfigs: [],
+    });
   });
 
-  it('prefers matched store channel rules over legacy independent ranges', () => {
+  it('uses independent ranges when store channel config no longer carries sku suggestions', () => {
     const product = createBaseProduct({
       skus: [
         {
@@ -432,26 +596,18 @@ describe('product domain rules', () => {
           },
         ],
       },
-      storeChannelRules: [
-        {
-          id: 'rule_1',
-          fieldKeys: ['productPrice', 'productStock'],
-          storeScope: 'specificStores',
-          storeIds: ['store_target'],
-          skuScope: 'specificSkus',
-          skuIds: ['sku-1'],
-          shareMode: 'product_pool',
-          skuConfigs: [
-            {
-              skuId: 'sku-1',
-              minSuggestedPrice: 92,
-              maxSuggestedPrice: 108,
-              minSuggestedStock: 5,
-              maxSuggestedStock: 16,
-            },
-          ],
-        },
-      ],
+      storeChannelConfig: {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_target'],
+        productPoolStoreConfigs: [
+          {
+            storeId: 'store_target',
+            sellStatus: 'sellable',
+            sellableSkuIds: ['sku-1', 'sku-2'],
+          },
+        ],
+      },
       shareTargets: [
         {
           storeId: 'store_target',
@@ -465,17 +621,17 @@ describe('product domain rules', () => {
 
     const currentSkus = getProductCurrentSkus(product, 'store_target');
 
-    expect(currentSkus[0].minIndependentPrice).toBe(92);
-    expect(currentSkus[0].maxIndependentPrice).toBe(108);
-    expect(currentSkus[0].minIndependentStock).toBe(5);
-    expect(currentSkus[0].maxIndependentStock).toBe(16);
+    expect(currentSkus[0].minIndependentPrice).toBe(88);
+    expect(currentSkus[0].maxIndependentPrice).toBe(118);
+    expect(currentSkus[0].minIndependentStock).toBe(6);
+    expect(currentSkus[0].maxIndependentStock).toBe(18);
     expect(currentSkus[1].minIndependentPrice).toBe(70);
     expect(currentSkus[1].maxIndependentPrice).toBe(130);
     expect(currentSkus[1].minIndependentStock).toBe(2);
     expect(currentSkus[1].maxIndependentStock).toBe(10);
   });
 
-  it('exposes normalized store channel rules through helper', () => {
+  it('exposes normalized store channel config through helper and falls back to legacy rules', () => {
     const product = createBaseProduct({
       storeChannelRules: [
         {
@@ -489,23 +645,35 @@ describe('product domain rules', () => {
           skuConfigs: [],
         },
       ],
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 10:00:00',
+          referencedAt: '2026-04-23 10:05:00',
+          sellableSkuIds: ['sku-1'],
+          allowSelfPrice: true,
+        },
+      ],
     });
 
-    expect(getProductStoreChannelRules(product)).toEqual([
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice'],
-        storeScope: 'allStores',
-        storeIds: [],
-        skuScope: 'allSkus',
-        skuIds: [],
-        shareMode: 'product_pool',
-        skuConfigs: [],
-      },
-    ]);
+    expect(getProductStoreChannelConfig(product)).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_target'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku-1'],
+          allowSelfPrice: true,
+        },
+      ],
+    });
   });
 
-  it('follows source stock but allows explicit sku on override when stock mode is follow', () => {
+  it('follows source stock and ignores store-specific sku status overrides when stock mode is follow', () => {
     const product = createBaseProduct({
       skus: [
         {
@@ -533,7 +701,7 @@ describe('product domain rules', () => {
 
     const currentSku = getProductCurrentSkus(product, 'store_target')[0];
     expect(currentSku.currentStock).toBe(20);
-    expect(currentSku.currentStatus).toBe('on');
+    expect(currentSku.currentStatus).toBe('off');
   });
 
   it('treats non-sellable shared sku as unsellable before local overrides', () => {
@@ -643,7 +811,7 @@ describe('product domain rules', () => {
       (item) => item.storeId === 'store_target'
     );
     expect(targetRecovered?.sellStatus).toBe('sellable');
-    expect(targetRecovered?.channelStatus).toBe('off');
+    expect(targetRecovered?.channelStatus).toBe('on');
   });
 
   it('calculates bundle stock by min component stock and links component availability', () => {

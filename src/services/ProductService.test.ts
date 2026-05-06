@@ -478,6 +478,12 @@ describe('ProductService store overrides', () => {
           stock: 4.7,
           sellStatus: 'sellable',
           status: 'on',
+          image: {
+            id: 'image_1',
+            name: '红色图',
+            url: 'https://example.com/red.png',
+          },
+          isDefaultSelected: true,
         },
       ],
       nameMode: 'follow',
@@ -498,8 +504,152 @@ describe('ProductService store overrides', () => {
         stock: 4,
         sellStatus: 'sellable',
         status: 'on',
+        image: {
+          id: 'image_1',
+          name: '红色图',
+          url: 'https://example.com/red.png',
+        },
+        isDefaultSelected: true,
       },
     ]);
+  });
+
+  it('allows shared stores with allowSelfPrice to save independent prices without legacy price ranges', async () => {
+    const product = createShareProduct({
+      independentPriceRule: {
+        enabled: false,
+        skuRules: [],
+      },
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 12:30:00',
+          referencedAt: '2026-04-23 12:40:00',
+          sellableSkuIds: ['sku_1', 'sku_2'],
+          allowSelfPrice: true,
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.updateProductStoreOverride({
+      productId: 'product_1',
+      storeId: 'store_target',
+      priceMode: 'independent',
+      stockMode: 'follow',
+      skuPriceOverrides: [
+        {
+          skuId: 'sku_1',
+          currentPrice: 88,
+        },
+        {
+          skuId: 'sku_2',
+          currentPrice: 118,
+        },
+      ],
+      skuStockOverrides: [],
+      skuStatusOverrides: [],
+      nameMode: 'follow',
+      carouselMode: 'follow',
+      overrideCarouselImages: [],
+    });
+
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    const savedOverride = savedProducts[0].storeOverrides?.store_target;
+
+    expect(savedOverride?.priceMode).toBe('independent');
+    expect(savedOverride?.currentPrice).toBe(88);
+    expect(savedOverride?.skuPriceOverrides).toEqual([
+      {
+        skuId: 'sku_1',
+        currentPrice: 88,
+      },
+      {
+        skuId: 'sku_2',
+        currentPrice: 118,
+      },
+    ]);
+  });
+
+  it('rejects independent price save when neither legacy rules nor allowSelfPrice authorize it', async () => {
+    const product = createShareProduct({
+      independentPriceRule: {
+        enabled: false,
+        skuRules: [],
+      },
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 12:30:00',
+          referencedAt: '2026-04-23 12:40:00',
+          sellableSkuIds: ['sku_1', 'sku_2'],
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.updateProductStoreOverride({
+        productId: 'product_1',
+        storeId: 'store_target',
+        priceMode: 'independent',
+        stockMode: 'follow',
+        skuPriceOverrides: [
+          {
+            skuId: 'sku_1',
+            currentPrice: 88,
+          },
+          {
+            skuId: 'sku_2',
+            currentPrice: 118,
+          },
+        ],
+        skuStockOverrides: [],
+        skuStatusOverrides: [],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+      })
+    ).rejects.toThrowError('源商品未开放独立售价');
   });
 
   it('rejects local sku items for single spec products', async () => {
@@ -599,6 +749,12 @@ describe('ProductService store overrides', () => {
               stock: 4,
               sellStatus: 'sellable',
               status: 'on',
+              image: {
+                id: 'image_1',
+                name: '红色图',
+                url: 'https://example.com/red.png',
+              },
+              isDefaultSelected: true,
             },
           ],
           nameMode: 'follow',
@@ -633,11 +789,17 @@ describe('ProductService store overrides', () => {
         stock: 4,
         sellStatus: 'unsellable',
         status: 'off',
+        image: {
+          id: 'image_1',
+          name: '红色图',
+          url: 'https://example.com/red.png',
+        },
+        isDefaultSelected: true,
       },
     ]);
   });
 
-  it('sets shared unsellable sku to sellable without auto-on', async () => {
+  it('sets shared unsellable sku to sellable without writing a separate status override', async () => {
     const product = createShareProduct({
       shareTargets: [
         {
@@ -684,15 +846,10 @@ describe('ProductService store overrides', () => {
         currentSellStatus: 'sellable',
       },
     ]);
-    expect(savedProducts[0].storeOverrides?.store_target?.skuStatusOverrides).toEqual([
-      {
-        skuId: 'sku_2',
-        currentStatus: 'off',
-      },
-    ]);
+    expect(savedProducts[0].storeOverrides?.store_target?.skuStatusOverrides || []).toHaveLength(0);
   });
 
-  it('writes explicit sku on override for shared products when source sku is off', async () => {
+  it('clears targeted shared sku status overrides because store-specific up/down is no longer managed', async () => {
     const product = createShareProduct({
       skus: [
         {
@@ -754,17 +911,103 @@ describe('ProductService store overrides', () => {
     });
 
     const savedProducts = save.mock.calls[0][0] as ProductItem[];
-    expect(savedProducts[0].storeOverrides?.store_target?.skuStatusOverrides).toEqual([
-      {
-        skuId: 'sku_2',
-        currentStatus: 'on',
-      },
-    ]);
+    expect(savedProducts[0].storeOverrides?.store_target?.skuStatusOverrides || []).toHaveLength(0);
     expect(savedProducts[0].storeOverrides?.store_target?.skuSellStatusOverrides || []).toHaveLength(0);
   });
 });
 
 describe('ProductService store configs', () => {
+  it('allows saving standard products with appended skus while keeping existing skus intact', async () => {
+    const product = createShareProduct();
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.saveProduct({
+      ...product,
+      skus: [
+        ...product.skus,
+        {
+          id: 'sku_3',
+          specText: '规格3',
+          price: 140,
+          stock: 6,
+          status: 'on',
+        },
+      ],
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    expect(savedProducts[0].skus.map((item) => item.id)).toEqual([
+      'sku_1',
+      'sku_2',
+      'sku_3',
+    ]);
+  });
+
+  it('rejects deleting existing skus when saving standard products', async () => {
+    const product = createShareProduct();
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.saveProduct({
+        ...product,
+        skus: [product.skus[0]],
+      })
+    ).rejects.toThrowError('普通商品编辑时不允许新增或删除销售规格');
+  });
+
+  it('rejects changing existing sku spec text when saving standard products', async () => {
+    const product = createShareProduct();
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.saveProduct({
+        ...product,
+        skus: product.skus.map((item) =>
+          item.id === 'sku_1'
+            ? {
+                ...item,
+                specText: '改后的规格1',
+              }
+            : item
+        ),
+      })
+    ).rejects.toThrowError('普通商品编辑时不允许修改已有销售规格');
+  });
+
+  it('rejects changing immutable standard product fields on save', async () => {
+    const product = createShareProduct();
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.saveProduct({
+        ...product,
+        inventoryUnit: '件',
+      })
+    ).rejects.toThrowError('普通商品编辑时不允许修改库存单位');
+  });
+
   it('updates product store configs and turns unsellable stores to off', async () => {
     const product = createShareProduct({
       storeConfigs: [
@@ -828,7 +1071,7 @@ describe('ProductService store configs', () => {
       {
         storeId: 'store_new',
         sellStatus: 'sellable',
-        channelStatus: 'off',
+        channelStatus: 'on',
       },
     ]);
     expect(savedProduct?.status).toBe('on');
@@ -836,29 +1079,177 @@ describe('ProductService store configs', () => {
   });
 });
 
-describe('ProductService share pool mock data', () => {
-  it('returns 7 standard products and 3 bundle products for guangzhou store share pool', () => {
-    const service = new ProductService();
-    const result = service.querySharePool({
-      storeId: 'store_guangzhou',
-      page: 1,
-      pageSize: 50,
-    });
-    const counts = result.items.reduce(
-      (summary, item) => {
-        if (item.productKind === 'bundle') {
-          summary.bundle += 1;
-        } else {
-          summary.standard += 1;
-        }
-        return summary;
+describe('ProductService store channel config', () => {
+  it('updates self-built sales stores to match the product-pool management modal', async () => {
+    const product = createShareProduct({
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 12:30:00',
+          referencedAt: '2026-04-23 12:35:00',
+          sellableSkuIds: ['sku_1', 'sku_2'],
+          allowSelfPrice: true,
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'independent',
+          stockMode: 'follow',
+          currentPrice: 109,
+          skuPriceOverrides: [
+            {
+              skuId: 'sku_1',
+              currentPrice: 109,
+            },
+          ],
+          skuStockOverrides: [],
+          skuSellStatusOverrides: [],
+          skuStatusOverrides: [],
+          localSkuItems: [],
+          nameMode: 'follow',
+          overrideName: undefined,
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+          updatedAt: '2026-04-23 12:40:00',
+        },
       },
-      { standard: 0, bundle: 0 }
-    );
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
 
-    expect(result.total).toBe(10);
-    expect(counts.standard).toBe(7);
-    expect(counts.bundle).toBe(3);
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.updateProductStoreChannelConfig({
+      productId: 'product_1',
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku_1'],
+        },
+        {
+          storeId: 'store_other',
+          sellStatus: 'unsellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku_2'],
+          allowSelfPrice: true,
+        },
+      ],
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    const savedProduct = savedProducts[0];
+
+    expect(savedProduct.storeChannelConfig).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_target'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku_1'],
+        },
+        {
+          storeId: 'store_other',
+          sellStatus: 'unsellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    expect(savedProduct.shareTargets).toEqual([
+      {
+        storeId: 'store_target',
+        status: 'referenced',
+        sharedAt: '2026-04-23 12:30:00',
+        referencedAt: '2026-04-23 12:35:00',
+        sellableSkuIds: ['sku_1'],
+      },
+    ]);
+    expect(savedProduct.storeConfigs).toEqual([
+      {
+        storeId: 'store_source',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_target',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_other',
+        sellStatus: 'unsellable',
+        channelStatus: 'off',
+      },
+    ]);
+    expect(savedProduct.storeOverrides?.store_target).toMatchObject({
+      storeId: 'store_target',
+      priceMode: 'independent',
+      currentPrice: 109,
+      skuPriceOverrides: [
+        {
+          skuId: 'sku_1',
+          currentPrice: 109,
+        },
+      ],
+      skuSellStatusOverrides: [
+        {
+          skuId: 'sku_2',
+          currentSellStatus: 'unsellable',
+        },
+      ],
+      skuStatusOverrides: [],
+    });
+  });
+
+  it('rejects sales-store updates for non-self-built products', async () => {
+    const product = createShareProduct({
+      sourceType: 'headquarter',
+      sourceStoreId: undefined,
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.updateProductStoreChannelConfig({
+        productId: 'product_1',
+        productPoolStoreConfigs: [
+          {
+            storeId: 'store_target',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+            sellableSkuIds: ['sku_1'],
+          },
+        ],
+      })
+    ).rejects.toThrow('仅支持本店自建商品管理销售店铺');
   });
 });
 
@@ -922,10 +1313,72 @@ describe('ProductService query list filters', () => {
     expect(unsellableResult.items).toHaveLength(1);
     expect(unsellableResult.items[0].id).toBe('product_unsellable');
   });
+
+  it('supports online mall self-built standard products for bundle selector options', () => {
+    const onlineSelfBuiltProduct = createShareProduct({
+      id: 'product_online_self_built',
+      name: '线上商城自建商品',
+      sourceStoreId: 'mall_online',
+      shareTargets: [],
+      storeConfigs: [
+        {
+          storeId: 'mall_online',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+    });
+    const sharedProduct = createShareProduct({
+      id: 'product_shared_from_store',
+      name: '来自线下店的共享商品',
+      sourceStoreId: 'store_source',
+      shareTargets: [],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'mall_online',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([onlineSelfBuiltProduct, sharedProduct]),
+    };
+
+    const result = service.queryList({
+      productKind: 'standard',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['mall_online'],
+      page: 1,
+      pageSize: 20,
+    });
+
+    const selectorOptions = result.items.filter(
+      (item) =>
+        item.productKind === 'standard' &&
+        item.storeView.isSelfBuilt &&
+        item.sourceStoreId === 'mall_online'
+    );
+
+    expect(selectorOptions).toHaveLength(1);
+    expect(selectorOptions[0].id).toBe('product_online_self_built');
+    expect(selectorOptions[0].storeView.isSelfBuilt).toBe(true);
+  });
 });
 
 describe('ProductService share pool filters', () => {
-  it('supports product kind filter for all, standard, and bundle', () => {
+  it('supports product kind filter for all, standard, and combo; excludes bundle', () => {
     const service = new ProductService() as any;
     service.repository = {
       readSnapshot: vi.fn(() => createSharePoolFilterProducts()),
@@ -942,16 +1395,16 @@ describe('ProductService share pool filters', () => {
       page: 1,
       pageSize: 50,
     });
-    const bundleResult = service.querySharePool({
+    const comboResult = service.querySharePool({
       storeId: 'store_guangzhou',
-      productKind: 'bundle',
+      productKind: 'combo',
       page: 1,
       pageSize: 50,
     });
 
-    expect(allResult.total).toBe(3);
+    expect(allResult.total).toBe(2);
     expect(standardResult.total).toBe(2);
-    expect(bundleResult.total).toBe(1);
+    expect(comboResult.total).toBe(0);
   });
 
   it('supports share pool filters for catalog, ownership, source, price, and created date', () => {
@@ -991,11 +1444,11 @@ describe('ProductService share pool filters', () => {
       storeId: 'store_guangzhou',
       page: 1,
       pageSize: 50,
-      keyword: '早餐套餐',
+      keyword: '苹果单品',
     });
 
     expect(result.total).toBe(1);
-    expect(result.items[0].id).toBe('pool_bundle_1');
+    expect(result.items[0].id).toBe('pool_standard_1');
   });
 
   it('supports combining share status filter and product kind filter', () => {

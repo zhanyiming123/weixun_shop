@@ -19,10 +19,12 @@ import {
   normalizeProductCarouselImages,
   normalizeProductStoreLocalSkuItems,
   normalizeProductStoreOverride,
+  normalizeProductStoreChannelConfig,
   normalizeProductStoreSkuSellStatusOverrides,
   normalizeProductStoreSkuStatusOverrides,
   normalizeProductStoreSkuStockOverrides,
   normalizeProductStoreSkuPriceOverrides,
+  normalizeProductShareTargets,
   summarizeProductFromSkus,
   resolveProductSourceStoreMeta,
   syncReferencedStoreConfigsBySourceSellStatus,
@@ -51,6 +53,7 @@ import type {
   CancelReferenceSharedProductInput,
   ReferenceSharedProductInput,
   ShareProductsToPoolInput,
+  UpdateProductStoreChannelConfigInput,
   UpdateProductStoreChannelStatusInput,
   UpdateProductStoreConfigsInput,
   UpdateProductStoreOverrideInput,
@@ -62,7 +65,9 @@ function getDateTimestamp(dateTime: string) {
 }
 
 function normalizeProductKind(kind: ProductKind | undefined): ProductKind {
-  return kind === 'bundle' ? 'bundle' : 'standard';
+  if (kind === 'bundle') return 'bundle';
+  if (kind === 'combo') return 'combo';
+  return 'standard';
 }
 
 function getRangeBoundary(date: string, endOfDay = false) {
@@ -72,7 +77,7 @@ function getRangeBoundary(date: string, endOfDay = false) {
 
 function getProductListDisplayStatus(item: ProductListItem): ProductStatus {
   if (item.storeView.currentStoreId) {
-    return item.storeView.currentStoreChannelStatus === 'on' ? 'on' : 'off';
+    return item.storeView.currentStoreSellStatus === 'sellable' ? 'on' : 'off';
   }
 
   return item.status;
@@ -241,10 +246,7 @@ function getSalesStatusCounts(
 ) {
   const visibleStoreIdSet = new Set(visibleStoreIds);
   const selling = (product.storeConfigs || []).filter(
-    (item) =>
-      visibleStoreIdSet.has(item.storeId) &&
-      item.sellStatus === 'sellable' &&
-      item.channelStatus === 'on'
+    (item) => visibleStoreIdSet.has(item.storeId) && item.sellStatus === 'sellable'
   ).length;
 
   return {
@@ -300,45 +302,27 @@ function shouldRemoveStoreOverride(
   );
 }
 
-function getSkuSourceChannelStatus(status: ProductStatus | undefined): ProductStatus {
-  return status === 'off' ? 'off' : 'on';
-}
-
 function resolveNextSkuState(
   action: UpdateProductSkuStatusesInput['action'],
-  currentSellStatus: ProductStoreSellStatus,
-  currentStoredChannelStatus: ProductStatus
+  currentSellStatus: ProductStoreSellStatus
 ) {
-  if (action === 'sellable') {
-    return {
-      sellStatus: 'sellable' as const,
-      channelStatus:
-        currentSellStatus === 'sellable'
-          ? currentStoredChannelStatus
-          : ('off' as const),
-    };
-  }
-
-  if (action === 'unsellable') {
-    return {
-      sellStatus: 'unsellable' as const,
-      channelStatus: 'off' as const,
-    };
-  }
-
-  if (action === 'on') {
+  if (action === 'sellable' || action === 'on') {
     return {
       sellStatus: 'sellable' as const,
       channelStatus: 'on' as const,
     };
   }
 
+  if (action === 'unsellable' || action === 'off') {
+    return {
+      sellStatus: 'unsellable' as const,
+      channelStatus: 'off' as const,
+    };
+  }
+
   return {
     sellStatus: currentSellStatus,
-    channelStatus:
-      currentSellStatus === 'sellable'
-        ? ('off' as const)
-        : currentStoredChannelStatus,
+    channelStatus: currentSellStatus === 'sellable' ? ('on' as const) : ('off' as const),
   };
 }
 
@@ -441,14 +425,17 @@ export class ProductService {
         },
       ];
     });
+    const shareableItems = projectedItems.filter(
+      (item) => item.productKind !== 'bundle'
+    );
     const normalizedKind = input.productKind
       ? normalizeProductKind(input.productKind)
       : undefined;
     const filteredByKind = normalizedKind
-      ? projectedItems.filter(
+      ? shareableItems.filter(
           (item) => normalizeProductKind(item.productKind) === normalizedKind
         )
-      : projectedItems;
+      : shareableItems;
     const normalizedFilters = normalizeProductFilters(input.filters);
     const filteredByFilters = normalizedFilters
       ? applyFilters(filteredByKind, normalizedFilters, [currentStoreId])
@@ -693,17 +680,43 @@ export class ProductService {
     const normalizedKind = normalizeProductKind(nextProduct.productKind);
 
     if (previousProduct && normalizeProductKind(previousProduct.productKind) === 'standard') {
-      const previousSkuIds = (previousProduct.skus || []).map((item) => item.id);
-      const nextSkuIds = (nextProduct.skus || []).map((item) => item.id);
-      const previousSkuIdSet = new Set(previousSkuIds);
-      const isSameSkuSet =
-        previousSkuIds.length === nextSkuIds.length &&
-        nextSkuIds.every((item) => previousSkuIdSet.has(item));
+      if (previousProduct.productCatalogId !== nextProduct.productCatalogId) {
+        throw new AppError('PRODUCT_EDIT_CATALOG_IMMUTABLE', '普通商品编辑时不允许修改商品类目');
+      }
 
-      if (!isSameSkuSet) {
+      if (previousProduct.productOwnershipId !== nextProduct.productOwnershipId) {
+        throw new AppError('PRODUCT_EDIT_OWNERSHIP_IMMUTABLE', '普通商品编辑时不允许修改商品分类');
+      }
+
+      if (previousProduct.inventoryUnit !== nextProduct.inventoryUnit) {
+        throw new AppError('PRODUCT_EDIT_INVENTORY_UNIT_IMMUTABLE', '普通商品编辑时不允许修改库存单位');
+      }
+
+      if (previousProduct.specMode !== nextProduct.specMode) {
+        throw new AppError('PRODUCT_EDIT_SPEC_MODE_IMMUTABLE', '普通商品编辑时不允许修改规格模式');
+      }
+
+      const previousSkuMap = new Map(
+        (previousProduct.skus || []).map((item) => [item.id, item])
+      );
+      const nextSkuIds = (nextProduct.skus || []).map((item) => item.id);
+
+      if ((previousProduct.skus || []).some((item) => !nextSkuIds.includes(item.id))) {
         throw new AppError(
           'PRODUCT_EDIT_SKU_IMMUTABLE',
           '普通商品编辑时不允许新增或删除销售规格'
+        );
+      }
+
+      const hasChangedExistingSkuSpec = (nextProduct.skus || []).some((item) => {
+        const previousSku = previousSkuMap.get(item.id);
+        return previousSku && previousSku.specText !== item.specText;
+      });
+
+      if (hasChangedExistingSkuSpec) {
+        throw new AppError(
+          'PRODUCT_EDIT_SKU_SPEC_IMMUTABLE',
+          '普通商品编辑时不允许修改已有销售规格'
         );
       }
     }
@@ -773,15 +786,9 @@ export class ProductService {
             return config;
           }
 
-          if (config.sellStatus !== 'sellable') {
-            return {
-              ...config,
-              channelStatus: 'off',
-            };
-          }
-
           return {
             ...config,
+            sellStatus: input.channelStatus === 'on' ? 'sellable' : 'unsellable',
             channelStatus: input.channelStatus,
           };
         }
@@ -811,7 +818,7 @@ export class ProductService {
             item.storeId,
             {
               ...item,
-              channelStatus: item.sellStatus === 'sellable' ? item.channelStatus : 'off',
+              channelStatus: item.sellStatus === 'sellable' ? 'on' : 'off',
             } as ProductStoreConfigItem,
           ])
       ).values()
@@ -860,6 +867,172 @@ export class ProductService {
     await this.repository.save(nextProducts);
   }
 
+  async updateProductStoreChannelConfig(
+    input: UpdateProductStoreChannelConfigInput
+  ) {
+    const product = await this.getProductById(input.productId);
+
+    if (product.sourceType !== 'store' || !product.sourceStoreId) {
+      throw new AppError('PRODUCT_SOURCE_MISMATCH', '仅支持本店自建商品管理销售店铺');
+    }
+
+    const managedStoreIds = Array.from(
+      new Set(
+        (input.productPoolStoreConfigs || [])
+          .map((item) => item.storeId)
+          .filter((storeId) => storeId && storeId !== product.sourceStoreId)
+      )
+    );
+
+    if (!managedStoreIds.length) {
+      return;
+    }
+
+    const normalizedStoreChannelConfig = normalizeProductStoreChannelConfig(
+      {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: managedStoreIds,
+        productPoolStoreConfigs: input.productPoolStoreConfigs,
+      },
+      undefined,
+      [],
+      product.skus || [],
+      managedStoreIds
+    );
+    const normalizedManagedConfigs =
+      normalizedStoreChannelConfig?.productPoolStoreConfigs || [];
+    const managedStoreIdSet = new Set(managedStoreIds);
+    const normalizedConfigMap = new Map(
+      normalizedManagedConfigs.map((item) => [item.storeId, item])
+    );
+    const existingShareTargets = normalizeProductShareTargets(product.shareTargets || []);
+    const existingShareTargetMap = new Map(
+      existingShareTargets.map((item) => [item.storeId, item])
+    );
+    const now = formatOverrideUpdatedAt();
+    const nextShareTargets = [
+      ...existingShareTargets.filter((item) => !managedStoreIdSet.has(item.storeId)),
+      ...normalizedManagedConfigs.flatMap((item) => {
+        if (item.sellStatus !== 'sellable') {
+          return [];
+        }
+
+        const previousTarget = existingShareTargetMap.get(item.storeId);
+
+        return [
+          {
+            storeId: item.storeId,
+            status: 'referenced' as const,
+            sharedAt: previousTarget?.sharedAt || now,
+            referencedAt: previousTarget?.referencedAt || now,
+            ...(item.sellableSkuIds?.length
+              ? { sellableSkuIds: [...item.sellableSkuIds] }
+              : {}),
+            ...(item.allowSelfPrice ? { allowSelfPrice: true } : {}),
+          },
+        ];
+      }),
+    ];
+    const submittedStoreConfigMap = new Map(
+      managedStoreIds.map((storeId) => {
+        const config = normalizedConfigMap.get(storeId);
+
+        return [
+          storeId,
+          {
+            storeId,
+            sellStatus:
+              config?.sellStatus === 'sellable'
+                ? ('sellable' as const)
+                : ('unsellable' as const),
+            channelStatus:
+              config?.sellStatus === 'sellable'
+                ? ('on' as const)
+                : ('off' as const),
+          },
+        ];
+      })
+    );
+    const nextStoreConfigs = (product.storeConfigs || []).map((config) =>
+      submittedStoreConfigMap.get(config.storeId)
+        ? cloneStoreConfig(submittedStoreConfigMap.get(config.storeId)!)
+        : config
+    );
+    const existingStoreIdSet = new Set(
+      nextStoreConfigs.map((config) => config.storeId)
+    );
+
+    submittedStoreConfigMap.forEach((config, storeId) => {
+      if (existingStoreIdSet.has(storeId)) {
+        return;
+      }
+
+      nextStoreConfigs.push(cloneStoreConfig(config));
+    });
+
+    const nextStoreOverrides = {
+      ...(product.storeOverrides || {}),
+    };
+
+    managedStoreIds.forEach((storeId) => {
+      const config = normalizedConfigMap.get(storeId);
+      const sellableSkuIdSet = new Set(
+        config?.sellStatus === 'sellable' ? config.sellableSkuIds || [] : []
+      );
+      const unsellableSkuIds = (product.skus || [])
+        .filter((sku) => !sellableSkuIdSet.has(sku.id))
+        .map((sku) => sku.id);
+      const previousOverride = product.storeOverrides?.[storeId]
+        ? normalizeProductStoreOverride(storeId, product.storeOverrides[storeId])
+        : createDefaultProductStoreOverride(storeId);
+      const nextSkuSellStatusOverrides = normalizeProductStoreSkuSellStatusOverrides(
+        unsellableSkuIds.map((skuId) => ({
+          skuId,
+          currentSellStatus: 'unsellable' as const,
+        }))
+      );
+      const nextSkuStatusOverrides = normalizeProductStoreSkuStatusOverrides([]);
+
+      if (
+        shouldRemoveStoreOverride({
+          priceMode: previousOverride.priceMode,
+          stockMode: previousOverride.stockMode,
+          nameMode: previousOverride.nameMode,
+          carouselMode: previousOverride.carouselMode,
+          skuSellStatusOverrides: nextSkuSellStatusOverrides,
+          skuStatusOverrides: nextSkuStatusOverrides,
+          localSkuItems: previousOverride.localSkuItems,
+        })
+      ) {
+        delete nextStoreOverrides[storeId];
+        return;
+      }
+
+      nextStoreOverrides[storeId] = {
+        ...previousOverride,
+        skuSellStatusOverrides: nextSkuSellStatusOverrides,
+        skuStatusOverrides: nextSkuStatusOverrides,
+        updatedAt: now,
+      };
+    });
+
+    const nextProducts = (await this.repository.list()).map((item) =>
+      item.id === input.productId
+        ? {
+            ...item,
+            shareTargets: nextShareTargets,
+            storeChannelConfig: normalizedStoreChannelConfig,
+            storeConfigs: nextStoreConfigs,
+            storeOverrides: nextStoreOverrides,
+            status: getProductStatusByStoreConfigs(nextStoreConfigs),
+          }
+        : item
+    );
+
+    await this.repository.save(nextProducts);
+  }
+
   async publishProductsToStores(input: PublishProductsToStoresInput) {
     const productIds = Array.from(new Set(input.productIds.filter(Boolean)));
     const scopedVisibleStoreIds = Array.from(
@@ -885,7 +1058,7 @@ export class ProductService {
     }
 
     const nextChannelStatus =
-      input.sellStatus === 'unsellable' ? 'off' : input.channelStatus;
+      input.sellStatus === 'sellable' ? ('on' as const) : ('off' as const);
     const productIdSet = new Set(productIds);
     const targetStoreIdSet = new Set(targetStoreIds);
     const products = await this.repository.list();
@@ -971,8 +1144,7 @@ export class ProductService {
                     const currentSku = currentSkuMap.get(sku.id);
                     const nextState = resolveNextSkuState(
                       input.action,
-                      currentSku?.currentSellStatus || 'sellable',
-                      getSkuSourceChannelStatus(sku.status)
+                      currentSku?.currentSellStatus || 'sellable'
                     );
 
                     return {
@@ -994,9 +1166,6 @@ export class ProductService {
     const previousOverride = product.storeOverrides?.[input.storeId]
       ? normalizeProductStoreOverride(input.storeId, product.storeOverrides[input.storeId])
       : createDefaultProductStoreOverride(input.storeId);
-    const previousStatusOverrideMap = new Map(
-      (previousOverride.skuStatusOverrides || []).map((item) => [item.skuId, item.currentStatus])
-    );
     const sourceSkuIdSet = new Set((product.skus || []).map((item) => item.id));
     const localSkuIdSet = new Set(
       Array.from(currentSkuMap.values())
@@ -1022,9 +1191,7 @@ export class ProductService {
         const nextState = resolveNextSkuState(
           input.action,
           currentSku?.currentSellStatus ||
-            getProductSkuBaselineSellStatus(product, sku.id, input.storeId),
-          (previousStatusOverrideMap.get(sku.id) as ProductStatus | undefined) ||
-            getSkuSourceChannelStatus(sku.status)
+            getProductSkuBaselineSellStatus(product, sku.id, input.storeId)
         );
         const baselineSellStatus = getProductSkuBaselineSellStatus(
           product,
@@ -1048,32 +1215,9 @@ export class ProductService {
       ...(previousOverride.skuStatusOverrides || []).filter(
         (item) => !sourceUpdateSkuIdSet.has(item.skuId)
       ),
-      ...(product.skus || []).flatMap((sku) => {
-        if (!sourceUpdateSkuIdSet.has(sku.id)) {
-          return [];
-        }
-
-        const currentSku = currentSkuMap.get(sku.id);
-        const nextState = resolveNextSkuState(
-          input.action,
-          currentSku?.currentSellStatus ||
-            getProductSkuBaselineSellStatus(product, sku.id, input.storeId),
-          (previousStatusOverrideMap.get(sku.id) as ProductStatus | undefined) ||
-            getSkuSourceChannelStatus(sku.status)
-        );
-        const sourceStatus = getSkuSourceChannelStatus(sku.status);
-
-        if (nextState.channelStatus === sourceStatus) {
-          return [];
-        }
-
-        return [
-          {
-            skuId: sku.id,
-            currentStatus: nextState.channelStatus,
-          },
-        ];
-      }),
+      ...(previousOverride.skuStatusOverrides || []).filter(
+        (item) => !sourceUpdateSkuIdSet.has(item.skuId)
+      ),
     ]);
     const nextLocalSkuItems = (previousOverride.localSkuItems || []).map((item) =>
       localUpdateSkuIdSet.has(item.skuId)
@@ -1081,8 +1225,7 @@ export class ProductService {
             const currentSku = currentSkuMap.get(item.skuId);
             const nextState = resolveNextSkuState(
               input.action,
-              currentSku?.currentSellStatus || item.sellStatus,
-              currentSku?.currentStatus || item.status
+              currentSku?.currentSellStatus || item.sellStatus
             );
 
             return {
@@ -1194,6 +1337,9 @@ export class ProductService {
     );
     const requiredSkuIdSet = new Set((product.skus || []).map((item) => item.id));
     const independentPriceRule = getProductIndependentPriceRule(product);
+    const allowSelfPrice =
+      getProductShareTargetByStoreId(product, input.storeId)?.allowSelfPrice === true;
+    const canManageIndependentPrice = independentPriceRule.enabled || allowSelfPrice;
     const skuPriceOverrideMap = new Map(
       normalizedSkuPriceOverrides.map((item) => [item.skuId, item.currentPrice])
     );
@@ -1203,7 +1349,7 @@ export class ProductService {
         : Number(input.currentPrice);
 
     if (input.priceMode === 'independent') {
-      if (!independentPriceRule.enabled) {
+      if (!canManageIndependentPrice) {
         throw new AppError(
           'PRODUCT_INDEPENDENT_PRICE_DISABLED',
           '源商品未开放独立售价'
@@ -1231,32 +1377,34 @@ export class ProductService {
         throw new AppError('PRODUCT_INVALID_SKU_PRICE', '请填写完整的规格售价');
       }
 
-      const outOfRangeSku = (product.skus || []).find((sku) => {
-        const currentPrice = resolveSubmittedSkuPrice(sku.id);
-        const skuRule = getProductSkuIndependentPriceRule(product, sku.id);
+      if (independentPriceRule.enabled) {
+        const outOfRangeSku = (product.skus || []).find((sku) => {
+          const currentPrice = resolveSubmittedSkuPrice(sku.id);
+          const skuRule = getProductSkuIndependentPriceRule(product, sku.id);
 
-        if (!Number.isFinite(currentPrice) || currentPrice < 0) {
-          return true;
+          if (!Number.isFinite(currentPrice) || currentPrice < 0) {
+            return true;
+          }
+
+          if (
+            typeof skuRule?.minPrice === 'number' &&
+            currentPrice < skuRule.minPrice
+          ) {
+            return true;
+          }
+
+          return (
+            typeof skuRule?.maxPrice === 'number' &&
+            currentPrice > skuRule.maxPrice
+          );
+        });
+
+        if (outOfRangeSku) {
+          throw new AppError(
+            'PRODUCT_SKU_PRICE_OUT_OF_RANGE',
+            '独立售价超出源商品允许的价格区间'
+          );
         }
-
-        if (
-          typeof skuRule?.minPrice === 'number' &&
-          currentPrice < skuRule.minPrice
-        ) {
-          return true;
-        }
-
-        return (
-          typeof skuRule?.maxPrice === 'number' &&
-          currentPrice > skuRule.maxPrice
-        );
-      });
-
-      if (outOfRangeSku) {
-        throw new AppError(
-          'PRODUCT_SKU_PRICE_OUT_OF_RANGE',
-          '独立售价超出源商品允许的价格区间'
-        );
       }
     }
 

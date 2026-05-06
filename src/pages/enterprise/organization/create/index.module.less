@@ -8,19 +8,28 @@
   max-width: 720px;
 }
 
-.stepsCard {
-  :global(.arco-card-body) {
-    padding-top: 20px;
-    padding-bottom: 20px;
-  }
-}
-
 .formCard {
   :global(.arco-card-body) {
     display: flex;
     flex-direction: column;
     gap: 24px;
   }
+}
+
+.storeForm {
+  :global(.arco-form-item-content-flex) {
+    align-items: flex-start;
+  }
+
+  :global(.arco-form-item-wrapper-col) {
+    min-width: 0;
+  }
+}
+
+.storeFormBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .formGrid {
@@ -33,10 +42,47 @@
   grid-column: 1 / -1;
 }
 
-.capabilitySections {
+.storeCapabilitySection {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.storeCapabilityBlock {
+  padding-top: 4px;
+}
+
+.storeCapabilityTitle {
+  margin-bottom: 12px;
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.storeCapabilityList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.capabilityFormItem {
+  margin-bottom: 0;
+
+  :global(.arco-form-item-content-flex) {
+    align-items: center;
+  }
+}
+
+.capabilityControl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background-color: var(--color-fill-1);
 }
 
 .storeSelectorTrigger {
@@ -77,205 +123,14 @@
   word-break: break-all;
 }
 
-.capabilityCard {
-  :global(.arco-card-body) {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-}
-
-.sectionTitle {
-  margin: 0;
-}
-
-.capabilityGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.capabilityRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 72px;
-  padding: 16px;
-  border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-  background-color: var(--color-fill-1);
-}
-
-.capabilityMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.capabilityName {
-  color: var(--color-text-1);
-  font-weight: 500;
-}
-
 .capabilityDescription {
-  line-height: 22px;
-}
-
-.ruleConfigCard {
-  :global(.arco-card-body) {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-}
-
-.ruleConfigHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.ruleConfigDescription {
-  margin: 0;
-}
-
-.ruleList {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.ruleBlock {
-  border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: var(--color-bg-1);
-}
-
-.ruleBlockHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px;
-  background-color: var(--color-fill-1);
-  border-bottom: 1px solid var(--color-border-2);
-}
-
-.ruleBlockTitle {
-  color: var(--color-text-1);
-  font-weight: 600;
-}
-
-.ruleBody {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 20px;
-}
-
-.ruleLine {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.ruleLabel {
-  flex: none;
-  min-width: 104px;
-  color: var(--color-text-1);
-  font-weight: 500;
-  line-height: 32px;
-}
-
-.requiredMark {
-  color: rgb(var(--red-6));
-  margin-right: 4px;
-}
-
-.ruleContent {
-  display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding-top: 4px;
-}
-
-.fieldSummary {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.selectorRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.scopeHint {
-  color: var(--color-text-3);
-  font-size: 13px;
   line-height: 22px;
-}
-
-.categoryCascader {
-  width: 100%;
-  max-width: 360px;
-}
-
-.addRuleRow {
-  padding-top: 4px;
 }
 
 .errorText {
   color: rgb(var(--red-6));
   line-height: 20px;
-}
-
-.fieldModalContent {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.fieldModalTip {
-  display: flex;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid rgb(var(--arcoblue-6));
-  border-radius: 8px;
-  background-color: rgb(var(--arcoblue-1));
-  color: var(--color-text-1);
-  line-height: 24px;
-}
-
-.fieldModalTipIcon {
-  flex: none;
-  margin-top: 3px;
-  color: rgb(var(--arcoblue-6));
-}
-
-.fieldOptionRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.fieldCheckboxLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.fieldHelpIcon {
-  color: var(--color-text-3);
 }
 
 .footerActions {
@@ -285,28 +140,16 @@
 }
 
 @media (max-width: 900px) {
-  .formGrid,
-  .capabilityGrid {
+  .formGrid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
   .storeSelectorTrigger,
-  .capabilityRow {
+  .capabilityControl {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .ruleLine,
-  .fieldOptionRow {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .ruleLabel {
-    min-width: 0;
-    line-height: 20px;
   }
 
   .footerActions {

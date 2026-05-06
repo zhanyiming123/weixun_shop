@@ -27,6 +27,7 @@ export type ProductCatalogLeafItem = {
 export type ProductCatalogCascaderOption = {
   value: string;
   label: string;
+  disabled?: boolean;
   children?: ProductCatalogCascaderOption[];
 };
 

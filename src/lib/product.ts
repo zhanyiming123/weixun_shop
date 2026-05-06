@@ -14,11 +14,11 @@ import type {
   ProductSkuIndependentStockRule,
   ProductSourceType,
   ProductStatus,
-  ProductStoreChannelCustomFieldKey,
+  ProductStoreChannelConfigItem,
+  ProductStoreChannelProductPoolStoreConfigItem,
+  ProductStoreChannelStatus,
   ProductStoreChannelRuleItem,
-  ProductStoreChannelRuleSkuConfigItem,
   ProductStoreChannelShareMode,
-  ProductStoreChannelSkuScope,
   ProductStoreChannelStoreScope,
   ProductStoreSellStatus,
   ProductStoreLocalSkuItem,
@@ -69,25 +69,22 @@ export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
   createdAtRange: [],
 };
 
-const PRODUCT_KIND_SET = new Set<ProductKind>(['standard', 'bundle']);
+const PRODUCT_KIND_SET = new Set<ProductKind>(['standard', 'combo', 'bundle']);
 const PRODUCT_SHARE_STATUS_SET = new Set<ProductShareStatus>([
   'pending',
   'referenced',
 ]);
-const PRODUCT_STORE_CHANNEL_FIELD_KEY_SET = new Set<
-  ProductStoreChannelCustomFieldKey
->(['productPrice', 'productStock', 'addSpecValue']);
 const PRODUCT_STORE_CHANNEL_STORE_SCOPE_SET = new Set<
   ProductStoreChannelStoreScope
 >(['allStores', 'specificStores']);
-const PRODUCT_STORE_CHANNEL_SKU_SCOPE_SET = new Set<ProductStoreChannelSkuScope>([
-  'allSkus',
-  'specificSkus',
-]);
 const PRODUCT_STORE_CHANNEL_SHARE_MODE_SET = new Set<ProductStoreChannelShareMode>([
   'product_pool',
   'shared_pool',
 ]);
+
+function uniqueStringArray(values: string[] = []) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
 
 export function createDefaultFilterValues(): ProductFilterValues {
   return {
@@ -178,6 +175,7 @@ export function normalizeProductShareTargets(
       sharedAt,
       referencedAt: status === 'referenced' ? referencedAt : undefined,
       sellableSkuIds: sellableSkuIds.length ? sellableSkuIds : undefined,
+      allowSelfPrice: item?.allowSelfPrice === true ? true : undefined,
     });
   });
 
@@ -206,9 +204,7 @@ export function hasProductStoreIntersection(
 export function getProductStatusByStoreConfigs(
   storeConfigs: ProductStoreConfigItem[] = []
 ): ProductStatus {
-  return storeConfigs.some(
-    (item) => item.sellStatus === 'sellable' && item.channelStatus === 'on'
-  )
+  return storeConfigs.some((item) => item.sellStatus === 'sellable')
     ? 'on'
     : 'off';
 }
@@ -418,180 +414,197 @@ export function getProductIndependentStockRule(product: ProductItem) {
   );
 }
 
-export function normalizeProductStoreChannelRules(
-  rules?: ProductStoreChannelRuleItem[],
+function normalizeProductStoreChannelProductPoolStoreConfigs(
+  configs?: ProductStoreChannelProductPoolStoreConfigItem[],
   skus: Array<{ id: string }> = [],
   storeIds: string[] = []
-): ProductStoreChannelRuleItem[] {
-  if (!Array.isArray(rules)) {
+) {
+  if (!Array.isArray(configs)) {
     return [];
   }
 
   const skuIdSet = new Set(skus.map((item) => item.id).filter(Boolean));
   const storeIdSet = new Set(storeIds.filter(Boolean));
-  const seenRuleIds = new Set<string>();
+  const configMap = new Map<string, ProductStoreChannelProductPoolStoreConfigItem>();
 
-  return rules.flatMap((rule, index): ProductStoreChannelRuleItem[] => {
-    const rawId =
-      typeof rule?.id === 'string' && rule.id.trim()
-        ? rule.id.trim()
-        : `store_channel_rule_${index + 1}`;
-    const id = seenRuleIds.has(rawId) ? `${rawId}_${index + 1}` : rawId;
-    seenRuleIds.add(id);
+  configs.forEach((item) => {
+    const storeId =
+      typeof item?.storeId === 'string' ? item.storeId.trim() : '';
 
-    const fieldKeys = Array.isArray(rule?.fieldKeys)
-      ? Array.from(
-          new Set(
-            rule.fieldKeys.filter((key): key is ProductStoreChannelCustomFieldKey =>
-              PRODUCT_STORE_CHANNEL_FIELD_KEY_SET.has(
-                key as ProductStoreChannelCustomFieldKey
-              )
-            )
-          )
+    if (!storeId || configMap.has(storeId) || (storeIdSet.size && !storeIdSet.has(storeId))) {
+      return;
+    }
+
+    const sellableSkuIds = Array.isArray(item?.sellableSkuIds)
+      ? uniqueStringArray(
+          item.sellableSkuIds
+            .filter((skuId): skuId is string => typeof skuId === 'string')
+            .map((skuId) => skuId.trim())
+            .filter((skuId) => !skuIdSet.size || skuIdSet.has(skuId))
         )
       : [];
-    const storeScope = PRODUCT_STORE_CHANNEL_STORE_SCOPE_SET.has(
-      rule?.storeScope as ProductStoreChannelStoreScope
-    )
-      ? (rule?.storeScope as ProductStoreChannelStoreScope)
-      : 'allStores';
-    const skuScope = PRODUCT_STORE_CHANNEL_SKU_SCOPE_SET.has(
-      rule?.skuScope as ProductStoreChannelSkuScope
-    )
-      ? (rule?.skuScope as ProductStoreChannelSkuScope)
-      : 'allSkus';
-    const shareMode = PRODUCT_STORE_CHANNEL_SHARE_MODE_SET.has(
-      rule?.shareMode as ProductStoreChannelShareMode
-    )
-      ? (rule?.shareMode as ProductStoreChannelShareMode)
-      : 'product_pool';
-    const normalizedStoreIds = Array.isArray(rule?.storeIds)
-      ? Array.from(
-          new Set(
-            rule.storeIds
-              .filter((value): value is string => typeof value === 'string')
-              .map((value) => value.trim())
-              .filter((value) => !storeIdSet.size || storeIdSet.has(value))
-          )
-        )
-      : [];
-    const normalizedSkuIds = Array.isArray(rule?.skuIds)
-      ? Array.from(
-          new Set(
-            rule.skuIds
-              .filter((value): value is string => typeof value === 'string')
-              .map((value) => value.trim())
-              .filter((value) => !skuIdSet.size || skuIdSet.has(value))
-          )
-        )
-      : [];
-    const allowedSkuIdSet =
-      skuScope === 'specificSkus'
-        ? new Set(normalizedSkuIds)
-        : skuIdSet.size
-          ? skuIdSet
-          : new Set<string>();
-    const seenSkuConfigIds = new Set<string>();
-    const skuConfigs = (Array.isArray(rule?.skuConfigs) ? rule.skuConfigs : []).flatMap(
-      (item): ProductStoreChannelRuleSkuConfigItem[] => {
-        const skuId =
-          typeof item?.skuId === 'string' && item.skuId.trim()
-            ? item.skuId.trim()
-            : '';
+    const isSellable = item?.sellStatus === 'sellable' && sellableSkuIds.length > 0;
+    const channelStatus =
+      isSellable ? ('on' as ProductStoreChannelStatus) : ('off' as ProductStoreChannelStatus);
 
-        if (!skuId || seenSkuConfigIds.has(skuId)) {
-          return [];
-        }
-
-        if (
-          (skuIdSet.size && !skuIdSet.has(skuId)) ||
-          (allowedSkuIdSet.size && !allowedSkuIdSet.has(skuId))
-        ) {
-          return [];
-        }
-
-        const minSuggestedPrice =
-          typeof item?.minSuggestedPrice === 'number' &&
-          Number.isFinite(item.minSuggestedPrice) &&
-          item.minSuggestedPrice >= 0
-            ? item.minSuggestedPrice
-            : undefined;
-        const maxSuggestedPrice =
-          typeof item?.maxSuggestedPrice === 'number' &&
-          Number.isFinite(item.maxSuggestedPrice) &&
-          item.maxSuggestedPrice >= 0
-            ? item.maxSuggestedPrice
-            : undefined;
-        const minSuggestedStock =
-          typeof item?.minSuggestedStock === 'number' &&
-          Number.isFinite(item.minSuggestedStock) &&
-          item.minSuggestedStock >= 0
-            ? Math.floor(item.minSuggestedStock)
-            : undefined;
-        const maxSuggestedStock =
-          typeof item?.maxSuggestedStock === 'number' &&
-          Number.isFinite(item.maxSuggestedStock) &&
-          item.maxSuggestedStock >= 0
-            ? Math.floor(item.maxSuggestedStock)
-            : undefined;
-
-        if (
-          (typeof minSuggestedPrice === 'number' &&
-            typeof maxSuggestedPrice === 'number' &&
-            minSuggestedPrice > maxSuggestedPrice) ||
-          (typeof minSuggestedStock === 'number' &&
-            typeof maxSuggestedStock === 'number' &&
-            minSuggestedStock > maxSuggestedStock)
-        ) {
-          return [];
-        }
-
-        if (
-          typeof minSuggestedPrice !== 'number' &&
-          typeof maxSuggestedPrice !== 'number' &&
-          typeof minSuggestedStock !== 'number' &&
-          typeof maxSuggestedStock !== 'number'
-        ) {
-          return [];
-        }
-
-        seenSkuConfigIds.add(skuId);
-
-        return [
-          {
-            skuId,
-            minSuggestedPrice,
-            maxSuggestedPrice,
-            minSuggestedStock,
-            maxSuggestedStock,
-          },
-        ];
-      }
-    );
-
-    return [
-      {
-        id,
-        fieldKeys,
-        storeScope,
-        storeIds: storeScope === 'specificStores' ? normalizedStoreIds : [],
-        skuScope,
-        skuIds: skuScope === 'specificSkus' ? normalizedSkuIds : [],
-        shareMode,
-        skuConfigs,
-      },
-    ];
+    configMap.set(storeId, {
+      storeId,
+      sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+      channelStatus,
+      ...(isSellable ? { sellableSkuIds } : {}),
+      ...(isSellable && item?.allowSelfPrice === true ? { allowSelfPrice: true } : {}),
+    });
   });
+
+  return Array.from(configMap.values());
 }
 
-export function getProductStoreChannelRules(product: ProductItem) {
-  return normalizeProductStoreChannelRules(product.storeChannelRules, product.skus || []);
+function convertLegacyStoreChannelRuleToConfig(
+  rule: ProductStoreChannelRuleItem | undefined,
+  shareTargets: ProductShareTargetItem[] = [],
+  skus: Array<{ id: string }> = []
+): ProductStoreChannelConfigItem | undefined {
+  if (!rule) {
+    return undefined;
+  }
+
+  const shareMode = PRODUCT_STORE_CHANNEL_SHARE_MODE_SET.has(
+    rule.shareMode as ProductStoreChannelShareMode
+  )
+    ? (rule.shareMode as ProductStoreChannelShareMode)
+    : 'product_pool';
+  const storeScope = PRODUCT_STORE_CHANNEL_STORE_SCOPE_SET.has(
+    rule.storeScope as ProductStoreChannelStoreScope
+  )
+    ? (rule.storeScope as ProductStoreChannelStoreScope)
+    : 'allStores';
+  const normalizedStoreIds = Array.isArray(rule.storeIds)
+    ? uniqueStringArray(
+        rule.storeIds
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+      )
+    : [];
+
+  if (shareMode !== 'product_pool') {
+    return {
+      shareMode,
+      storeScope,
+      storeIds: storeScope === 'specificStores' ? normalizedStoreIds : [],
+      productPoolStoreConfigs: [],
+    };
+  }
+
+  const shareTargetMap = new Map(
+    normalizeProductShareTargets(shareTargets).map((item) => [item.storeId, item])
+  );
+  const skuIdSet = new Set(skus.map((item) => item.id).filter(Boolean));
+  const productPoolStoreConfigs = normalizedStoreIds.map((storeId) => {
+    const shareTarget = shareTargetMap.get(storeId);
+    const sellableSkuIds = uniqueStringArray(
+      (shareTarget?.sellableSkuIds || []).filter(
+        (skuId) => !skuIdSet.size || skuIdSet.has(skuId)
+      )
+    );
+    const isSellable = sellableSkuIds.length > 0;
+
+    return {
+      storeId,
+      sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+      channelStatus: 'off' as const,
+      ...(isSellable ? { sellableSkuIds } : {}),
+      ...(isSellable && shareTarget?.allowSelfPrice === true
+        ? { allowSelfPrice: true }
+        : {}),
+    };
+  });
+
+  return {
+    shareMode,
+    storeScope: 'specificStores',
+    storeIds: normalizedStoreIds,
+    productPoolStoreConfigs,
+  };
 }
 
-export function getMatchedProductStoreChannelRule(
+export function normalizeProductStoreChannelConfig(
+  config?: ProductStoreChannelConfigItem,
+  legacyRules?: ProductStoreChannelRuleItem[],
+  shareTargets: ProductShareTargetItem[] = [],
+  skus: Array<{ id: string }> = [],
+  storeIds: string[] = []
+): ProductStoreChannelConfigItem | undefined {
+  const rawConfig =
+    config && typeof config === 'object'
+      ? config
+      : convertLegacyStoreChannelRuleToConfig(
+          Array.isArray(legacyRules) ? legacyRules[0] : undefined,
+          shareTargets,
+          skus
+        );
+
+  if (!rawConfig) {
+    return undefined;
+  }
+
+  const shareMode = PRODUCT_STORE_CHANNEL_SHARE_MODE_SET.has(
+    rawConfig.shareMode as ProductStoreChannelShareMode
+  )
+    ? (rawConfig.shareMode as ProductStoreChannelShareMode)
+    : 'product_pool';
+  const storeScope = PRODUCT_STORE_CHANNEL_STORE_SCOPE_SET.has(
+    rawConfig.storeScope as ProductStoreChannelStoreScope
+  )
+    ? (rawConfig.storeScope as ProductStoreChannelStoreScope)
+    : 'allStores';
+  const allowedStoreIdSet = new Set(storeIds.filter(Boolean));
+  const normalizedStoreIds = Array.isArray(rawConfig.storeIds)
+    ? uniqueStringArray(
+        rawConfig.storeIds
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter((value) => !allowedStoreIdSet.size || allowedStoreIdSet.has(value))
+      )
+    : [];
+  const productPoolStoreConfigs = normalizeProductStoreChannelProductPoolStoreConfigs(
+    rawConfig.productPoolStoreConfigs,
+    skus,
+    storeIds
+  );
+  const productPoolStoreIds = uniqueStringArray(
+    productPoolStoreConfigs
+      .filter((item) => item.sellStatus === 'sellable')
+      .map((item) => item.storeId)
+  );
+
+  return {
+    shareMode,
+    storeScope: shareMode === 'product_pool' ? 'specificStores' : storeScope,
+    storeIds:
+      shareMode === 'product_pool'
+        ? productPoolStoreIds.length
+          ? productPoolStoreIds
+          : normalizedStoreIds
+        : storeScope === 'specificStores'
+          ? normalizedStoreIds
+          : [],
+    productPoolStoreConfigs:
+      shareMode === 'product_pool' ? productPoolStoreConfigs : [],
+  };
+}
+
+export function getProductStoreChannelConfig(product: ProductItem) {
+  return normalizeProductStoreChannelConfig(
+    product.storeChannelConfig,
+    product.storeChannelRules,
+    product.shareTargets,
+    product.skus || []
+  );
+}
+
+export function getMatchedProductStoreChannelConfig(
   product: ProductItem,
-  storeId: string | undefined,
-  skuId: string
+  storeId: string | undefined
 ) {
   if (!storeId) {
     return undefined;
@@ -609,32 +622,20 @@ export function getMatchedProductStoreChannelRule(
     return undefined;
   }
 
-  return getProductStoreChannelRules(product).find((rule) => {
-    const storeMatched =
-      rule.storeScope === 'allStores'
-        ? !sharedStoreIdSet.size || sharedStoreIdSet.has(storeId)
-        : rule.storeIds.includes(storeId);
-    const skuMatched = rule.skuScope === 'allSkus' || rule.skuIds.includes(skuId);
+  const config = getProductStoreChannelConfig(product);
 
-    return storeMatched && skuMatched;
-  });
-}
-
-export function getMatchedProductStoreChannelRuleSkuConfig(
-  product: ProductItem,
-  storeId: string | undefined,
-  skuId: string
-) {
-  const matchedRule = getMatchedProductStoreChannelRule(product, storeId, skuId);
-
-  if (!matchedRule) {
+  if (!config) {
     return undefined;
   }
 
-  return {
-    rule: matchedRule,
-    skuConfig: matchedRule.skuConfigs.find((item) => item.skuId === skuId),
-  };
+  const storeMatched =
+    config.shareMode === 'product_pool'
+      ? config.storeIds.includes(storeId)
+      : config.storeScope === 'allStores'
+        ? !sharedStoreIdSet.size || sharedStoreIdSet.has(storeId)
+        : config.storeIds.includes(storeId);
+
+  return storeMatched ? config : undefined;
 }
 
 export function getProductSkuIndependentPriceRule(
@@ -794,6 +795,7 @@ export function normalizeProductStoreLocalSkuItems(
   );
   const seenSkuIds = new Set<string>();
   const seenSpecTexts = new Set<string>();
+  let hasDefaultSelected = false;
 
   return localSkuItems.flatMap((item): ProductStoreLocalSkuItem[] => {
     const skuId =
@@ -834,9 +836,15 @@ export function normalizeProductStoreLocalSkuItems(
     const sellStatus =
       item?.sellStatus === 'unsellable' ? 'unsellable' : 'sellable';
     const status = item?.status === 'off' ? 'off' : 'on';
+    const image = normalizeProductCarouselImages(item?.image ? [item.image] : [])[0];
+    const isDefaultSelected =
+      item?.isDefaultSelected === true && status === 'on' && !hasDefaultSelected;
 
     seenSkuIds.add(skuId);
     seenSpecTexts.add(specText);
+    if (isDefaultSelected) {
+      hasDefaultSelected = true;
+    }
 
     return [
       {
@@ -846,6 +854,8 @@ export function normalizeProductStoreLocalSkuItems(
         stock,
         sellStatus,
         status,
+        ...(image ? { image } : {}),
+        ...(isDefaultSelected ? { isDefaultSelected: true } : {}),
       },
     ];
   });
@@ -1042,15 +1052,18 @@ function getProductSkuOverrideStatus(
 function buildProductStoreLocalSkuViewItems(
   override: ProductStoreOverrideItem | undefined
 ): ProductStoreSkuViewItem[] {
+  let hasDefaultSelected = false;
+
   return (override?.localSkuItems || []).map((item) => {
     const currentSellStatus =
       item.sellStatus === 'unsellable' ? 'unsellable' : 'sellable';
-    const currentStatus =
-      currentSellStatus === 'sellable'
-        ? item.status === 'off'
-          ? 'off'
-          : 'on'
-        : 'off';
+    const currentStatus = currentSellStatus === 'sellable' ? 'on' : 'off';
+    const isDefaultSelected =
+      item.isDefaultSelected === true && currentStatus === 'on' && !hasDefaultSelected;
+
+    if (isDefaultSelected) {
+      hasDefaultSelected = true;
+    }
 
     return {
       id: item.skuId,
@@ -1058,6 +1071,8 @@ function buildProductStoreLocalSkuViewItems(
       stock: item.stock,
       sellStatus: currentSellStatus,
       status: currentStatus,
+      ...(item.image ? { image: { ...item.image } } : {}),
+      ...(isDefaultSelected ? { isDefaultSelected: true } : {}),
       isLocalSku: true,
       originalStock: item.stock,
       currentStock: item.stock,
@@ -1079,6 +1094,10 @@ function getProductSkuSourceSellStatus(
   sku: { sellStatus?: ProductStoreSellStatus } | undefined
 ) {
   return sku?.sellStatus === 'unsellable' ? 'unsellable' : 'sellable';
+}
+
+function getProductSkuSourceStatus(status: ProductStatus | undefined): ProductStatus {
+  return status === 'off' ? 'off' : 'on';
 }
 
 export function getProductSkuBaselineSellStatus(
@@ -1103,6 +1122,18 @@ export function getProductSkuBaselineSellStatus(
   return sourceSellStatus;
 }
 
+function canStoreUseIndependentPrice(product: ProductItem, storeId?: string) {
+  if (!storeId) {
+    return false;
+  }
+
+  if (getProductIndependentPriceRule(product).enabled) {
+    return true;
+  }
+
+  return getProductShareTargetByStoreId(product, storeId)?.allowSelfPrice === true;
+}
+
 export function getProductCurrentSkus(
   product: ProductItem,
   storeId?: string
@@ -1110,6 +1141,7 @@ export function getProductCurrentSkus(
   const override = getProductStoreOverride(product, storeId);
   const independentPriceRule = getProductIndependentPriceRule(product);
   const independentStockRule = getProductIndependentStockRule(product);
+  const canManageIndependentPrice = canStoreUseIndependentPrice(product, storeId);
 
   const sourceSkus = (product.skus || []).map((sku) => {
     const overridePrice = getProductSkuOverridePrice(override, sku.id);
@@ -1118,19 +1150,14 @@ export function getProductCurrentSkus(
     const overrideStatus = getProductSkuOverrideStatus(override, sku.id);
     const skuPriceRule = getProductSkuIndependentPriceRule(product, sku.id);
     const skuStockRule = independentStockRule.skuRules.find((item) => item.skuId === sku.id);
-    const matchedStoreChannelRule = getMatchedProductStoreChannelRuleSkuConfig(
-      product,
-      storeId,
-      sku.id
-    );
     const originalSellStatus = getProductSkuBaselineSellStatus(product, sku.id, storeId);
     const currentPrice =
-      independentPriceRule.enabled &&
+      canManageIndependentPrice &&
       override?.priceMode === 'independent' &&
       typeof overridePrice === 'number' &&
       Number.isFinite(overridePrice)
         ? overridePrice
-        : independentPriceRule.enabled &&
+        : canManageIndependentPrice &&
             override?.priceMode === 'independent' &&
             product.specMode !== 'multi' &&
             typeof override.currentPrice === 'number' &&
@@ -1147,12 +1174,13 @@ export function getProductCurrentSkus(
       overrideSellStatus === 'unsellable' || overrideSellStatus === 'sellable'
         ? overrideSellStatus
         : originalSellStatus;
-    const originalStatus = originalSellStatus === 'sellable' ? sku.status : 'off';
+    const originalStatus =
+      originalSellStatus === 'sellable'
+        ? getProductSkuSourceStatus(sku.status)
+        : 'off';
     const currentStatus =
       currentSellStatus === 'sellable'
-        ? overrideStatus === 'on' || overrideStatus === 'off'
-          ? overrideStatus
-          : sku.status
+        ? getProductSkuSourceStatus(sku.status)
         : 'off';
 
     return {
@@ -1169,18 +1197,10 @@ export function getProductCurrentSkus(
       currentStatus,
       originalPrice: sku.price,
       currentPrice,
-      minIndependentPrice: matchedStoreChannelRule
-        ? matchedStoreChannelRule.skuConfig?.minSuggestedPrice
-        : skuPriceRule?.minPrice,
-      maxIndependentPrice: matchedStoreChannelRule
-        ? matchedStoreChannelRule.skuConfig?.maxSuggestedPrice
-        : skuPriceRule?.maxPrice,
-      minIndependentStock: matchedStoreChannelRule
-        ? matchedStoreChannelRule.skuConfig?.minSuggestedStock
-        : skuStockRule?.minStock,
-      maxIndependentStock: matchedStoreChannelRule
-        ? matchedStoreChannelRule.skuConfig?.maxSuggestedStock
-        : skuStockRule?.maxStock,
+      minIndependentPrice: skuPriceRule?.minPrice,
+      maxIndependentPrice: skuPriceRule?.maxPrice,
+      minIndependentStock: skuStockRule?.minStock,
+      maxIndependentStock: skuStockRule?.maxStock,
       isLocalSku: false,
     };
   });
@@ -1414,10 +1434,6 @@ export function resolveBundleAvailability(
       sellable = false;
     }
 
-    if (!sourceStoreConfig || sourceStoreConfig.channelStatus !== 'on') {
-      sellable = false;
-    }
-
     if (!sourceSku || sourceSku.currentStatus !== 'on') {
       sellable = false;
     }
@@ -1520,7 +1536,7 @@ export function syncReferencedStoreConfigsBySourceSellStatus(
     return {
       ...config,
       sellStatus: 'sellable' as const,
-      channelStatus: 'off' as const,
+      channelStatus: 'on' as const,
     };
   });
 
@@ -1667,8 +1683,8 @@ export function buildProductListItem(
     Boolean(currentStoreId) &&
     resolvedSourceStoreId === currentStoreId;
   const isShared = Boolean(currentStoreId) && !isSelfBuilt;
-  const independentPriceRule = getProductIndependentPriceRule(product);
-  const canManageIndependentPrice = isShared && independentPriceRule.enabled;
+  const canManageIndependentPrice =
+    isShared && canStoreUseIndependentPrice(product, currentStoreId);
   const priceMode =
     canManageIndependentPrice && override?.priceMode === 'independent'
       ? 'independent'
@@ -1688,7 +1704,8 @@ export function buildProductListItem(
     storeView: {
       currentStoreId,
       currentStoreSellStatus: currentStoreConfig?.sellStatus,
-      currentStoreChannelStatus: currentStoreConfig?.channelStatus,
+      currentStoreChannelStatus:
+        currentStoreConfig?.sellStatus === 'sellable' ? 'on' : 'off',
       resolvedSourceStoreId,
       sourceLabel:
         options.sourceStoreName ||

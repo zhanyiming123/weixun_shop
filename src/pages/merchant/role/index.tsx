@@ -125,11 +125,6 @@ function MerchantRolePage() {
       render: (value: string, record: EnterpriseRoleItem) => (
         <div className={styles.roleNameCell}>
           <Typography.Text className={styles.roleName}>{value}</Typography.Text>
-          {record.isDefault && (
-            <Tag size="small" color="arcoblue">
-              默认
-            </Tag>
-          )}
         </div>
       ),
     },

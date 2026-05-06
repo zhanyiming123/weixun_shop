@@ -92,6 +92,11 @@
   max-width: 420px;
 }
 
+.datePicker {
+  width: 100%;
+  max-width: 240px;
+}
+
 .storeSelectorTrigger {
   width: 100%;
   max-width: 520px;
@@ -141,86 +146,106 @@
 .conditionScopePanel {
   display: flex;
   flex-direction: column;
-  gap: var(--platform-form-item-spacing);
+  gap: 16px;
 }
 
-.categorySelect {
-  width: 100%;
+.conditionRuleText {
+  font-size: 13px;
+  line-height: 20px;
 }
 
-.categorySection {
-  border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-  background: var(--color-fill-1);
-  padding: 14px 16px;
+.conditionCardList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.categorySectionHeader {
+.conditionCard {
+  max-width: 760px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfcff 0%, #f7f9fc 100%);
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.conditionCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.conditionCardHeaderContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conditionCardIndex {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.conditionCardTitle {
+  color: var(--color-text-1);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.conditionCardTitleEmpty {
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+
+.conditionCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.conditionCardField {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.categorySectionFilters {
+.conditionCardFieldLabel {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.conditionCardCascader {
+  width: 100%;
+  max-width: 560px;
+}
+
+.conditionCardSpecGrid {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.categorySectionField {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 220px;
-  min-width: 0;
+.conditionCardSpecGrid .conditionCardField {
+  flex: 1 1 260px;
 }
 
-.categorySectionField:first-child {
-  flex: 2 1 420px;
-}
-
-.categorySectionFieldLabel {
-  flex-shrink: 0;
-  color: var(--color-text-2);
-  font-size: 13px;
-  line-height: 22px;
-}
-
-.conditionFields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--platform-form-item-spacing);
-  flex: 1;
-  min-width: 0;
-}
-
-.conditionFieldItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.conditionFieldLabel {
-  flex-shrink: 0;
-  color: var(--color-text-2);
-  font-size: 13px;
-  line-height: 22px;
-  width: 120px;
-}
-
-.orgCascader {
-  flex: 1;
-  min-width: 0;
-  max-width: 520px;
-}
-
-.specSelect {
+.conditionCardSelect {
   width: 220px;
+}
+
+.addConditionCardButton {
+  align-self: flex-start;
 }
 
 .scopeActionRow,
@@ -240,6 +265,13 @@
 .fieldError {
   margin-top: 8px;
   color: rgb(var(--red-6));
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.fieldHint {
+  margin-top: 8px;
+  color: var(--color-text-3);
   font-size: 12px;
   line-height: 20px;
 }
@@ -320,6 +352,11 @@
   .orgCascader,
   .specSelect,
   .rangePicker {
+    width: 100%;
+    max-width: none;
+  }
+
+  .datePicker {
     width: 100%;
     max-width: none;
   }

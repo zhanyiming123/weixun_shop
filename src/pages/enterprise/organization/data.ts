@@ -11,10 +11,12 @@ export type OrganizationType = 'store' | 'partner';
 export type OrganizationStatus = 'enabled' | 'disabled';
 
 export type OrganizationCapabilityConfig = {
-  shopIsolation: boolean;
-  shopStatus: boolean;
   selfBuiltProduct: boolean;
-  customProductInfo: boolean;
+  selfBuiltMarketingActivity: boolean;
+};
+
+type LegacyOrganizationCapabilityConfig = Partial<OrganizationCapabilityConfig> & {
+  customProductInfo?: boolean;
 };
 
 export type OrganizationCustomFieldKey =
@@ -66,13 +68,11 @@ export type OrganizationRegionOption = {
   children?: OrganizationRegionOption[];
 };
 
-const STORAGE_KEY = 'enterprise-organization-items-v1';
+const STORAGE_KEY = 'enterprise-organization-items-v2';
 
 export const DEFAULT_ORGANIZATION_CAPABILITIES: OrganizationCapabilityConfig = {
-  shopIsolation: false,
-  shopStatus: false,
   selfBuiltProduct: false,
-  customProductInfo: false,
+  selfBuiltMarketingActivity: false,
 };
 
 const ORGANIZATION_CUSTOM_FIELD_KEYS: OrganizationCustomFieldKey[] = [
@@ -256,6 +256,38 @@ export const ORGANIZATION_REGION_OPTIONS: OrganizationRegionOption[] = [
       },
     ],
   },
+  {
+    value: 'sichuan',
+    label: '四川',
+    children: [
+      {
+        value: 'chengdu',
+        label: '成都市',
+        children: [
+          {
+            value: 'gaoxin',
+            label: '高新区',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    value: 'shaanxi',
+    label: '陕西',
+    children: [
+      {
+        value: 'xian',
+        label: '西安市',
+        children: [
+          {
+            value: 'yanta',
+            label: '雁塔区',
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 function padNumber(value: number) {
@@ -376,12 +408,20 @@ export function getOrganizationRegionLabel(
   return labels.join(' / ');
 }
 
-function normalizeCapabilities(
-  capabilities?: Partial<OrganizationCapabilityConfig>
+export function normalizeOrganizationCapabilities(
+  capabilities?: LegacyOrganizationCapabilityConfig
 ): OrganizationCapabilityConfig {
+  const { customProductInfo: _legacyCustomProductInfo, ...nextCapabilities } =
+    capabilities || {};
+  const legacyMarketingCapability =
+    typeof capabilities?.selfBuiltMarketingActivity === 'boolean'
+      ? capabilities.selfBuiltMarketingActivity
+      : Boolean(capabilities?.customProductInfo);
+
   return {
     ...DEFAULT_ORGANIZATION_CAPABILITIES,
-    ...capabilities,
+    ...nextCapabilities,
+    selfBuiltMarketingActivity: legacyMarketingCapability,
   };
 }
 
@@ -411,7 +451,7 @@ function normalizeOrganizationItem(
       ? normalizeOrganizationSelectedStoreIds(item.selectedStoreIds)
       : [],
     status: item.status === 'disabled' ? 'disabled' : 'enabled',
-    capabilities: normalizeCapabilities(item.capabilities),
+    capabilities: normalizeOrganizationCapabilities(item.capabilities),
     customProductInfoRules: Array.isArray(item.customProductInfoRules)
       ? item.customProductInfoRules.map((rule, ruleIndex) =>
           normalizeCustomProductRule(rule, ruleIndex)
@@ -425,36 +465,12 @@ function normalizeOrganizationItem(
 export const DEFAULT_ORGANIZATION_ITEMS: OrganizationItem[] = [
   normalizeOrganizationItem(
     {
-      id: 'org_store_suzhou_001',
-      type: 'store',
-      name: '唯寻苏州店铺',
-      code: 'MD-SU-202604080001',
-      regionPath: ['jiangsu', 'suzhou', 'sip'],
-      address: '江苏省苏州市工业园区星湖街218号创意产业园B1栋',
-      contactPhone: '0512-67558866',
-      managerName: '陈晨',
-      managerPhone: '139-0000-2222',
-      selectedStoreIds: ['store_suzhou'],
-      status: 'enabled',
-      capabilities: {
-        shopIsolation: true,
-        shopStatus: true,
-        selfBuiltProduct: true,
-        customProductInfo: true,
-      },
-      createdAt: '2026-04-08 09:50:00',
-      updatedAt: '2026-04-08 09:50:00',
-    },
-    0
-  ),
-  normalizeOrganizationItem(
-    {
       id: 'org_partner_huanan_001',
       type: 'partner',
       name: '唯寻华南',
-      code: 'QY-HN-202604080001',
+      code: 'QY-HN-202605060001',
       regionPath: ['guangdong'],
-      address: '广东省广州市天河区珠江新城华夏路28号富力盈信大厦',
+      address: '广东省广州市天河区珠江新城华夏路28号富力盈信大厦10层',
       contactPhone: '020-88886666',
       managerName: '林岚',
       managerPhone: '139-0000-3333',
@@ -462,58 +478,230 @@ export const DEFAULT_ORGANIZATION_ITEMS: OrganizationItem[] = [
       status: 'enabled',
       capabilities: DEFAULT_ORGANIZATION_CAPABILITIES,
       customProductInfoRules: [],
-      createdAt: '2026-04-07 15:00:00',
-      updatedAt: '2026-04-07 15:00:00',
+      createdAt: '2026-05-06 09:00:00',
+      updatedAt: '2026-05-06 09:00:00',
+    },
+    0
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_xiangmu_001',
+      type: 'store',
+      name: '唯寻橡沐店铺',
+      code: 'MD-XM-202605060001',
+      regionPath: ['shanghai', 'shanghai-city', 'jingan'],
+      address: '上海市静安区南京西路819号中创大厦12层',
+      contactPhone: '021-51000001',
+      managerName: '宋知夏',
+      managerPhone: '138-2100-4501',
+      selectedStoreIds: ['store_xiangmu'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 09:10:00',
+      updatedAt: '2026-05-06 09:10:00',
     },
     1
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_qingshao_001',
+      type: 'store',
+      name: '唯寻青少店铺',
+      code: 'MD-QS-202605060001',
+      regionPath: ['beijing', 'beijing-city', 'chaoyang'],
+      address: '北京市朝阳区东三环中路7号财富中心B座8层',
+      contactPhone: '010-62000001',
+      managerName: '顾言初',
+      managerPhone: '138-2100-4502',
+      selectedStoreIds: ['store_qingshao'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: false,
+      },
+      createdAt: '2026-05-06 09:20:00',
+      updatedAt: '2026-05-06 09:20:00',
+    },
+    2
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_beijing_001',
+      type: 'store',
+      name: '唯寻北京店铺',
+      code: 'MD-BJ-202605060001',
+      regionPath: ['beijing', 'beijing-city', 'haidian'],
+      address: '北京市海淀区中关村大街27号中关村大厦6层',
+      contactPhone: '010-62000002',
+      managerName: '谢安然',
+      managerPhone: '138-2100-4503',
+      selectedStoreIds: ['store_beijing'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 09:30:00',
+      updatedAt: '2026-05-06 09:30:00',
+    },
+    3
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_suzhou_001',
+      type: 'store',
+      name: '唯寻苏州店铺',
+      code: 'MD-SU-202605060001',
+      regionPath: ['jiangsu', 'suzhou', 'sip'],
+      address: '江苏省苏州市工业园区星湖街218号创意产业园B1栋',
+      contactPhone: '0512-67558866',
+      managerName: '陈晨',
+      managerPhone: '138-2100-4504',
+      selectedStoreIds: ['store_suzhou'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 09:40:00',
+      updatedAt: '2026-05-06 09:40:00',
+    },
+    4
   ),
   normalizeOrganizationItem(
     {
       id: 'org_store_guangzhou_001',
       type: 'store',
       name: '唯寻广州店铺',
-      code: 'MD-GZ-202604080001',
+      code: 'MD-GZ-202605060001',
       regionPath: ['guangdong', 'guangzhou', 'tianhe'],
-      address: '广州市天河区珠江新城华夏路28号富力盈信大厦',
+      address: '广州市天河区珠江新城华夏路28号富力盈信大厦10层',
       contactPhone: '020-88889999',
       managerName: '黄颖',
-      managerPhone: '139-0000-4444',
+      managerPhone: '138-2100-4506',
       selectedStoreIds: ['store_guangzhou'],
       status: 'enabled',
       capabilities: {
-        shopIsolation: true,
-        shopStatus: true,
         selfBuiltProduct: true,
-        customProductInfo: true,
+        selfBuiltMarketingActivity: true,
       },
-      createdAt: '2026-04-08 10:20:00',
-      updatedAt: '2026-04-08 10:20:00',
+      createdAt: '2026-05-06 09:50:00',
+      updatedAt: '2026-05-06 09:50:00',
     },
-    2
+    5
   ),
   normalizeOrganizationItem(
     {
       id: 'org_store_shenzhen_001',
       type: 'store',
       name: '唯寻深圳店铺',
-      code: 'MD-SZ-202604080002',
+      code: 'MD-SZ-202605060001',
       regionPath: ['guangdong', 'shenzhen', 'nanshan'],
-      address: '深圳市南山区海德三道航天科技广场',
+      address: '深圳市南山区海德三道航天科技广场A座9层',
       contactPhone: '0755-88991234',
       managerName: '赵琪',
-      managerPhone: '137-0000-6666',
+      managerPhone: '138-2100-4505',
       selectedStoreIds: ['store_shenzhen'],
       status: 'enabled',
       capabilities: {
-        shopIsolation: true,
-        shopStatus: true,
         selfBuiltProduct: true,
-        customProductInfo: true,
+        selfBuiltMarketingActivity: true,
       },
-      createdAt: '2026-04-08 11:00:00',
-      updatedAt: '2026-04-08 11:00:00',
+      createdAt: '2026-05-06 10:00:00',
+      updatedAt: '2026-05-06 10:00:00',
     },
-    3
+    6
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_future_academy_001',
+      type: 'store',
+      name: '唯寻未来学院店铺',
+      code: 'MD-WL-202605060001',
+      regionPath: ['shanghai', 'shanghai-city', 'pudong'],
+      address: '上海市浦东新区张江路665号德宏大厦15层',
+      contactPhone: '021-51000002',
+      managerName: '许知远',
+      managerPhone: '138-2100-4507',
+      selectedStoreIds: ['store_future_academy'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 10:10:00',
+      updatedAt: '2026-05-06 10:10:00',
+    },
+    7
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_chengdu_001',
+      type: 'store',
+      name: '唯寻成都店铺',
+      code: 'MD-CD-202605060001',
+      regionPath: ['sichuan', 'chengdu', 'gaoxin'],
+      address: '成都市高新区天府三街69号新希望国际A座11层',
+      contactPhone: '028-68880001',
+      managerName: '陆星遥',
+      managerPhone: '138-2100-4508',
+      selectedStoreIds: ['store_chengdu'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 10:20:00',
+      updatedAt: '2026-05-06 10:20:00',
+    },
+    8
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_xian_001',
+      type: 'store',
+      name: '唯寻西安店铺',
+      code: 'MD-XA-202605060001',
+      regionPath: ['shaanxi', 'xian', 'yanta'],
+      address: '西安市雁塔区锦业路1号都市之门C座7层',
+      contactPhone: '029-68880001',
+      managerName: '沈知行',
+      managerPhone: '138-2100-4509',
+      selectedStoreIds: ['store_xian'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 10:30:00',
+      updatedAt: '2026-05-06 10:30:00',
+    },
+    9
+  ),
+  normalizeOrganizationItem(
+    {
+      id: 'org_store_shanghai_001',
+      type: 'store',
+      name: '唯寻上海店铺',
+      code: 'MD-SH-202605060001',
+      regionPath: ['shanghai', 'shanghai-city', 'putuo'],
+      address: '上海市普陀区长寿路1118号悦达889广场5层',
+      contactPhone: '021-51000003',
+      managerName: '林嘉禾',
+      managerPhone: '138-2100-4510',
+      selectedStoreIds: ['store_shanghai'],
+      status: 'enabled',
+      capabilities: {
+        selfBuiltProduct: true,
+        selfBuiltMarketingActivity: true,
+      },
+      createdAt: '2026-05-06 10:40:00',
+      updatedAt: '2026-05-06 10:40:00',
+    },
+    10
   ),
 ];
 
@@ -521,12 +709,16 @@ function migrateOrganizationSeedItem(item: Partial<OrganizationItem>) {
   if (
     [
       'org_partner_suzhou_001',
-      'org_store_shanghai_001',
       'org_partner_shanghai_001',
-      'org_store_beijing_001',
       'org_partner_beijing_001',
       'org_store_hangzhou_001',
       'org_partner_hangzhou_001',
+      'org_store_nanjing_001',
+      'org_store_shanghai_putuo_001',
+      'org_store_shanghai_pudong_001',
+      'org_store_beijing_chaoyang_001',
+      'org_store_beijing_haidian_001',
+      'org_store_nanjing_gulou_001',
     ].includes(item.id || '')
   ) {
     return null;

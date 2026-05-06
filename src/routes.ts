@@ -93,6 +93,13 @@ export const routes: IRoute[] = [
         visibleSystems: ['merchant'],
         visibleDemoIdentities: ['merchant_admin'],
       },
+      {
+        name: 'menu.product.spec',
+        key: 'product-config/spec',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
+      },
     ],
   },
   {
@@ -230,6 +237,13 @@ export const routes: IRoute[] = [
         visibleDemoIdentities: ['region_admin', 'store_staff'],
       },
       {
+        name: 'menu.product.combo',
+        key: 'product/combo',
+        visibleScopes: ['store'],
+        visibleSystems: ['store'],
+        visibleDemoIdentities: ['region_admin', 'store_staff'],
+      },
+      {
         name: 'menu.product.bundle',
         key: 'product/bundle',
         visibleScopes: ['store'],
@@ -246,6 +260,15 @@ export const routes: IRoute[] = [
       {
         name: 'menu.product.create',
         key: 'product/create',
+        ignore: true,
+        breadcrumb: false,
+        visibleScopes: ['store'],
+        visibleSystems: ['store'],
+        visibleDemoIdentities: ['region_admin', 'store_staff'],
+      },
+      {
+        name: 'menu.product.comboCreate',
+        key: 'product/combo/create',
         ignore: true,
         breadcrumb: false,
         visibleScopes: ['store'],

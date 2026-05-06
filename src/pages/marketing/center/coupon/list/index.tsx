@@ -11,7 +11,7 @@ import {
   Table,
   Typography,
 } from '@arco-design/web-react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import styles from './index.module.less';
 import {
@@ -28,18 +28,36 @@ import {
   CouponListStatus,
   CouponOwnershipType,
   DEFAULT_COUPON_LIST_FILTER_VALUES,
-  deleteCouponById,
   readCouponListItems,
   updateCouponStatus,
 } from '../data';
+import { getCouponActionKeys, type CouponActionKey } from './actions';
 import { GlobalState } from '@/store';
 import {
   maskPhone,
   ProductStoreItem,
   readProductStoreItems,
 } from '@/pages/product/store-config/data';
+import CouponDetailDrawer from '../coupon-detail-drawer';
 
 const Option = Select.Option;
+
+type CouponListPageProps = {
+  detailCouponId?: string;
+};
+
+export function getReceiveIssueDescriptions(
+  record: Pick<CouponListItem, 'ownershipType' | 'localReceivedCount' | 'receiveRate'>,
+  isStoreSystem: boolean
+) {
+  const descriptions = [`领取率 ${record.receiveRate}%`];
+
+  if (isStoreSystem && record.ownershipType === 'platform') {
+    descriptions.push(`本店已领 ${record.localReceivedCount} 张`);
+  }
+
+  return descriptions;
+}
 
 function getDefaultFilterValues(): CouponListFilterValues {
   return { ...DEFAULT_COUPON_LIST_FILTER_VALUES };
@@ -82,8 +100,9 @@ function applyFilters(
   });
 }
 
-function CouponListPage() {
+function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageProps) {
   const history = useHistory();
+  const location = useLocation();
   const currentOrganization = useSelector(
     (state: GlobalState) => state.currentOrganization
   );
@@ -110,6 +129,10 @@ function CouponListPage() {
   const [pageSize, setPageSize] = useState(10);
   const [applicableStoresCoupon, setApplicableStoresCoupon] =
     useState<CouponListItem | null>(null);
+  const [detailCouponId, setDetailCouponId] = useState<string | null>(
+    routeDetailCouponId || null
+  );
+  const isDetailRoute = location.pathname === '/marketing/center/coupon/detail';
 
   const storeItems = useMemo(() => readProductStoreItems(), []);
   const storeItemMap = useMemo(
@@ -154,6 +177,16 @@ function CouponListPage() {
     setCurrentPage(1);
   }, [currentOrganization?.id, isStoreSystem, visibleStoreIds]);
 
+  useEffect(() => {
+    setDetailCouponId(routeDetailCouponId || null);
+  }, [routeDetailCouponId]);
+
+  useEffect(() => {
+    if (isDetailRoute && !routeDetailCouponId) {
+      history.replace('/marketing/center/coupon/list');
+    }
+  }, [history, isDetailRoute, routeDetailCouponId]);
+
   function updateFormValue<K extends keyof CouponListFilterValues>(
     field: K,
     value: CouponListFilterValues[K]
@@ -182,134 +215,47 @@ function CouponListPage() {
     refreshCoupons();
   }
 
-  function handleDeleteCoupon(record: CouponListItem) {
-    deleteCouponById(record.id);
-    refreshCoupons();
-  }
-
   function renderActionLinks(record: CouponListItem) {
-    const isStorePlatformCoupon =
-      isStoreSystem && record.ownershipType === 'platform';
-
-    if (record.ownershipScope === 'shared_in' || isStorePlatformCoupon) {
-      return (
-        <span className={styles.actionLinks}>
-          <Link
-            onClick={() =>
-              history.push(`/marketing/center/coupon/detail?id=${record.id}`)
-            }
-          >
-            查看
-          </Link>
-          <span className={styles.actionDivider}>|</span>
-          <Link
-            onClick={() =>
-              history.push(
-                `/marketing/center/coupon/create?sourceId=${record.id}`
-              )
-            }
-          >
-            复制
-          </Link>
-        </span>
-      );
-    }
-
-    const isActive = record.status === 'notStarted' || record.status === 'active';
-    const actions: { key: string; node: React.ReactNode }[] = [
-      {
-        key: 'view',
-        node: (
-          <Link
-            onClick={() =>
-              history.push(`/marketing/center/coupon/detail?id=${record.id}`)
-            }
-          >
-            查看
-          </Link>
-        ),
-      },
-    ];
-
-    if (isActive) {
-      actions.push(
-        {
-          key: 'edit',
-          node: (
-            <Link
-              onClick={() =>
-                history.push(`/marketing/center/coupon/edit?id=${record.id}`)
-              }
-            >
-              修改
-            </Link>
-          ),
-        },
-        {
-          key: 'copy',
-          node: (
-            <Link
-              onClick={() =>
-                history.push(
-                  `/marketing/center/coupon/create?sourceId=${record.id}`
-                )
-              }
-            >
-              复制
-            </Link>
-          ),
-        }
-      );
-
-      actions.push({
-        key: 'void',
-        node: (
-          <Popconfirm
-            focusLock
-            title="确认作废该优惠券吗？"
-            onOk={() => handleVoidCoupon(record)}
-          >
-            <Link>作废</Link>
-          </Popconfirm>
-        ),
-      });
-    } else {
-      actions.push(
-        {
-          key: 'copy',
-          node: (
-            <Link
-              onClick={() =>
-                history.push(
-                  `/marketing/center/coupon/create?sourceId=${record.id}`
-                )
-              }
-            >
-              复制
-            </Link>
-          ),
-        },
-        {
-          key: 'delete',
-          node: (
-            <Popconfirm
-              focusLock
-              title="确认删除该优惠券吗？"
-              onOk={() => handleDeleteCoupon(record)}
-            >
-              <Link status="error">删除</Link>
-            </Popconfirm>
-          ),
-        }
-      );
-    }
+    const actionNodes: Record<CouponActionKey, React.ReactNode> = {
+      view: (
+        <Link onClick={() => setDetailCouponId(record.id)}>查看</Link>
+      ),
+      edit: (
+        <Link
+          onClick={() =>
+            history.push(`/marketing/center/coupon/edit?id=${record.id}`)
+          }
+        >
+          修改
+        </Link>
+      ),
+      copy: (
+        <Link
+          onClick={() =>
+            history.push(`/marketing/center/coupon/create?sourceId=${record.id}`)
+          }
+        >
+          复制
+        </Link>
+      ),
+      void: (
+        <Popconfirm
+          focusLock
+          title="确认作废该优惠券吗？"
+          onOk={() => handleVoidCoupon(record)}
+        >
+          <Link>作废</Link>
+        </Popconfirm>
+      ),
+    };
+    const actionKeys = getCouponActionKeys(record, isStoreSystem);
 
     return (
       <span className={styles.actionLinks}>
-        {actions.map((action, index) => (
-          <React.Fragment key={action.key}>
+        {actionKeys.map((actionKey, index) => (
+          <React.Fragment key={actionKey}>
             {index > 0 && <span className={styles.actionDivider}>|</span>}
-            {action.node}
+            {actionNodes[actionKey]}
           </React.Fragment>
         ))}
       </span>
@@ -346,31 +292,35 @@ function CouponListPage() {
       dataIndex: 'discountSummary',
       width: 140,
     },
-    isStoreSystem
-      ? {
-          title: '券归属类型',
-          dataIndex: 'ownershipType',
-          width: 140,
-          render: (_: string, record: CouponListItem) => (
-            <div className={styles.infoCell}>
-              <Typography.Text className={styles.primaryText}>
-                {COUPON_OWNERSHIP_TYPE_LABEL_MAP[record.ownershipType]}
-              </Typography.Text>
-            </div>
-          ),
-        }
-      : {
-          title: '活动归属',
-          dataIndex: 'ownershipLabel',
-          width: 180,
-          render: (_: string, record: CouponListItem) => (
-            <div className={styles.infoCell}>
-              <Typography.Text className={styles.primaryText}>
-                {record.ownershipLabel}
-              </Typography.Text>
-            </div>
-          ),
-        },
+    ...(isStoreSystem
+      ? [
+          {
+            title: '券归属类型',
+            dataIndex: 'ownershipType',
+            width: 140,
+            render: (_: string, record: CouponListItem) => (
+              <div className={styles.infoCell}>
+                <Typography.Text className={styles.primaryText}>
+                  {COUPON_OWNERSHIP_TYPE_LABEL_MAP[record.ownershipType]}
+                </Typography.Text>
+              </div>
+            ),
+          },
+        ]
+      : [
+          {
+            title: '活动归属',
+            dataIndex: 'ownershipLabel',
+            width: 180,
+            render: (_: string, record: CouponListItem) => (
+              <div className={styles.infoCell}>
+                <Typography.Text className={styles.primaryText}>
+                  {record.ownershipLabel}
+                </Typography.Text>
+              </div>
+            ),
+          },
+        ]),
     ...(!isStoreSystem
       ? [
           {
@@ -397,14 +347,11 @@ function CouponListPage() {
           <Typography.Text className={styles.primaryText}>
             {record.receivedCount}/{record.issueCount}
           </Typography.Text>
-          <Typography.Text className={styles.secondaryText}>
-            领取率 {record.receiveRate}%
-          </Typography.Text>
-          {record.ownershipScope !== 'own' && (
-            <Typography.Text className={styles.secondaryText}>
-              本店已领 {record.localReceivedCount} 张
+          {getReceiveIssueDescriptions(record, isStoreSystem).map((description) => (
+            <Typography.Text key={description} className={styles.secondaryText}>
+              {description}
             </Typography.Text>
-          )}
+          ))}
         </div>
       ),
     },
@@ -631,6 +578,19 @@ function CouponListPage() {
           />
         </Modal>
       )}
+
+      <CouponDetailDrawer
+        couponId={detailCouponId}
+        visible={Boolean(detailCouponId)}
+        onCancel={() => {
+          if (isDetailRoute) {
+            history.replace('/marketing/center/coupon/list');
+            return;
+          }
+
+          setDetailCouponId(null);
+        }}
+      />
     </div>
   );
 }

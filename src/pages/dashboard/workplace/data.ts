@@ -7,10 +7,46 @@ type StoreSeed = HeadquartersDashboardStore & {
 
 const STORE_SEEDS: StoreSeed[] = [
   {
-    id: 'store_suzhou',
-    name: '苏州店铺',
+    id: 'store_xiangmu',
+    name: '唯寻橡沐店铺',
     regionId: 'region_direct',
-    regionName: '总部直属店铺',
+    regionName: '总部直营',
+    managerName: '宋知夏',
+    gmv: 418600,
+    orderCount: 1120,
+    customerCount: 856,
+    averageOrderValue: 373.75,
+    warningTags: ['高客单课程续费待跟进'],
+  },
+  {
+    id: 'store_qingshao',
+    name: '唯寻青少店铺',
+    regionId: 'region_north',
+    regionName: '唯寻华北',
+    managerName: '顾言初',
+    gmv: 286900,
+    orderCount: 804,
+    customerCount: 628,
+    averageOrderValue: 356.84,
+    warningTags: ['体验课转化待提升'],
+  },
+  {
+    id: 'store_beijing',
+    name: '唯寻北京店铺',
+    regionId: 'region_north',
+    regionName: '唯寻华北',
+    managerName: '谢安然',
+    gmv: 352400,
+    orderCount: 936,
+    customerCount: 714,
+    averageOrderValue: 376.50,
+    warningTags: ['周末接待排班偏紧'],
+  },
+  {
+    id: 'store_suzhou',
+    name: '唯寻苏州店铺',
+    regionId: 'region_east',
+    regionName: '唯寻华东',
     managerName: '陈晨',
     gmv: 328600,
     orderCount: 920,
@@ -20,7 +56,7 @@ const STORE_SEEDS: StoreSeed[] = [
   },
   {
     id: 'store_guangzhou',
-    name: '广州店铺',
+    name: '唯寻广州店铺',
     regionId: 'region_south',
     regionName: '唯寻华南',
     managerName: '黄颖',
@@ -32,7 +68,7 @@ const STORE_SEEDS: StoreSeed[] = [
   },
   {
     id: 'store_shenzhen',
-    name: '深圳店铺',
+    name: '唯寻深圳店铺',
     regionId: 'region_south',
     regionName: '唯寻华南',
     managerName: '赵琪',
@@ -42,14 +78,73 @@ const STORE_SEEDS: StoreSeed[] = [
     averageOrderValue: 363.49,
     warningTags: ['新客转化待提升'],
   },
+  {
+    id: 'store_future_academy',
+    name: '唯寻未来学院店铺',
+    regionId: 'region_direct',
+    regionName: '总部直营',
+    managerName: '许知远',
+    gmv: 389500,
+    orderCount: 998,
+    customerCount: 776,
+    averageOrderValue: 390.28,
+    warningTags: ['课程顾问跟进节奏待收敛'],
+  },
+  {
+    id: 'store_chengdu',
+    name: '唯寻成都店铺',
+    regionId: 'region_west',
+    regionName: '唯寻西部',
+    managerName: '陆星遥',
+    gmv: 297800,
+    orderCount: 812,
+    customerCount: 626,
+    averageOrderValue: 366.75,
+    warningTags: ['新客转介绍待提升'],
+  },
+  {
+    id: 'store_xian',
+    name: '唯寻西安店铺',
+    regionId: 'region_west',
+    regionName: '唯寻西部',
+    managerName: '沈知行',
+    gmv: 268700,
+    orderCount: 748,
+    customerCount: 582,
+    averageOrderValue: 359.22,
+    warningTags: ['顾问人效待观察'],
+  },
+  {
+    id: 'store_shanghai',
+    name: '唯寻上海店铺',
+    regionId: 'region_east',
+    regionName: '唯寻华东',
+    managerName: '林嘉禾',
+    gmv: 401200,
+    orderCount: 1058,
+    customerCount: 812,
+    averageOrderValue: 379.21,
+    warningTags: ['续费跟进待加强'],
+  },
 ];
+
+export function hasStoreOperationData(storeId: string) {
+  const matchedStore = STORE_SEEDS.find((item) => item.id === storeId);
+
+  return Boolean(
+    matchedStore &&
+      (matchedStore.gmv > 0 ||
+        matchedStore.orderCount > 0 ||
+        matchedStore.customerCount > 0)
+  );
+}
 
 const ALERT_SEEDS = [
   {
     id: 'alert_1',
     level: 'high' as const,
     title: '库存周转低于安全阈值',
-    targetName: '广州店铺',
+    targetName: '唯寻广州店铺',
     description: '重点课程套餐库存低于 7 天安全库存，建议今日完成补货。',
   },
   {
@@ -63,14 +158,14 @@ const ALERT_SEEDS = [
     id: 'alert_3',
     level: 'medium' as const,
     title: '转化率低于总部基准',
-    targetName: '深圳店铺',
+    targetName: '唯寻深圳店铺',
     description: '店铺转化率较总部均值低 2.6 个百分点，需要跟进销售脚本。',
   },
   {
     id: 'alert_4',
     level: 'medium' as const,
     title: '人效表现波动',
-    targetName: '苏州店铺',
+    targetName: '唯寻苏州店铺',
     description: '本周店铺人效连续两日下降，建议排查排班与到店转化。',
   },
   {
@@ -84,7 +179,7 @@ const ALERT_SEEDS = [
     id: 'alert_6',
     level: 'medium' as const,
     title: '直属店铺到店转化波动',
-    targetName: '苏州店铺',
+    targetName: '唯寻未来学院店铺',
     description: '近 3 日到店转化率低于阶段目标，建议复盘预约到访与接待流程。',
   },
 ];
@@ -235,7 +330,7 @@ function buildTodos(
     },
     {
       id: 'todo_2',
-      title: '跟进北京店铺转化提升方案',
+      title: '跟进唯寻北京店铺转化提升方案',
       owner: '总部销售运营',
       dueText: '今日 16:30 前',
       status: '待处理',

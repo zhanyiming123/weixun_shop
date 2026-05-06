@@ -1,54 +1,54 @@
 import { createProductSkuId } from '../list/data';
+import { formatProductCreateSpecText } from './spec';
 import type {
+  ProductCarouselImage,
   ProductIndependentPriceRule,
   ProductIndependentStockRule,
   ProductShareTargetItem,
   ProductSkuItem,
-  ProductStoreChannelCustomFieldKey,
-  ProductStoreChannelRuleItem,
+  ProductStatus,
+  ProductStoreChannelConfigItem,
+  ProductStoreChannelStatus,
   ProductStoreChannelShareMode,
-  ProductStoreChannelSkuScope,
   ProductStoreChannelStoreScope,
+  ProductStoreSellStatus,
 } from '@/types/product';
 
 export const STORE_CHANNEL_SINGLE_SKU_KEY = 'single';
 
-const STORE_CHANNEL_FIELD_KEY_SET = new Set<ProductStoreChannelCustomFieldKey>([
-  'productPrice',
-  'productStock',
-  'addSpecValue',
-]);
-
 export type StoreChannelSpecItem = {
-  id: number;
+  id: string | number;
   name: string;
   value: string;
+  specPairs?: Array<{
+    name: string;
+    value: string;
+  }>;
 };
 
 export type StoreChannelSkuDraftItem = {
   sourcePrice?: number;
   sourceStock?: number;
+  status?: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 
 export type StoreChannelSkuDraftMap = Record<string, StoreChannelSkuDraftItem>;
 
-export type StoreChannelRuleSkuConfigDraftItem = {
-  skuKey: string;
-  suggestedMinPrice?: number;
-  suggestedMaxPrice?: number;
-  suggestedMinStock?: number;
-  suggestedMaxStock?: number;
+export type StoreChannelProductPoolStoreConfigDraftItem = {
+  storeId: string;
+  sellStatus: ProductStoreSellStatus;
+  channelStatus: ProductStoreChannelStatus;
+  sellableSkuKeys: string[];
+  allowSelfPrice: boolean;
 };
 
-export type StoreChannelRuleDraftItem = {
-  id: string;
-  fieldKeys: ProductStoreChannelCustomFieldKey[];
+export type StoreChannelConfigDraftItem = {
+  shareMode: ProductStoreChannelShareMode;
   storeScope: ProductStoreChannelStoreScope;
   storeIds: string[];
-  skuScope: ProductStoreChannelSkuScope;
-  skuKeys: string[];
-  shareMode: ProductStoreChannelShareMode;
-  skuConfigs: StoreChannelRuleSkuConfigDraftItem[];
+  productPoolStoreConfigs: StoreChannelProductPoolStoreConfigDraftItem[];
 };
 
 export type StoreChannelSkuMetaItem = {
@@ -65,7 +65,7 @@ type BuildStoreChannelCreateSkuPayloadInput = {
   specItems: StoreChannelSpecItem[];
   storeChannelEnabled: boolean;
   sourceDraftMap: StoreChannelSkuDraftMap;
-  rules: StoreChannelRuleDraftItem[];
+  config: StoreChannelConfigDraftItem;
   targetStoreIds: string[];
   createdAt: string;
 };
@@ -75,7 +75,7 @@ type ValidateStoreChannelSkuDraftMapInput = {
   specItems: StoreChannelSpecItem[];
   storeChannelEnabled: boolean;
   sourceDraftMap: StoreChannelSkuDraftMap;
-  rules: StoreChannelRuleDraftItem[];
+  config: StoreChannelConfigDraftItem;
   targetStoreIds: string[];
 };
 
@@ -122,169 +122,81 @@ function hasInvalidSourceStock(value?: number) {
   );
 }
 
-function hasInvalidPriceRange(
-  item: Pick<
-    StoreChannelRuleSkuConfigDraftItem,
-    'suggestedMinPrice' | 'suggestedMaxPrice'
-  >
-) {
-  if (
-    (typeof item.suggestedMinPrice === 'number' &&
-      Number.isFinite(item.suggestedMinPrice) &&
-      item.suggestedMinPrice < 0) ||
-    (typeof item.suggestedMaxPrice === 'number' &&
-      Number.isFinite(item.suggestedMaxPrice) &&
-      item.suggestedMaxPrice < 0)
-  ) {
-    return true;
-  }
-
-  const minPrice = toOptionalPrice(item.suggestedMinPrice);
-  const maxPrice = toOptionalPrice(item.suggestedMaxPrice);
-
-  return (
-    typeof minPrice === 'number' &&
-    typeof maxPrice === 'number' &&
-    minPrice > maxPrice
-  );
-}
-
-function hasInvalidStockRange(
-  item: Pick<
-    StoreChannelRuleSkuConfigDraftItem,
-    'suggestedMinStock' | 'suggestedMaxStock'
-  >
-) {
-  if (
-    (typeof item.suggestedMinStock === 'number' &&
-      Number.isFinite(item.suggestedMinStock) &&
-      item.suggestedMinStock < 0) ||
-    (typeof item.suggestedMaxStock === 'number' &&
-      Number.isFinite(item.suggestedMaxStock) &&
-      item.suggestedMaxStock < 0)
-  ) {
-    return true;
-  }
-
-  const minStock = toOptionalStock(item.suggestedMinStock);
-  const maxStock = toOptionalStock(item.suggestedMaxStock);
-
-  return (
-    typeof minStock === 'number' &&
-    typeof maxStock === 'number' &&
-    minStock > maxStock
-  );
-}
-
-function normalizeRuleFieldKeys(fieldKeys: ProductStoreChannelCustomFieldKey[] = []) {
-  return Array.from(
-    new Set(
-      fieldKeys.filter((key) => STORE_CHANNEL_FIELD_KEY_SET.has(key))
-    )
-  );
-}
-
-function hasPriceSuggestionField(
-  fieldKeys: ProductStoreChannelCustomFieldKey[] = []
-) {
-  return normalizeRuleFieldKeys(fieldKeys).includes('productPrice');
-}
-
-function hasStockSuggestionField(
-  fieldKeys: ProductStoreChannelCustomFieldKey[] = []
-) {
-  return normalizeRuleFieldKeys(fieldKeys).includes('productStock');
-}
-
-function normalizeRuleSkuConfigs(
-  skuConfigs: StoreChannelRuleSkuConfigDraftItem[] = [],
-  allowedSkuKeySet: Set<string>,
-  fieldKeys: ProductStoreChannelCustomFieldKey[] = []
-) {
-  const seenSkuKeys = new Set<string>();
-  const allowPriceSuggestion = hasPriceSuggestionField(fieldKeys);
-  const allowStockSuggestion = hasStockSuggestionField(fieldKeys);
-
-  return skuConfigs.flatMap((item): StoreChannelRuleSkuConfigDraftItem[] => {
-    const skuKey =
-      typeof item?.skuKey === 'string' ? item.skuKey.trim() : '';
-    if (!skuKey || seenSkuKeys.has(skuKey) || !allowedSkuKeySet.has(skuKey)) {
-      return [];
-    }
-
-    const suggestedMinPrice = allowPriceSuggestion
-      ? toOptionalPrice(item.suggestedMinPrice)
-      : undefined;
-    const suggestedMaxPrice = allowPriceSuggestion
-      ? toOptionalPrice(item.suggestedMaxPrice)
-      : undefined;
-    const suggestedMinStock = allowStockSuggestion
-      ? toOptionalStock(item.suggestedMinStock)
-      : undefined;
-    const suggestedMaxStock = allowStockSuggestion
-      ? toOptionalStock(item.suggestedMaxStock)
-      : undefined;
-
-    if (
-      (typeof suggestedMinPrice === 'number' &&
-        typeof suggestedMaxPrice === 'number' &&
-        suggestedMinPrice > suggestedMaxPrice) ||
-      (typeof suggestedMinStock === 'number' &&
-        typeof suggestedMaxStock === 'number' &&
-        suggestedMinStock > suggestedMaxStock)
-    ) {
-      return [];
-    }
-
-    seenSkuKeys.add(skuKey);
-
-    return [
-      {
-        skuKey,
-        suggestedMinPrice,
-        suggestedMaxPrice,
-        suggestedMinStock,
-        suggestedMaxStock,
-      },
-    ];
-  });
-}
-
-function createStoreChannelRuleSequence() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function createEmptyStoreChannelRule(): StoreChannelRuleDraftItem {
+export function createDefaultStoreChannelProductPoolStoreConfig(
+  storeId: string
+): StoreChannelProductPoolStoreConfigDraftItem {
   return {
-    id: `store_channel_rule_${createStoreChannelRuleSequence()}`,
-    fieldKeys: [],
-    storeScope: 'allStores',
-    storeIds: [],
-    skuScope: 'allSkus',
-    skuKeys: [],
-    shareMode: 'product_pool',
-    skuConfigs: [],
+    storeId,
+    sellStatus: 'unsellable',
+    channelStatus: 'off',
+    sellableSkuKeys: [],
+    allowSelfPrice: false,
   };
 }
 
-export function removeStoreChannelRuleDrafts(
-  previous: StoreChannelRuleDraftItem[],
-  ruleId: string
+function normalizeProductPoolStoreConfigs(
+  productPoolStoreConfigs: StoreChannelProductPoolStoreConfigDraftItem[] = [],
+  allowedStoreIds: string[] = [],
+  allowedSkuKeys: string[] = []
 ) {
-  return previous.filter((item) => item.id !== ruleId);
+  const normalizedStoreIds = uniqueStringArray(allowedStoreIds);
+  const allowedStoreIdSet = new Set(normalizedStoreIds);
+  const allowedSkuKeySet = new Set(uniqueStringArray(allowedSkuKeys));
+  const configMap = new Map<string, StoreChannelProductPoolStoreConfigDraftItem>();
+
+  productPoolStoreConfigs.forEach((item) => {
+    const storeId =
+      typeof item?.storeId === 'string' ? item.storeId.trim() : '';
+
+    if (!storeId || configMap.has(storeId) || !allowedStoreIdSet.has(storeId)) {
+      return;
+    }
+
+    configMap.set(storeId, item);
+  });
+
+  return normalizedStoreIds.map((storeId) => {
+    const current =
+      configMap.get(storeId) ||
+      createDefaultStoreChannelProductPoolStoreConfig(storeId);
+    const normalizedSellableSkuKeys = uniqueStringArray(
+      current.sellableSkuKeys
+    ).filter((skuKey) => allowedSkuKeySet.has(skuKey));
+    const isSellable = current.sellStatus === 'sellable';
+
+    return {
+      storeId,
+      sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+      channelStatus: isSellable ? ('on' as const) : ('off' as const),
+      sellableSkuKeys: isSellable ? normalizedSellableSkuKeys : [],
+      allowSelfPrice:
+        isSellable &&
+        normalizedSellableSkuKeys.length > 0 &&
+        current.allowSelfPrice === true,
+    };
+  });
 }
 
-export function canRemoveStoreChannelRule(ruleIndex: number) {
-  return ruleIndex > 0;
+export function createEmptyStoreChannelConfig(): StoreChannelConfigDraftItem {
+  return {
+    shareMode: 'product_pool',
+    storeScope: 'allStores',
+    storeIds: [],
+    productPoolStoreConfigs: [],
+  };
 }
 
 export function buildStoreChannelSpecText(
   item: StoreChannelSpecItem,
   index: number
 ) {
-  return (
-    [item.name.trim(), item.value.trim()].filter(Boolean).join('：') ||
-    `规格${index + 1}`
+  return formatProductCreateSpecText(
+    {
+      name: item.name,
+      value: item.value,
+      specPairs: item.specPairs || [],
+    },
+    index
   );
 }
 
@@ -333,20 +245,6 @@ export function buildStoreChannelSkuMetaItems(
   });
 }
 
-export function getStoreChannelRuleMatchedSkuKeys(
-  rule: StoreChannelRuleDraftItem,
-  skuKeys: string[]
-) {
-  const normalizedSkuKeys = uniqueStringArray(skuKeys);
-
-  if (rule.skuScope === 'allSkus') {
-    return normalizedSkuKeys;
-  }
-
-  const allowedSkuKeySet = new Set(normalizedSkuKeys);
-  return uniqueStringArray(rule.skuKeys).filter((skuKey) => allowedSkuKeySet.has(skuKey));
-}
-
 export function syncStoreChannelSkuDraftMap(
   previous: StoreChannelSkuDraftMap,
   specMode: 'single' | 'multi',
@@ -361,108 +259,198 @@ export function syncStoreChannelSkuDraftMap(
   );
 }
 
-export function syncStoreChannelRuleDrafts(
-  previous: StoreChannelRuleDraftItem[],
-  skuKeys: string[]
+export function syncStoreChannelConfigDraft(
+  previous: StoreChannelConfigDraftItem,
+  skuKeys: string[],
+  targetStoreIds: string[] = []
 ) {
-  const allowedSkuKeySet = new Set(uniqueStringArray(skuKeys));
-
-  return previous.map((rule) => {
-    const normalizedSkuKeys = uniqueStringArray(rule.skuKeys).filter((skuKey) =>
-      allowedSkuKeySet.has(skuKey)
-    );
-    const matchedSkuKeys =
-      rule.skuScope === 'allSkus'
-        ? Array.from(allowedSkuKeySet)
-        : normalizedSkuKeys;
-
-    return {
-      ...rule,
-      fieldKeys: normalizeRuleFieldKeys(rule.fieldKeys),
-      storeIds: uniqueStringArray(rule.storeIds),
-      skuKeys: normalizedSkuKeys,
-      skuConfigs: normalizeRuleSkuConfigs(
-        rule.skuConfigs,
-        new Set(matchedSkuKeys),
-        rule.fieldKeys
-      ),
-    };
-  });
+  return {
+    ...previous,
+    storeIds: uniqueStringArray(previous.storeIds),
+    productPoolStoreConfigs: normalizeProductPoolStoreConfigs(
+      previous.productPoolStoreConfigs || [],
+      targetStoreIds,
+      uniqueStringArray(skuKeys)
+    ),
+  };
 }
 
-type ExpandedStoreChannelRuleResult = {
-  storeChannelRule: ProductStoreChannelRuleItem;
-  targetStoreIds: string[];
-  targetSkuIds: string[];
+export function createStoreChannelConfigDraftFromProductConfig(
+  config: ProductStoreChannelConfigItem | undefined,
+  skuMetaItems: StoreChannelSkuMetaItem[],
+  targetStoreIds: string[] = []
+) {
+  if (!config) {
+    return createEmptyStoreChannelConfig();
+  }
+
+  const skuKeyMap = new Map(skuMetaItems.map((item) => [item.skuId, item.key]));
+
+  return syncStoreChannelConfigDraft(
+    {
+      shareMode: config.shareMode,
+      storeScope:
+        config.shareMode === 'product_pool' ? 'specificStores' : config.storeScope,
+      storeIds: uniqueStringArray(config.storeIds || []),
+      productPoolStoreConfigs: (config.productPoolStoreConfigs || []).map((item) => {
+        const sellableSkuKeys = uniqueStringArray(
+          (item.sellableSkuIds || [])
+            .map((skuId) => skuKeyMap.get(skuId) || '')
+            .filter(Boolean)
+        );
+        const isSellable = item.sellStatus === 'sellable' && sellableSkuKeys.length > 0;
+
+        return {
+          storeId: item.storeId,
+          sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+          channelStatus: isSellable ? ('on' as const) : ('off' as const),
+          sellableSkuKeys: isSellable ? sellableSkuKeys : [],
+          allowSelfPrice: isSellable && item.allowSelfPrice === true,
+        };
+      }),
+    },
+    skuMetaItems.map((item) => item.key),
+    targetStoreIds
+  );
+}
+
+type ExpandedStoreChannelConfigTargetItem = {
+  storeId: string;
+  skuIds: string[];
+  allowSelfPrice?: boolean;
 };
 
-function expandStoreChannelRule(
-  rule: StoreChannelRuleDraftItem,
+type ExpandedStoreChannelConfigResult = {
+  storeChannelConfig: ProductStoreChannelConfigItem;
+  targets: ExpandedStoreChannelConfigTargetItem[];
+};
+
+function expandStoreChannelConfig(
+  config: StoreChannelConfigDraftItem,
   skuMetaItems: StoreChannelSkuMetaItem[],
   targetStoreIds: string[]
-): ExpandedStoreChannelRuleResult {
+): ExpandedStoreChannelConfigResult {
+  const availableSkuKeys = uniqueStringArray(skuMetaItems.map((item) => item.key));
   const targetStoreIdSet = new Set(targetStoreIds);
-  const availableSkuKeys = skuMetaItems.map((item) => item.key);
-  const matchedSkuKeys = getStoreChannelRuleMatchedSkuKeys(rule, availableSkuKeys);
-  const matchedSkuKeySet = new Set(matchedSkuKeys);
   const skuIdMap = new Map(skuMetaItems.map((item) => [item.key, item.skuId]));
-  const normalizedTargetStoreIds =
-    rule.storeScope === 'allStores'
+  const normalizedProductPoolStoreConfigs = normalizeProductPoolStoreConfigs(
+    config.productPoolStoreConfigs || [],
+    targetStoreIds,
+    availableSkuKeys
+  );
+  const sharedPoolTargetStoreIds =
+    config.storeScope === 'allStores'
       ? [...targetStoreIds]
-      : uniqueStringArray(rule.storeIds).filter((storeId) => targetStoreIdSet.has(storeId));
-  const normalizedTargetSkuIds = matchedSkuKeys
-    .map((skuKey) => skuIdMap.get(skuKey) || '')
-    .filter(Boolean);
-  const normalizedFieldKeys = normalizeRuleFieldKeys(rule.fieldKeys);
+      : uniqueStringArray(config.storeIds).filter((storeId) => targetStoreIdSet.has(storeId));
+  const productPoolTargets: ExpandedStoreChannelConfigTargetItem[] =
+    normalizedProductPoolStoreConfigs.flatMap((item) => {
+      if (item.sellStatus !== 'sellable') {
+        return [];
+      }
+
+      const skuIds = uniqueStringArray(
+        item.sellableSkuKeys
+          .map((skuKey) => skuIdMap.get(skuKey) || '')
+          .filter(Boolean)
+      );
+
+      if (!skuIds.length) {
+        return [];
+      }
+
+      return [
+        {
+          storeId: item.storeId,
+          skuIds,
+          ...(item.allowSelfPrice ? { allowSelfPrice: true } : {}),
+        },
+      ];
+    });
+  const persistedProductPoolStoreConfigs = normalizedProductPoolStoreConfigs.map((item) => {
+    const sellableSkuIds = uniqueStringArray(
+      item.sellableSkuKeys
+        .map((skuKey) => skuIdMap.get(skuKey) || '')
+        .filter(Boolean)
+    );
+    const isSellable = item.sellStatus === 'sellable' && sellableSkuIds.length > 0;
+
+    return {
+      storeId: item.storeId,
+      sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+      channelStatus: isSellable ? ('on' as const) : ('off' as const),
+      ...(isSellable ? { sellableSkuIds } : {}),
+      ...(isSellable && item.allowSelfPrice ? { allowSelfPrice: true } : {}),
+    };
+  });
+  const productPoolStoreIds = uniqueStringArray(
+    productPoolTargets.map((item) => item.storeId)
+  );
 
   return {
-    targetStoreIds: normalizedTargetStoreIds,
-    targetSkuIds: normalizedTargetSkuIds,
-    storeChannelRule: {
-      id: rule.id,
-      fieldKeys: normalizedFieldKeys,
-      storeScope: rule.storeScope,
-      storeIds: rule.storeScope === 'specificStores' ? normalizedTargetStoreIds : [],
-      skuScope: rule.skuScope,
-      skuIds: rule.skuScope === 'specificSkus' ? normalizedTargetSkuIds : [],
-      shareMode: rule.shareMode,
-      skuConfigs: normalizeRuleSkuConfigs(
-        rule.skuConfigs,
-        matchedSkuKeySet,
-        normalizedFieldKeys
-      ).flatMap(
-        (item) => {
-          const skuId = skuIdMap.get(item.skuKey);
-          if (!skuId) {
-            return [];
-          }
-
-          const minSuggestedPrice = toOptionalPrice(item.suggestedMinPrice);
-          const maxSuggestedPrice = toOptionalPrice(item.suggestedMaxPrice);
-          const minSuggestedStock = toOptionalStock(item.suggestedMinStock);
-          const maxSuggestedStock = toOptionalStock(item.suggestedMaxStock);
-
-          if (
-            typeof minSuggestedPrice !== 'number' &&
-            typeof maxSuggestedPrice !== 'number' &&
-            typeof minSuggestedStock !== 'number' &&
-            typeof maxSuggestedStock !== 'number'
-          ) {
-            return [];
-          }
-
-          return [
-            {
-              skuId,
-              minSuggestedPrice,
-              maxSuggestedPrice,
-              minSuggestedStock,
-              maxSuggestedStock,
-            },
-          ];
-        }
-      ),
+    storeChannelConfig: {
+      shareMode: config.shareMode,
+      storeScope:
+        config.shareMode === 'product_pool' ? 'specificStores' : config.storeScope,
+      storeIds:
+        config.shareMode === 'product_pool'
+          ? productPoolStoreIds
+          : config.storeScope === 'specificStores'
+            ? sharedPoolTargetStoreIds
+            : [],
+      productPoolStoreConfigs:
+        config.shareMode === 'product_pool' ? persistedProductPoolStoreConfigs : [],
     },
+    targets:
+      config.shareMode === 'product_pool'
+        ? productPoolTargets
+        : sharedPoolTargetStoreIds.map((storeId) => ({
+            storeId,
+            skuIds: uniqueStringArray(skuMetaItems.map((item) => item.skuId)),
+          })),
+  };
+}
+
+export function buildStoreChannelPayloadFromSkuMetaItems({
+  skuMetaItems,
+  storeChannelEnabled,
+  config,
+  targetStoreIds,
+  createdAt,
+}: {
+  skuMetaItems: StoreChannelSkuMetaItem[];
+  storeChannelEnabled: boolean;
+  config: StoreChannelConfigDraftItem;
+  targetStoreIds: string[];
+  createdAt: string;
+}): {
+  storeChannelConfig?: ProductStoreChannelConfigItem;
+  shareTargets: ProductShareTargetItem[];
+} {
+  if (!storeChannelEnabled) {
+    return {
+      storeChannelConfig: undefined,
+      shareTargets: [],
+    };
+  }
+
+  const expandedConfig = expandStoreChannelConfig(config, skuMetaItems, targetStoreIds);
+
+  return {
+    storeChannelConfig: expandedConfig.storeChannelConfig,
+    shareTargets: expandedConfig.targets.map((item) => ({
+      storeId: item.storeId,
+      status:
+        expandedConfig.storeChannelConfig.shareMode === 'shared_pool'
+          ? 'pending'
+          : 'referenced',
+      sharedAt: createdAt,
+      referencedAt:
+        expandedConfig.storeChannelConfig.shareMode === 'shared_pool'
+          ? undefined
+          : createdAt,
+      sellableSkuIds: item.skuIds,
+      ...(item.allowSelfPrice ? { allowSelfPrice: true } : {}),
+    })),
   };
 }
 
@@ -471,7 +459,7 @@ export function validateStoreChannelSkuDraftMap({
   specItems,
   storeChannelEnabled,
   sourceDraftMap,
-  rules,
+  config,
   targetStoreIds,
 }: ValidateStoreChannelSkuDraftMapInput) {
   const draftKeys = getStoreChannelDraftKeys(specMode, specItems);
@@ -494,8 +482,12 @@ export function validateStoreChannelSkuDraftMap({
     return undefined;
   }
 
-  if (!rules.length) {
-    return '请至少保留 1 条规则配置';
+  if (
+    config.shareMode === 'shared_pool' &&
+    config.storeScope === 'specificStores' &&
+    !uniqueStringArray(config.storeIds).length
+  ) {
+    return '请选择店铺';
   }
 
   const skuMetaItems = buildStoreChannelSkuMetaItems(
@@ -504,59 +496,13 @@ export function validateStoreChannelSkuDraftMap({
     specItems,
     sourceDraftMap
   );
-  const targetStoreShareModeMap = new Map<string, ProductStoreChannelShareMode>();
-  const storeSkuRuleMap = new Map<string, string>();
+  const expandedConfig = expandStoreChannelConfig(config, skuMetaItems, targetStoreIds);
 
-  for (const rule of rules) {
-    if (rule.storeScope === 'specificStores' && !uniqueStringArray(rule.storeIds).length) {
-      return '请选择店铺';
-    }
-
-    const matchedSkuKeys = getStoreChannelRuleMatchedSkuKeys(
-      rule,
-      skuMetaItems.map((item) => item.key)
-    );
-    if (rule.skuScope === 'specificSkus' && !matchedSkuKeys.length) {
-      return '请选择SKU';
-    }
-
-    const matchedSkuKeySet = new Set(matchedSkuKeys);
-    const rawMatchedSkuConfigs = normalizeRuleSkuConfigs(
-      rule.skuConfigs,
-      matchedSkuKeySet,
-      rule.fieldKeys
-    );
-
-    if (rawMatchedSkuConfigs.some(hasInvalidPriceRange)) {
-      return '建议零售价区间需为非负数，且最低价不能高于最高价';
-    }
-
-    if (rawMatchedSkuConfigs.some(hasInvalidStockRange)) {
-      return '建议库存区间需为非负整数，且最低库存不能高于最高库存';
-    }
-
-    const expandedRule = expandStoreChannelRule(rule, skuMetaItems, targetStoreIds);
-
-    expandedRule.targetStoreIds.forEach((storeId) => {
-      const currentShareMode = targetStoreShareModeMap.get(storeId);
-      if (currentShareMode && currentShareMode !== expandedRule.storeChannelRule.shareMode) {
-        throw new Error('同一店铺命中的规则其“分享到”必须保持一致');
-      }
-
-      targetStoreShareModeMap.set(storeId, expandedRule.storeChannelRule.shareMode);
-    });
-
-    expandedRule.targetStoreIds.forEach((storeId) => {
-      expandedRule.targetSkuIds.forEach((skuId) => {
-        const key = `${storeId}:${skuId}`;
-        const previousRuleId = storeSkuRuleMap.get(key);
-        if (previousRuleId && previousRuleId !== rule.id) {
-          throw new Error('同一店铺下的同一 SKU 不能命中多条规则');
-        }
-
-        storeSkuRuleMap.set(key, rule.id);
-      });
-    });
+  if (
+    expandedConfig.storeChannelConfig.shareMode === 'product_pool' &&
+    !expandedConfig.targets.length
+  ) {
+    return '请至少选择 1 家可售门店';
   }
 
   return undefined;
@@ -568,7 +514,7 @@ export function buildStoreChannelCreateSkuPayload({
   specItems,
   storeChannelEnabled,
   sourceDraftMap,
-  rules,
+  config,
   targetStoreIds,
   createdAt,
 }: BuildStoreChannelCreateSkuPayloadInput): {
@@ -577,7 +523,7 @@ export function buildStoreChannelCreateSkuPayload({
   stock: number;
   independentPriceRule: ProductIndependentPriceRule;
   independentStockRule: ProductIndependentStockRule;
-  storeChannelRules: ProductStoreChannelRuleItem[];
+  storeChannelConfig?: ProductStoreChannelConfigItem;
   shareTargets: ProductShareTargetItem[];
 } {
   const skuMetaItems = buildStoreChannelSkuMetaItems(
@@ -586,13 +532,19 @@ export function buildStoreChannelCreateSkuPayload({
     specItems,
     sourceDraftMap
   );
-  const skus = skuMetaItems.map((item) => ({
-    id: item.skuId,
-    specText: specMode === 'single' ? '' : item.specLabel,
-    price: toRequiredPrice(item.sourcePrice),
-    stock: toRequiredStock(item.sourceStock),
-    status: 'on' as const,
-  }));
+  const skus = skuMetaItems.map((item) => {
+    const draft = sourceDraftMap[item.key] || {};
+
+    return {
+      id: item.skuId,
+      specText: specMode === 'single' ? '' : item.specLabel,
+      price: toRequiredPrice(item.sourcePrice),
+      stock: toRequiredStock(item.sourceStock),
+      status: draft.status === 'off' ? ('off' as const) : ('on' as const),
+      ...(draft.image ? { image: draft.image } : {}),
+      ...(draft.isDefaultSelected ? { isDefaultSelected: true } : {}),
+    };
+  });
   const skuPrices = skus.map((item) => item.price);
   const skuStocks = skus.map((item) => item.stock);
 
@@ -609,36 +561,17 @@ export function buildStoreChannelCreateSkuPayload({
         enabled: false,
         skuRules: [],
       },
-      storeChannelRules: [],
+      storeChannelConfig: undefined,
       shareTargets: [],
     };
   }
 
-  const expandedRules = rules.map((rule) =>
-    expandStoreChannelRule(rule, skuMetaItems, targetStoreIds)
-  );
-  const shareTargetMap = new Map<
-    string,
-    {
-      storeId: string;
-      shareMode: ProductStoreChannelShareMode;
-      skuIdSet: Set<string>;
-    }
-  >();
-
-  expandedRules.forEach((item) => {
-    item.targetStoreIds.forEach((storeId) => {
-      const current = shareTargetMap.get(storeId) || {
-        storeId,
-        shareMode: item.storeChannelRule.shareMode,
-        skuIdSet: new Set<string>(),
-      };
-
-      item.targetSkuIds.forEach((skuId) => {
-        current.skuIdSet.add(skuId);
-      });
-      shareTargetMap.set(storeId, current);
-    });
+  const storeChannelPayload = buildStoreChannelPayloadFromSkuMetaItems({
+    skuMetaItems,
+    storeChannelEnabled,
+    config,
+    targetStoreIds,
+    createdAt,
   });
 
   return {
@@ -653,14 +586,7 @@ export function buildStoreChannelCreateSkuPayload({
       enabled: false,
       skuRules: [],
     },
-    storeChannelRules: expandedRules.map((item) => item.storeChannelRule),
-    shareTargets: Array.from(shareTargetMap.values()).map((item) => ({
-      storeId: item.storeId,
-      status: item.shareMode === 'shared_pool' ? 'pending' : 'referenced',
-      sharedAt: createdAt,
-      referencedAt:
-        item.shareMode === 'shared_pool' ? undefined : createdAt,
-      sellableSkuIds: Array.from(item.skuIdSet),
-    })),
+    storeChannelConfig: storeChannelPayload.storeChannelConfig,
+    shareTargets: storeChannelPayload.shareTargets,
   };
 }

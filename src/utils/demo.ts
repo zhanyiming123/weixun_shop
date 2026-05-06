@@ -3,9 +3,11 @@ import {
   HEADQUARTER_ORGANIZATION_ID,
   OrganizationOption,
   buildCurrentOrganizationOptions,
+  filterStoreItemsByIds,
   getCurrentOrganizationById,
   hasStoreIntersection,
 } from '@/utils/organization';
+import { ProductStoreItem, readProductStoreItems } from '@/pages/product/store-config/data';
 import { readPersistentValue, writePersistentValue } from '@/utils/usePersistentState';
 import { readDeptStoreAssignments } from '@/utils/data-scope';
 
@@ -233,6 +235,68 @@ export function getAvailableDemoIdentityIds(
       getAllowedDemoSystemIds(identityId, currentOrganization).includes(currentDemoSystem)
     );
   });
+}
+
+export function getAvailableOrganizationsForSelection(
+  currentDemoSystem: DemoSystemId,
+  currentDemoIdentity: DemoIdentityId,
+  organizationOptions: OrganizationOption[] = buildCurrentOrganizationOptions()
+) {
+  const allowedOrganizationIdSet = new Set(
+    getAllowedOrganizationIds(currentDemoIdentity, organizationOptions)
+  );
+
+  return organizationOptions.filter((item) => {
+    return (
+      item.scope === 'store' &&
+      allowedOrganizationIdSet.has(item.id) &&
+      getAllowedDemoSystemIds(currentDemoIdentity, item).includes(currentDemoSystem)
+    );
+  });
+}
+
+export function getDemoOrganizationSelectionLabel(
+  currentDemoSystem: DemoSystemId,
+  currentDemoIdentity: DemoIdentityId,
+  currentOrganization: CurrentOrganization | OrganizationOption
+) {
+  if (
+    currentDemoSystem === 'store' &&
+    currentDemoIdentity === 'region_admin' &&
+    currentOrganization.scope === 'store'
+  ) {
+    return currentOrganization.name;
+  }
+
+  return 'label' in currentOrganization && currentOrganization.label
+    ? currentOrganization.label
+    : currentOrganization.name;
+}
+
+export function getDemoCurrentPresetTitle(
+  currentDemoSystem: DemoSystemId,
+  currentDemoIdentity: DemoIdentityId,
+  currentOrganization: CurrentOrganization,
+  storeItems: ProductStoreItem[] = readProductStoreItems()
+) {
+  const preset = getDemoIdentityPreset(currentDemoIdentity);
+
+  if (
+    currentDemoSystem === 'store' &&
+    currentDemoIdentity === 'region_admin' &&
+    currentOrganization.scope === 'store'
+  ) {
+    const matchedStore = filterStoreItemsByIds(
+      storeItems,
+      currentOrganization.storeIds
+    )[0];
+
+    return matchedStore?.managerName
+      ? `${matchedStore.managerName} Manager`
+      : `${currentOrganization.name} Manager`;
+  }
+
+  return preset.label;
 }
 
 export function getDefaultDemoIdentityForSystem(

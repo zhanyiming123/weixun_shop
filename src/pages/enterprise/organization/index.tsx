@@ -7,6 +7,8 @@ import {
   Form,
   Input,
   Link,
+  Message,
+  Modal,
   Select,
   Table,
   Tabs,
@@ -28,7 +30,10 @@ import {
   OrganizationStatus,
   OrganizationType,
   useOrganizationItems,
+  writeOrganizationItems,
 } from './data';
+import StoreDetailModal from './store-detail-modal';
+import { getStoreCloseCheckResult } from './store-close';
 import { useSelector } from 'react-redux';
 import { GlobalState } from '@/store';
 import {
@@ -79,7 +84,7 @@ function renderCapabilityColumn(
 function EnterpriseOrganizationPage() {
   const history = useHistory();
   const location = useLocation();
-  const [organizationItems] = useOrganizationItems();
+  const [organizationItems, setOrganizationItems] = useOrganizationItems();
   const { currentDemoIdentity, demoContext } = useSelector(
     (state: GlobalState) => state
   );
@@ -97,6 +102,9 @@ function EnterpriseOrganizationPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [viewingOrganization, setViewingOrganization] =
+    useState<OrganizationItem | null>(null);
 
   useEffect(() => {
     if (locationQuery.tab !== activeTab) {
@@ -135,6 +143,97 @@ function EnterpriseOrganizationPage() {
     setDraftFilters(nextFilters);
     setAppliedFilters(nextFilters);
     setCurrentPage(1);
+  }
+
+  function openStoreDetail(record: OrganizationItem) {
+    setViewingOrganization(record);
+    setDetailVisible(true);
+  }
+
+  function handleStoreDisable(record: OrganizationItem) {
+    const closeCheckResult = getStoreCloseCheckResult(record.id);
+
+    if (!closeCheckResult.canClose) {
+      Modal.warning({
+        title: '暂无法停用店铺',
+        content: '当前店铺已存在业务数据，暂无法停用。',
+      });
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认停用店铺',
+      content: '停用后该店铺将变为停用状态，是否继续？',
+      onOk: () => {
+        const nextItems = organizationItems.map((item) =>
+          item.id === record.id
+            ? {
+                ...item,
+                status: 'disabled' as const,
+              }
+            : item
+        );
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        setViewingOrganization((current) =>
+          current?.id === record.id
+            ? {
+                ...current,
+                status: 'disabled',
+              }
+            : current
+        );
+        Message.success('店铺已停用');
+      },
+    });
+  }
+
+  function handleStoreEnable(record: OrganizationItem) {
+    Modal.confirm({
+      title: '确认启用店铺',
+      content: `确定启用店铺「${record.name}」吗？`,
+      onOk: () => {
+        const nextItems = organizationItems.map((item) =>
+          item.id === record.id
+            ? {
+                ...item,
+                status: 'enabled' as const,
+              }
+            : item
+        );
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        setViewingOrganization((current) =>
+          current?.id === record.id
+            ? {
+                ...current,
+                status: 'enabled',
+              }
+            : current
+        );
+        Message.success('店铺已启用');
+      },
+    });
+  }
+
+  function handleStoreDelete(record: OrganizationItem) {
+    Modal.confirm({
+      title: '确认删除店铺',
+      content: `删除后将无法恢复，确定删除店铺「${record.name}」吗？`,
+      onOk: () => {
+        const nextItems = organizationItems.filter((item) => item.id !== record.id);
+
+        writeOrganizationItems(nextItems);
+        setOrganizationItems(nextItems);
+        if (viewingOrganization?.id === record.id) {
+          setViewingOrganization(null);
+          setDetailVisible(false);
+        }
+        Message.success('店铺删除成功');
+      },
+    });
   }
 
   const filteredOrganizations = useMemo(
@@ -206,7 +305,7 @@ function EnterpriseOrganizationPage() {
         width: 180,
       },
       {
-        title: '详细地址',
+        title: '联系地址',
         dataIndex: 'address',
         width: 280,
       },
@@ -273,70 +372,63 @@ function EnterpriseOrganizationPage() {
     return [
       ...baseColumns,
       {
-        title: '网店隔离',
-        dataIndex: 'shopIsolation',
-        width: 120,
-        render: renderCapabilityColumn('shopIsolation'),
-      },
-      {
-        title: '网店状态',
-        dataIndex: 'shopStatus',
-        width: 120,
-        render: renderCapabilityColumn('shopStatus'),
-      },
-      {
         title: '自建商品',
         dataIndex: 'selfBuiltProduct',
         width: 120,
         render: renderCapabilityColumn('selfBuiltProduct'),
       },
       {
-        title: '自定义商品信息',
-        dataIndex: 'customProductInfo',
+        title: '自建营销活动',
+        dataIndex: 'selfBuiltMarketingActivity',
         width: 150,
-        render: renderCapabilityColumn('customProductInfo'),
+        render: renderCapabilityColumn('selfBuiltMarketingActivity'),
       },
       statusColumn,
       {
         title: '操作',
         dataIndex: 'operations',
-        width: 220,
+        width: 240,
         fixed: 'right' as const,
         render: (_: unknown, record: OrganizationItem) => (
           <div className={styles.actionLinks}>
+            <Link onClick={() => openStoreDetail(record)}>详情</Link>
             <Link
               onClick={() =>
-                  history.push(
-                    getOrganizationEditPath(
-                      location.pathname,
-                      record.id,
-                      record.type,
-                      'capability'
-                    )
+                history.push(
+                  getOrganizationEditPath(
+                    location.pathname,
+                    record.id,
+                    record.type,
+                    'basic'
                   )
-                }
-              >
-              组织能力
+                )
+              }
+            >
+              编辑
             </Link>
-            <Link
-              onClick={() =>
-                  history.push(
-                    getOrganizationEditPath(
-                      location.pathname,
-                      record.id,
-                      record.type,
-                      'basic'
-                    )
-                  )
-                }
-              >
-              编辑基础信息
-            </Link>
+            {record.status === 'enabled' && (
+              <Link onClick={() => handleStoreDisable(record)}>停用</Link>
+            )}
+            {record.status === 'disabled' && (
+              <>
+                <Link onClick={() => handleStoreEnable(record)}>启用</Link>
+                <Link onClick={() => handleStoreDelete(record)}>删除</Link>
+              </>
+            )}
           </div>
         ),
       },
     ];
-  }, [history, isRegionTab, location.pathname, regionFieldLabel]);
+  }, [
+    handleStoreDelete,
+    handleStoreDisable,
+    handleStoreEnable,
+    history,
+    isRegionTab,
+    location.pathname,
+    openStoreDetail,
+    regionFieldLabel,
+  ]);
 
   const currentTypeLabel = ORGANIZATION_TYPE_LABEL_MAP[activeTab];
   const canCreateCurrentType =
@@ -464,11 +556,17 @@ function EnterpriseOrganizationPage() {
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: isRegionTab ? 1680 : 1960 }}
+            scroll={{ x: isRegionTab ? 1680 : 2040 }}
             tableLayoutFixed
           />
         </div>
       </Card>
+
+      <StoreDetailModal
+        visible={detailVisible}
+        organization={viewingOrganization}
+        onCancel={() => setDetailVisible(false)}
+      />
     </div>
   );
 }

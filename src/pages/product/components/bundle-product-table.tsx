@@ -1,13 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
-  Input,
   InputNumber,
   Table,
   Tag,
   Typography,
 } from '@arco-design/web-react';
-import { IconSearch } from '@arco-design/web-react/icon';
 import type { ProductListItem } from '@/types/product';
 import type { ProductStatus } from '@/pages/product/list/data';
 import type { MarketingProductSelectorSpuItem } from '@/pages/marketing/center/components/product-selector/types';
@@ -77,6 +75,14 @@ function formatPriceRange(prices: number[]) {
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   return min === max ? formatPrice(min) : `${min.toFixed(2)}-${max.toFixed(2)}`;
+}
+
+function normalizeDiscountAmount(value: number | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function getSkuCombinationPrice(row: SkuRow) {
+  return Math.max(0, row.price - normalizeDiscountAmount(row.discountPrice));
 }
 
 function buildSelectorData(
@@ -195,7 +201,7 @@ export default function BundleProductTable({
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const [selectorVisible, setSelectorVisible] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [expandedRowKeys, setExpandedRowKeys] = useState<Array<string | number>>([]);
 
   const selectorData = useMemo(
     () => buildSelectorData(products, catalogItems, ownershipItems),
@@ -205,17 +211,28 @@ export default function BundleProductTable({
   const selectedSkuIds = useMemo(() => value.map((item) => item.skuId), [value]);
 
   const tableRows = useMemo(() => buildTableRows(value, products), [value, products]);
+  const spuRowKeys = useMemo(() => tableRows.map((row) => row.key), [tableRows]);
 
   const spuCount = tableRows.length;
-  const totalDiscountAmount = value.reduce((sum, item) => sum + (item.discountPrice || 0), 0);
+  const totalDiscountAmount = value.reduce(
+    (sum, item) => sum + normalizeDiscountAmount(item.discountPrice),
+    0
+  );
 
-  const priceRange = useMemo(() => {
-    const allPrices = tableRows.flatMap((row) => row.children.map((c) => c.price - (c.discountPrice || 0)));
-    if (!allPrices.length) return null;
-    const min = Math.min(...allPrices);
-    const max = Math.max(...allPrices);
-    return { min, max };
+  const combinationPrice = useMemo(() => {
+    const skuRows = tableRows.flatMap((row) => row.children);
+    if (!skuRows.length) return null;
+    return skuRows.reduce((sum, row) => sum + getSkuCombinationPrice(row), 0);
   }, [tableRows]);
+
+  useEffect(() => {
+    setExpandedRowKeys((previous) => {
+      const currentKeySet = new Set(spuRowKeys);
+      const keptKeys = previous.filter((key) => currentKeySet.has(String(key)));
+      const missingKeys = spuRowKeys.filter((key) => !keptKeys.includes(key));
+      return [...keptKeys, ...missingKeys];
+    });
+  }, [spuRowKeys]);
 
   function handleSelectorConfirm(nextSkuIds: string[]) {
     const nextSkuIdSet = new Set(nextSkuIds);
@@ -298,11 +315,7 @@ export default function BundleProductTable({
       },
     },
     {
-      title: (
-        <span>
-          <span className={styles.requiredMark}>*</span>优惠金额(直降金额)
-        </span>
-      ),
+      title: '优惠金额(直降金额)',
       dataIndex: 'discountPrice',
       width: 180,
       render: (_: unknown, record: TableRow) => {
@@ -311,9 +324,10 @@ export default function BundleProductTable({
         return (
           <InputNumber
             className={styles.discountInput}
+            max={sku.price}
             min={0}
-            precision={1}
-            placeholder="请输入"
+            precision={2}
+            placeholder="可不填"
             value={sku.discountPrice}
             onChange={(v) =>
               handleDiscountPriceChange(sku.skuId, typeof v === 'number' ? v : undefined)
@@ -351,13 +365,6 @@ export default function BundleProductTable({
           仅本店铺自建商品可组套餐包
         </Typography.Text>
         <div className={styles.toolbarRight}>
-          <Input
-            className={styles.searchInput}
-            placeholder="请输入商品编码"
-            prefix={<IconSearch />}
-            value={searchKeyword}
-            onChange={setSearchKeyword}
-          />
           <Button type="outline" onClick={() => setSelectorVisible(true)}>
             在线选品
           </Button>
@@ -369,9 +376,13 @@ export default function BundleProductTable({
         rowKey="key"
         columns={columns}
         data={tableRows}
+        expandedRowKeys={expandedRowKeys}
         indentSize={0}
         noDataElement="暂无商品，请点击「在线选品」添加"
-        expandProps={{ strictTreeData: false }}
+        expandProps={{
+          strictTreeData: false,
+        }}
+        onExpandedRowsChange={(keys) => setExpandedRowKeys(keys)}
         pagination={false}
         scroll={{ x: 760 }}
         tableLayoutFixed
@@ -383,12 +394,11 @@ export default function BundleProductTable({
         </div>
         {spuCount > 0 && (
           <div className={styles.footerRight}>
-            {priceRange && (
+            {combinationPrice !== null && (
               <Typography.Text>
-                套装促销价：
+                组合售价：
                 <Typography.Text style={{ color: '#f53f3f' }}>
-                  ¥{priceRange.min.toFixed(2)}
-                  {priceRange.max !== priceRange.min ? `~${priceRange.max.toFixed(2)}` : ''}
+                  ¥{combinationPrice.toFixed(2)}
                 </Typography.Text>
               </Typography.Text>
             )}

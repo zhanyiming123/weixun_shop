@@ -25,12 +25,26 @@ export type CouponValidityType =
   | 'custom';
 export type CouponListStatus = 'notStarted' | 'active' | 'expired' | 'voided';
 export type CouponOwnershipType = 'platform' | 'shop';
+export type CouponStackingType =
+  | 'shopOnly'
+  | 'platformOnly'
+  | 'shopAndPlatform';
 
-// 从当前店铺视角描述这张券的归属关系
-// own        = 本店创建，未分享给其他店铺
-// shared_out = 本店创建，已分享给一个或多个其他店铺
-// shared_in  = 从其他店铺接收到的分享券
-export type CouponOwnershipScope = 'own' | 'shared_out' | 'shared_in';
+export type CouponOwnershipScope = 'own';
+export type CouponEditFieldMode = 'editable' | 'increaseOnly' | 'readonly';
+
+export type CouponEditRuleSet = {
+  discountInfo: CouponEditFieldMode;
+  storeIds: CouponEditFieldMode;
+  productScope: CouponEditFieldMode;
+  name: CouponEditFieldMode;
+  issueCount: CouponEditFieldMode;
+  limitPerUser: CouponEditFieldMode;
+  receiveStartAt: CouponEditFieldMode;
+  receiveEndAt: CouponEditFieldMode;
+  validity: CouponEditFieldMode;
+  stacking: CouponEditFieldMode;
+};
 
 export type CouponProductCategoryOption = {
   label: string;
@@ -74,6 +88,10 @@ export type CouponFormValues = {
   fullReductionAmount?: number;
   directReductionAmount?: number;
   discountRate?: number;
+  allowStacking: boolean;
+  stackingCouponType?: CouponStackingType;
+  stackingUnlimited: boolean;
+  stackingCount?: number;
   storeIds: string[];
   productScope: CouponProductScope;
   conditionCategoryPaths: string[][];
@@ -113,19 +131,17 @@ export type CouponListItem = {
   receiveEndAt: string;
   useStartAt: string;
   useEndAt: string;
-  // 当前视角下的归属状态（own / shared_out / shared_in）
+  // 当前视角下的归属状态
   ownershipScope: CouponOwnershipScope;
   // 创建者店铺 ID（必填）
   ownershipStoreId: string;
   // 创建者店铺名称（用于展示）
   ownershipLabel: string;
-  // 已分享的目标店铺列表
+  // 平台券下发到的目标店铺列表
   sharedToStoreIds: string[];
   // 适用店铺列表（含创建店铺自身）
   storeIds: string[];
   ownershipType: CouponOwnershipType;
-  // 若为 shared_in，来源店铺名称
-  sourceStoreName?: string;
   status: CouponListStatus;
 };
 
@@ -142,6 +158,10 @@ export type CouponDetailRecord = {
   fullReductionAmount?: number;
   directReductionAmount?: number;
   discountRate?: number;
+  allowStacking?: boolean;
+  stackingCouponType?: CouponStackingType;
+  stackingUnlimited?: boolean;
+  stackingCount?: number;
   storeIds: string[];
   productScope: CouponProductScope;
   conditionCategoryPaths: string[][];
@@ -160,7 +180,7 @@ export type CouponDetailRecord = {
   useEndAt: string;
   // 创建者店铺 ID（必填，总部店铺也是一个店铺）
   ownershipStoreId: string;
-  // 已分享到的目标店铺列表（不含创建者自身）
+  // 平台券下发到的目标店铺列表（不含创建者自身）
   sharedToStoreIds: string[];
   status: CouponListStatus;
   validityType: CouponValidityType;
@@ -176,6 +196,12 @@ export const COUPON_DISCOUNT_OPTIONS = [
   { label: '满减', value: 'fullReduction' as CouponDiscountType },
   { label: '直减', value: 'directReduction' as CouponDiscountType },
   { label: '折扣', value: 'discount' as CouponDiscountType },
+];
+
+export const COUPON_STACKING_TYPE_OPTIONS = [
+  { label: '仅店铺券', value: 'shopOnly' as CouponStackingType },
+  { label: '仅平台券', value: 'platformOnly' as CouponStackingType },
+  { label: '店铺券和平台券', value: 'shopAndPlatform' as CouponStackingType },
 ];
 
 export const PRODUCT_SCOPE_OPTIONS = [
@@ -212,8 +238,6 @@ export const COUPON_LIST_STATUS_LABEL_MAP: Record<CouponListStatus, string> = {
 
 export const COUPON_OWNERSHIP_SCOPE_LABEL_MAP: Record<CouponOwnershipScope, string> = {
   own: '本店创建',
-  shared_out: '本店创建',
-  shared_in: '接收分享',
 };
 
 export const COUPON_OWNERSHIP_TYPE_LABEL_MAP: Record<CouponOwnershipType, string> = {
@@ -225,6 +249,19 @@ export const COUPON_OWNERSHIP_TYPE_OPTIONS = [
   { label: '平台券', value: 'platform' as CouponOwnershipType },
   { label: '店铺券', value: 'shop' as CouponOwnershipType },
 ];
+
+const READONLY_COUPON_EDIT_RULES: CouponEditRuleSet = {
+  discountInfo: 'readonly',
+  storeIds: 'readonly',
+  productScope: 'readonly',
+  name: 'readonly',
+  issueCount: 'readonly',
+  limitPerUser: 'readonly',
+  receiveStartAt: 'readonly',
+  receiveEndAt: 'readonly',
+  validity: 'readonly',
+  stacking: 'readonly',
+};
 
 export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> = {
   all: '全部商品',
@@ -244,9 +281,9 @@ const COUPON_STORE_NAME_MAP = new Map(
   DEFAULT_PRODUCT_STORE_ITEMS.map((item) => [item.id, item.name])
 );
 const COUPON_STORE_ID_MIGRATION_MAP: Record<string, string> = {
-  store_shanghai: 'store_suzhou',
-  store_beijing: 'store_guangzhou',
-  store_hangzhou: 'store_shenzhen',
+  store_shanghai: 'store_shanghai',
+  store_beijing: 'store_beijing',
+  store_hangzhou: 'store_chengdu',
 };
 
 function migrateCouponStoreId(storeId?: string) {
@@ -502,6 +539,33 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     ownershipStoreId: HQ_STORE_ID,
     sharedToStoreIds: ALL_STORE_IDS_EXCEPT_HQ,
     status: 'active',
+    validityType: 'sameAsReceive',
+    validDays: 1,
+    customUseTimeRange: [],
+  },
+  {
+    id: '122661783997',
+    couponKind: 'general',
+    name: '平台暑期回流券',
+    discountType: 'directReduction',
+    directReductionAmount: 45,
+    storeIds: ['store_guangzhou', 'store_suzhou'],
+    productScope: 'all',
+    conditionCategoryPaths: [],
+    conditionOwnershipSelections: [],
+    selectedSkuIds: [],
+    receivedCount: 154,
+    issueCount: 260,
+    localReceivedCount: 71,
+    limitPerUser: 1,
+    receiveRate: 59,
+    receiveStartAt: '2025/07/01 00:00:00',
+    receiveEndAt: '2025/07/31 23:59:59',
+    useStartAt: '2025/07/01 00:00:00',
+    useEndAt: '2025/08/15 23:59:59',
+    ownershipStoreId: HQ_STORE_ID,
+    sharedToStoreIds: ['store_suzhou'],
+    status: 'expired',
     validityType: 'sameAsReceive',
     validDays: 1,
     customUseTimeRange: [],
@@ -899,23 +963,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountType: 'fullReduction',
     fullReductionThreshold: 300,
     fullReductionAmount: 50,
-    storeIds: ['store_suzhou', 'store_guangzhou', 'store_shenzhen'],
+    storeIds: ['store_suzhou'],
     productScope: 'all',
     conditionCategoryPaths: [],
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receivedCount: 186,
     issueCount: 360,
-    localReceivedCount: 92,
+    localReceivedCount: 186,
     limitPerUser: 1,
     receiveRate: 52,
     receiveStartAt: '2026/04/01 00:00:00',
     receiveEndAt: '2026/05/15 23:59:59',
     useStartAt: '2026/04/01 00:00:00',
     useEndAt: '2026/06/01 23:59:59',
-    // 苏州店铺创建，分享给广州和深圳（从苏州视角看为 shared_out）
     ownershipStoreId: 'store_suzhou',
-    sharedToStoreIds: ['store_guangzhou', 'store_shenzhen'],
+    sharedToStoreIds: [],
     status: 'active',
     validityType: 'sameAsReceive',
     validDays: 1,
@@ -927,23 +990,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '深圳精品班-体验券',
     discountType: 'directReduction',
     directReductionAmount: 120,
-    storeIds: ['store_shenzhen', 'store_suzhou'],
+    storeIds: ['store_shenzhen'],
     productScope: 'all',
     conditionCategoryPaths: [],
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receivedCount: 144,
     issueCount: 280,
-    localReceivedCount: 58,
+    localReceivedCount: 144,
     limitPerUser: 1,
     receiveRate: 51,
     receiveStartAt: '2026/04/05 00:00:00',
     receiveEndAt: '2026/05/20 23:59:59',
     useStartAt: '2026/04/05 00:00:00',
     useEndAt: '2026/06/05 23:59:59',
-    // 深圳店铺创建，分享给苏州（从苏州视角看为 shared_in）
     ownershipStoreId: 'store_shenzhen',
-    sharedToStoreIds: ['store_suzhou'],
+    sharedToStoreIds: [],
     status: 'active',
     validityType: 'sameAsReceive',
     validDays: 1,
@@ -955,22 +1017,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '店铺冲刺引流券A',
     discountType: 'directReduction',
     directReductionAmount: 30,
-    storeIds: [...ALL_COUPON_STORE_IDS],
+    storeIds: ['store_guangzhou'],
     productScope: 'all',
     conditionCategoryPaths: [],
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receivedCount: 112,
     issueCount: 240,
-    localReceivedCount: 47,
+    localReceivedCount: 112,
     limitPerUser: 1,
     receiveRate: 47,
     receiveStartAt: '2026/04/18 00:00:00',
     receiveEndAt: '2026/05/20 23:59:59',
     useStartAt: '2026/04/18 00:00:00',
     useEndAt: '2026/06/01 23:59:59',
-    ownershipStoreId: 'store_suzhou',
-    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_suzhou'),
+    ownershipStoreId: 'store_guangzhou',
+    sharedToStoreIds: [],
     status: 'active',
     validityType: 'sameAsReceive',
     validDays: 1,
@@ -982,22 +1044,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     name: '店铺周末转化券B',
     discountType: 'discount',
     discountRate: 8.8,
-    storeIds: [...ALL_COUPON_STORE_IDS],
+    storeIds: ['store_guangzhou'],
     productScope: 'all',
     conditionCategoryPaths: [],
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receivedCount: 86,
     issueCount: 180,
-    localReceivedCount: 39,
+    localReceivedCount: 86,
     limitPerUser: 1,
     receiveRate: 48,
     receiveStartAt: '2026/04/20 00:00:00',
     receiveEndAt: '2026/05/22 23:59:59',
     useStartAt: '2026/04/20 00:00:00',
     useEndAt: '2026/06/05 23:59:59',
-    ownershipStoreId: 'store_shenzhen',
-    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_shenzhen'),
+    ownershipStoreId: 'store_guangzhou',
+    sharedToStoreIds: [],
     status: 'active',
     validityType: 'afterReceiveDays',
     validDays: 10,
@@ -1010,22 +1072,22 @@ const COUPON_RECORD_SEEDS: CouponDetailRecord[] = [
     discountType: 'fullReduction',
     fullReductionThreshold: 300,
     fullReductionAmount: 60,
-    storeIds: [...ALL_COUPON_STORE_IDS],
+    storeIds: ['store_guangzhou'],
     productScope: 'all',
     conditionCategoryPaths: [],
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receivedCount: 74,
     issueCount: 200,
-    localReceivedCount: 33,
+    localReceivedCount: 74,
     limitPerUser: 1,
     receiveRate: 37,
     receiveStartAt: '2026/04/22 00:00:00',
     receiveEndAt: '2026/05/28 23:59:59',
     useStartAt: '2026/04/22 00:00:00',
     useEndAt: '2026/06/10 23:59:59',
-    ownershipStoreId: 'store_suzhou',
-    sharedToStoreIds: ALL_COUPON_STORE_IDS.filter((id) => id !== 'store_suzhou'),
+    ownershipStoreId: 'store_guangzhou',
+    sharedToStoreIds: [],
     status: 'notStarted',
     validityType: 'sameAsReceive',
     validDays: 1,
@@ -1054,25 +1116,17 @@ function cloneConditionOwnershipSelections(
   }));
 }
 
-// 根据当前查看者的店铺 IDs，计算这张券的归属状态
-function computeOwnershipScope(
-  record: CouponDetailRecord,
-  visibleStoreIds?: string[]
-): CouponOwnershipScope {
-  if (!visibleStoreIds) {
-    return record.sharedToStoreIds.length > 0 ? 'shared_out' : 'own';
-  }
-
-  const isOwner = visibleStoreIds.includes(record.ownershipStoreId);
-  if (isOwner) {
-    return record.sharedToStoreIds.length > 0 ? 'shared_out' : 'own';
-  }
-  return 'shared_in';
+function computeOwnershipScope(): CouponOwnershipScope {
+  return 'own';
 }
 
 export function getCouponOwnershipType(
-  record: Pick<CouponDetailRecord, 'ownershipStoreId'>
+  record: Pick<CouponDetailRecord, 'ownershipStoreId'> &
+    Partial<Pick<CouponDetailRecord, 'sharedToStoreIds'>>
 ): CouponOwnershipType {
+  if (Array.isArray(record.sharedToStoreIds)) {
+    return record.sharedToStoreIds.length > 0 ? 'platform' : 'shop';
+  }
   return record.ownershipStoreId === HQ_STORE_ID ? 'platform' : 'shop';
 }
 
@@ -1106,9 +1160,63 @@ export function formatCouponOwnershipLabel(
   return COUPON_STORE_NAME_MAP.get(record.ownershipStoreId) || record.ownershipStoreId;
 }
 
+export function isCouponEditableStatus(status: CouponListStatus) {
+  return status === 'notStarted' || status === 'active';
+}
+
+export function isCouponEditFieldEditable(mode: CouponEditFieldMode) {
+  return mode !== 'readonly';
+}
+
+export function getCouponEditRuleSet(
+  record: Pick<CouponDetailRecord, 'status'>
+): CouponEditRuleSet {
+  if (record.status === 'notStarted') {
+    return {
+      discountInfo: 'editable',
+      storeIds: 'editable',
+      productScope: 'editable',
+      name: 'editable',
+      issueCount: 'editable',
+      limitPerUser: 'editable',
+      receiveStartAt: 'editable',
+      receiveEndAt: 'editable',
+      validity: 'editable',
+      stacking: 'editable',
+    };
+  }
+
+  if (record.status === 'active') {
+    return {
+      discountInfo: 'readonly',
+      storeIds: 'readonly',
+      productScope: 'readonly',
+      name: 'editable',
+      issueCount: 'increaseOnly',
+      limitPerUser: 'increaseOnly',
+      receiveStartAt: 'readonly',
+      receiveEndAt: 'editable',
+      validity: 'readonly',
+      stacking: 'readonly',
+    };
+  }
+
+  return READONLY_COUPON_EDIT_RULES;
+}
+
 function cloneCouponDetailRecord(record: CouponDetailRecord): CouponDetailRecord {
+  const allowStacking = Boolean(record.allowStacking);
+  const stackingUnlimited = allowStacking ? Boolean(record.stackingUnlimited) : false;
+
   return {
     ...record,
+    allowStacking,
+    stackingCouponType: allowStacking ? record.stackingCouponType : undefined,
+    stackingUnlimited,
+    stackingCount:
+      allowStacking && !stackingUnlimited && typeof record.stackingCount === 'number'
+        ? record.stackingCount
+        : undefined,
     storeIds: normalizeCouponStoreIds(record.storeIds),
     sharedToStoreIds: [...record.sharedToStoreIds],
     conditionCategoryPaths: cloneConditionCategoryPaths(record.conditionCategoryPaths),
@@ -1151,13 +1259,9 @@ export function formatCouponDiscountSummary(
 
 function toCouponListItem(
   record: CouponDetailRecord,
-  visibleStoreIds?: string[]
+  _visibleStoreIds?: string[]
 ): CouponListItem {
-  const ownershipScope = computeOwnershipScope(record, visibleStoreIds);
-  const sourceStoreName =
-    ownershipScope === 'shared_in'
-      ? COUPON_STORE_NAME_MAP.get(record.ownershipStoreId)
-      : undefined;
+  const ownershipScope = computeOwnershipScope();
 
   return {
     id: record.id,
@@ -1180,7 +1284,6 @@ function toCouponListItem(
     sharedToStoreIds: [...record.sharedToStoreIds],
     storeIds: [...record.storeIds],
     ownershipType: getCouponOwnershipType(record),
-    sourceStoreName,
     status: record.status,
   };
 }
@@ -1199,7 +1302,8 @@ function getVisibleCouponRecords(
     return couponDetailStore.filter(
       (item) =>
         visibleStoreIds.includes(item.ownershipStoreId) ||
-        hasStoreIntersection(item.sharedToStoreIds, visibleStoreIds)
+        (getCouponOwnershipType(item) === 'platform' &&
+          hasStoreIntersection(item.sharedToStoreIds, visibleStoreIds))
     );
   }
 
@@ -1275,54 +1379,104 @@ export function updateCouponById(
     return undefined;
   }
 
+  const editRuleSet = getCouponEditRuleSet(target);
   const storeIdSet = new Set([
     target.ownershipStoreId,
     ...normalizeCouponStoreIds(values.storeIds),
   ]);
   const nextStoreIds = ALL_COUPON_STORE_IDS.filter((sid) => storeIdSet.has(sid));
-  const nextReceiveStartAt = values.receiveTimeRange[0] || target.receiveStartAt;
-  const nextReceiveEndAt = values.receiveTimeRange[1] || target.receiveEndAt;
+  const nextReceiveStartAt = isCouponEditFieldEditable(editRuleSet.receiveStartAt)
+    ? values.receiveTimeRange[0] || target.receiveStartAt
+    : target.receiveStartAt;
+  const nextReceiveEndAt = isCouponEditFieldEditable(editRuleSet.receiveEndAt)
+    ? values.receiveTimeRange[1] || target.receiveEndAt
+    : target.receiveEndAt;
+  const nextValidityType = isCouponEditFieldEditable(editRuleSet.validity)
+    ? values.validityType
+    : target.validityType;
+  const nextValidDays = isCouponEditFieldEditable(editRuleSet.validity)
+    ? values.validDays
+    : target.validDays;
+  const nextCustomUseTimeRange = isCouponEditFieldEditable(editRuleSet.validity)
+    ? [...values.customUseTimeRange]
+    : [...target.customUseTimeRange];
   const nextUseStartAt =
-    values.validityType === 'custom'
-      ? values.customUseTimeRange[0] || target.useStartAt
+    nextValidityType === 'custom'
+      ? nextCustomUseTimeRange[0] || target.useStartAt
       : nextReceiveStartAt;
   const nextUseEndAt =
-    values.validityType === 'custom'
-      ? values.customUseTimeRange[1] || target.useEndAt
+    nextValidityType === 'custom'
+      ? nextCustomUseTimeRange[1] || target.useEndAt
       : nextReceiveEndAt;
 
-  target.discountType = values.discountType;
-  target.fullReductionThreshold =
-    values.discountType === 'fullReduction'
-      ? values.fullReductionThreshold
-      : undefined;
-  target.fullReductionAmount =
-    values.discountType === 'fullReduction'
-      ? values.fullReductionAmount
-      : undefined;
-  target.directReductionAmount =
-    values.discountType === 'directReduction'
-      ? values.directReductionAmount
-      : undefined;
-  target.discountRate =
-    values.discountType === 'discount' ? values.discountRate : undefined;
-  if (!options?.isStoreSystem) {
-    target.storeIds = nextStoreIds;
-    target.sharedToStoreIds = nextStoreIds.filter(
-      (storeId) => storeId !== target.ownershipStoreId
-    );
+  if (isCouponEditFieldEditable(editRuleSet.discountInfo)) {
+    target.discountType = values.discountType;
+    target.fullReductionThreshold =
+      values.discountType === 'fullReduction'
+        ? values.fullReductionThreshold
+        : undefined;
+    target.fullReductionAmount =
+      values.discountType === 'fullReduction'
+        ? values.fullReductionAmount
+        : undefined;
+    target.directReductionAmount =
+      values.discountType === 'directReduction'
+        ? values.directReductionAmount
+        : undefined;
+    target.discountRate =
+      values.discountType === 'discount' ? values.discountRate : undefined;
   }
-  target.productScope = values.productScope;
-  target.conditionCategoryPaths = cloneConditionCategoryPaths(
-    values.conditionCategoryPaths
-  );
-  target.conditionOwnershipSelections = cloneConditionOwnershipSelections(
-    values.conditionOwnershipSelections
-  );
-  target.selectedSkuIds = [...values.selectedSkuIds];
-  target.name = values.name.trim();
-  target.issueCount = values.issueCount;
-  target.limitPerUser = values.limitPerUser;
+  if (isCouponEditFieldEditable(editRuleSet.stacking)) {
+    target.allowStacking = values.allowStacking;
+    target.stackingCouponType = values.allowStacking
+      ? values.stackingCouponType
+      : undefined;
+    target.stackingUnlimited = values.allowStacking ? values.stackingUnlimited : false;
+    target.stackingCount =
+      values.allowStacking && !values.stackingUnlimited
+        ? values.stackingCount || 1
+        : undefined;
+  }
+  if (!options?.isStoreSystem && isCouponEditFieldEditable(editRuleSet.storeIds)) {
+    if (getCouponOwnershipType(target) === 'platform') {
+      target.storeIds = nextStoreIds;
+      target.sharedToStoreIds = nextStoreIds.filter(
+        (storeId) => storeId !== target.ownershipStoreId
+      );
+    } else {
+      target.storeIds = [target.ownershipStoreId];
+      target.sharedToStoreIds = [];
+    }
+  }
+  if (isCouponEditFieldEditable(editRuleSet.productScope)) {
+    target.productScope = values.productScope;
+    target.conditionCategoryPaths = cloneConditionCategoryPaths(
+      values.conditionCategoryPaths
+    );
+    target.conditionOwnershipSelections = cloneConditionOwnershipSelections(
+      values.conditionOwnershipSelections
+    );
+    target.selectedSkuIds = [...values.selectedSkuIds];
+  }
+  if (isCouponEditFieldEditable(editRuleSet.name)) {
+    target.name = values.name.trim();
+  }
+  if (editRuleSet.issueCount === 'editable') {
+    target.issueCount = values.issueCount;
+  } else if (
+    editRuleSet.issueCount === 'increaseOnly' &&
+    values.issueCount > target.issueCount
+  ) {
+    target.issueCount = values.issueCount;
+  }
+  if (editRuleSet.limitPerUser === 'editable') {
+    target.limitPerUser = values.limitPerUser;
+  } else if (
+    editRuleSet.limitPerUser === 'increaseOnly' &&
+    values.limitPerUser > target.limitPerUser
+  ) {
+    target.limitPerUser = values.limitPerUser;
+  }
   target.receiveRate = target.issueCount
     ? Math.round((target.receivedCount / target.issueCount) * 100)
     : 0;
@@ -1330,9 +1484,9 @@ export function updateCouponById(
   target.receiveEndAt = nextReceiveEndAt;
   target.useStartAt = nextUseStartAt;
   target.useEndAt = nextUseEndAt;
-  target.validityType = values.validityType;
-  target.validDays = values.validDays;
-  target.customUseTimeRange = [...values.customUseTimeRange];
+  target.validityType = nextValidityType;
+  target.validDays = nextValidDays;
+  target.customUseTimeRange = nextCustomUseTimeRange;
 
   return cloneCouponDetailRecord(target);
 }
@@ -1341,12 +1495,25 @@ export function buildCouponFormValuesFromRecord(
   record: CouponDetailRecord,
   visibleStoreIds?: string[]
 ): CouponFormValues {
+  const allowStacking = Boolean(record.allowStacking);
+  const stackingUnlimited = allowStacking ? Boolean(record.stackingUnlimited) : false;
+
   return {
     discountType: record.discountType,
     fullReductionThreshold: record.fullReductionThreshold,
     fullReductionAmount: record.fullReductionAmount,
     directReductionAmount: record.directReductionAmount,
     discountRate: record.discountRate,
+    allowStacking,
+    stackingCouponType: allowStacking ? record.stackingCouponType : undefined,
+    stackingUnlimited,
+    stackingCount:
+      allowStacking &&
+      !stackingUnlimited &&
+      typeof record.stackingCount === 'number' &&
+      record.stackingCount > 0
+        ? record.stackingCount
+        : 1,
     storeIds: normalizeCouponStoreIds(
       record.storeIds,
       visibleStoreIds || ALL_COUPON_STORE_IDS
@@ -1388,6 +1555,10 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   fullReductionAmount: undefined,
   directReductionAmount: undefined,
   discountRate: undefined,
+  allowStacking: false,
+  stackingCouponType: undefined,
+  stackingUnlimited: false,
+  stackingCount: 1,
   storeIds: [],
   productScope: 'all',
   conditionCategoryPaths: [],

@@ -15,13 +15,14 @@ import {
   Modal,
   Pagination,
   Select,
+  Switch,
   Table,
   Tag,
   Tabs,
   Tooltip,
   Typography,
 } from '@arco-design/web-react';
-import { IconEdit, IconPlus } from '@arco-design/web-react/icon';
+import { IconEdit } from '@arco-design/web-react/icon';
 import { useHistory } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import styles from './index.module.less';
@@ -29,7 +30,11 @@ import PublishStoreModal, {
   PublishStoreModalSubmitPayload,
 } from './components/publish-store-modal';
 import SalesStoreModal from './components/sales-store-modal';
+import ProductDetailModal from '@/pages/product/components/product-detail-modal';
+import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
+import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
 import ShareTargetSelector from '@/pages/product/components/share-target-selector';
+import { handleUnavailableProductEdit } from '@/pages/product/edit-action';
 import {
   buildProductCatalogCascaderOptions,
   getProductCatalogFullLabel,
@@ -60,17 +65,7 @@ import {
   readProductStoreItems,
 } from '../store-config/data';
 import {
-  buildStoreSettingGeneratedLocalSkuCombos,
-  buildStoreSettingLocalSkuSpecText,
-  buildStoreSettingSpecDimensions,
-  buildStoreSettingSpecFields,
-  restoreStoreSettingLocalSkuState,
-  syncStoreSettingLocalSkuRows,
-  type StoreSettingLegacyLocalSkuIssue,
-  type StoreSettingLocalSkuDraftRow,
-  type StoreSettingLocalSpecValueMap,
-  type StoreSettingSpecDimension,
-  type StoreSettingSpecField,
+  resolveStoreSettingSourceSkuConfigState,
 } from './store-setting';
 import { ProductService } from '@/services/ProductService';
 import type {
@@ -79,10 +74,9 @@ import type {
   ProductListItem,
   ProductSearchType,
   ProductStatus,
-  ProductStoreChannelStatus,
+  ProductStoreChannelProductPoolStoreConfigItem,
   ProductStoreOverrideMode,
   ProductStorePriceMode,
-  ProductStoreLocalSkuItem,
   ProductSkuStateAction,
   ProductStoreSkuPriceOverrideItem,
   ProductStoreSkuStatusOverrideItem,
@@ -121,8 +115,8 @@ const SELL_STATUS_FILTER_OPTIONS = [
 const SKU_STATE_ACTION_LABEL_MAP: Record<ProductSkuStateAction, string> = {
   sellable: '设为可售',
   unsellable: '设为不可售',
-  on: '上架',
-  off: '下架',
+  on: '设为可售',
+  off: '设为不可售',
 };
 const PRODUCT_STATUS_LABEL_MAP: Record<ProductStatus, string> = {
   on: '已上架',
@@ -199,46 +193,30 @@ function getStoreSettingSourceSkuViewItems(product: ProductListItem) {
   return product.storeView.currentSkus.filter((sku) => !sku.isLocalSku);
 }
 
-function getStoreSettingLocalSkuViewItems(product: ProductListItem) {
-  return product.storeView.currentSkus.filter((sku) => sku.isLocalSku);
-}
-
-function createStoreSettingLocalSkuId(storeId: string, specText?: string) {
-  const specKey = specText
-    ? specText
-        .replace(/\s+/g, '-')
-        .replace(/[^\w\u4e00-\u9fa5-]/g, '')
-        .slice(0, 24)
-    : 'draft';
-
-  return `store-local-sku-${storeId}-${specKey}-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-}
-
 type ProductStoreSettingDraft = {
   priceMode: ProductStorePriceMode;
   stockMode: ProductStoreStockMode;
   currentPrice?: number;
-  skuPriceOverrides: ProductStoreSkuPriceOverrideItem[];
+  skuPriceOverrides: Array<{
+    skuId: string;
+    currentPrice?: number;
+  }>;
   skuStockOverrides: ProductStoreSkuStockOverrideItem[];
   skuStatusOverrides: ProductStoreSkuStatusOverrideItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName: string;
   carouselMode: ProductStoreOverrideMode;
   overrideCarouselImages: ProductCarouselImage[];
-  localSpecValuesByField: StoreSettingLocalSpecValueMap;
-  localSpecValueInputs: Record<string, string>;
-  localSkuRows: StoreSettingLocalSkuDraftRow[];
-  legacyLocalSkuIssues: StoreSettingLegacyLocalSkuIssue[];
 };
 
 function getStoreSettingDraftSkuPriceOverrides(
   product: ProductListItem
-): ProductStoreSkuPriceOverrideItem[] {
+): ProductStoreSettingDraft['skuPriceOverrides'] {
+  const shouldPrefillPrice = product.storeView.priceMode === 'independent';
+
   return getStoreSettingSourceSkuViewItems(product).map((sku) => ({
     skuId: sku.id,
-    currentPrice: sku.currentPrice,
+    currentPrice: shouldPrefillPrice ? sku.currentPrice : undefined,
   }));
 }
 
@@ -260,43 +238,6 @@ function getStoreSettingDraftSkuStatusOverrides(
   }));
 }
 
-function getStoreSettingLocalSkuValidationMap(
-  draft: ProductStoreSettingDraft | null
-) {
-  if (!draft) {
-    return {};
-  }
-
-  return draft.localSkuRows.reduce<
-    Record<string, Partial<Record<'price' | 'stock', string>>>
-  >((result, item) => {
-    const nextErrors: Partial<Record<'price' | 'stock', string>> = {};
-
-    if (
-      typeof item.price !== 'number' ||
-      !Number.isFinite(item.price) ||
-      item.price < 0
-    ) {
-      nextErrors.price = '请填写本店售价';
-    }
-
-    if (
-      typeof item.stock !== 'number' ||
-      !Number.isFinite(item.stock) ||
-      item.stock < 0 ||
-      !Number.isInteger(item.stock)
-    ) {
-      nextErrors.stock = '请填写本店库存';
-    }
-
-    if (Object.keys(nextErrors).length) {
-      result[item.specText] = nextErrors;
-    }
-
-    return result;
-  }, {});
-}
-
 function getSkuLabel(item: ProductStoreSkuViewItem, index: number) {
   return item.specText || (index === 0 ? '默认规格' : `规格${index + 1}`);
 }
@@ -316,33 +257,6 @@ function formatPriceRange(prices: number[]) {
   return minPrice === maxPrice
     ? formatPriceNumber(minPrice)
     : `${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
-}
-
-function formatIndependentPriceLimit(sku: ProductStoreSkuViewItem) {
-  const minPrice =
-    typeof sku.minIndependentPrice === 'number' &&
-    Number.isFinite(sku.minIndependentPrice)
-      ? sku.minIndependentPrice
-      : undefined;
-  const maxPrice =
-    typeof sku.maxIndependentPrice === 'number' &&
-    Number.isFinite(sku.maxIndependentPrice)
-      ? sku.maxIndependentPrice
-      : undefined;
-
-  if (typeof minPrice === 'number' && typeof maxPrice === 'number') {
-    return `允许 ${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
-  }
-
-  if (typeof minPrice === 'number') {
-    return `最低 ${formatPriceNumber(minPrice)}`;
-  }
-
-  if (typeof maxPrice === 'number') {
-    return `最高 ${formatPriceNumber(maxPrice)}`;
-  }
-
-  return '不限';
 }
 
 function getSkuPriceLimitError(
@@ -372,11 +286,31 @@ function getSkuPriceLimitError(
 
 function resolveDraftSkuCurrentPrice(
   draft: ProductStoreSettingDraft,
+  skuId: string
+) {
+  const matched = draft.skuPriceOverrides.find((item) => item.skuId === skuId);
+  return typeof matched?.currentPrice === 'number' ? matched.currentPrice : undefined;
+}
+
+function resolveDraftSkuEffectivePrice(
+  draft: ProductStoreSettingDraft,
   skuId: string,
   fallbackPrice: number
 ) {
-  const matched = draft.skuPriceOverrides.find((item) => item.skuId === skuId);
-  return typeof matched?.currentPrice === 'number' ? matched.currentPrice : fallbackPrice;
+  const currentPrice = resolveDraftSkuCurrentPrice(draft, skuId);
+  return typeof currentPrice === 'number' ? currentPrice : fallbackPrice;
+}
+
+function hasDraftSkuPriceChange(
+  draft: ProductStoreSettingDraft,
+  sku: ProductStoreSkuViewItem
+) {
+  const currentPrice = resolveDraftSkuCurrentPrice(draft, sku.id);
+
+  return (
+    typeof currentPrice === 'number' &&
+    Number(currentPrice) !== Number(sku.originalPrice)
+  );
 }
 
 function resolveDraftSkuCurrentStock(
@@ -393,19 +327,11 @@ function buildDraftCurrentPriceValue(
   draft: ProductStoreSettingDraft
 ) {
   const sourceSkuPrices = getStoreSettingSourceSkuViewItems(product).map((sku) =>
-    resolveDraftSkuCurrentPrice(draft, sku.id, sku.currentPrice)
+    resolveDraftSkuEffectivePrice(draft, sku.id, sku.currentPrice)
   );
-  const localSkuPrices = draft.localSkuRows
-    .map((sku) =>
-      typeof sku.price === 'number' && Number.isFinite(sku.price) && sku.price >= 0
-        ? sku.price
-        : undefined
-    )
-    .filter((value): value is number => typeof value === 'number');
-  const currentSkuPrices = [...sourceSkuPrices, ...localSkuPrices];
 
-  return currentSkuPrices.length
-    ? Math.min(...currentSkuPrices)
+  return sourceSkuPrices.length
+    ? Math.min(...sourceSkuPrices)
     : draft.currentPrice ?? product.storeView.currentPrice;
 }
 
@@ -428,18 +354,9 @@ function cloneCarouselImages(images: ProductCarouselImage[] = []) {
 }
 
 function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDraft {
-  const sourceSkuItems = getStoreSettingSourceSkuViewItems(product);
-  const specFields = buildStoreSettingSpecFields(sourceSkuItems);
-  const restoredLocalSkuState = restoreStoreSettingLocalSkuState(
-    sourceSkuItems,
-    getStoreSettingLocalSkuViewItems(product).map((sku) => ({
-      skuId: sku.id,
-      specText: sku.specText,
-      price: sku.currentPrice,
-      stock: sku.currentStock,
-      sellStatus: sku.currentSellStatus,
-      status: sku.currentStatus,
-    }))
+  const currentOverride = getProductStoreOverride(
+    product,
+    product.storeView.currentStoreId
   );
 
   return {
@@ -455,19 +372,12 @@ function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDr
     overrideCarouselImages: cloneCarouselImages(
       product.storeView.currentCarouselImages
     ),
-    localSpecValuesByField: restoredLocalSkuState.localSpecValuesByField,
-    localSpecValueInputs: specFields.reduce<Record<string, string>>((result, field) => {
-      result[field.key] = '';
-      return result;
-    }, {}),
-    localSkuRows: restoredLocalSkuState.localSkuRows,
-    legacyLocalSkuIssues: restoredLocalSkuState.legacyIssues,
   };
 }
 
 function getRecordDisplayStatus(record: ProductListItem): ProductStatus {
   if (record.storeView.currentStoreId) {
-    return record.storeView.currentStoreChannelStatus === 'on' ? 'on' : 'off';
+    return record.storeView.currentStoreSellStatus === 'sellable' ? 'on' : 'off';
   }
 
   return record.status;
@@ -527,6 +437,7 @@ function ProductListPage() {
     []
   );
   const [publishModalVisible, setPublishModalVisible] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<ProductListItem | null>(null);
   const [storeSettingTarget, setStoreSettingTarget] =
     useState<ProductListItem | null>(null);
   const [storeSettingDraft, setStoreSettingDraft] =
@@ -547,6 +458,9 @@ function ProductListPage() {
   const [salesStoreTarget, setSalesStoreTarget] = useState<ProductListItem | null>(
     null
   );
+  const [salesStoreSubmitting, setSalesStoreSubmitting] = useState(false);
+  const [salesStoreDetailTarget, setSalesStoreDetailTarget] =
+    useState<ProductListItem | null>(null);
   const visibleStoreIds = useMemo(
     () => currentOrganization?.storeIds || [],
     [currentOrganization?.storeIds]
@@ -566,6 +480,18 @@ function ProductListPage() {
         : filterStoreItemsByIds(allStoreItems, visibleStoreIds),
     [allStoreItems, isHeadquarter, visibleStoreIds]
   );
+  const salesStoreItems = useMemo(() => {
+    if (isHeadquarter) {
+      return allStoreItems;
+    }
+
+    const scopedItems = filterStoreItemsByIds(allStoreItems, visibleStoreIds);
+    const missingSourceStoreItems = allSourceStoreItems.filter(
+      (item) => !scopedItems.some((candidate) => candidate.id === item.id)
+    );
+
+    return [...scopedItems, ...missingSourceStoreItems];
+  }, [allSourceStoreItems, allStoreItems, isHeadquarter, visibleStoreIds]);
   const visibleSourceStoreItems = useMemo(
     () =>
       isHeadquarter
@@ -649,31 +575,6 @@ function ProductListPage() {
       storeSettingTarget ? getStoreSettingSourceSkuViewItems(storeSettingTarget) : [],
     [storeSettingTarget]
   );
-  const storeSettingSpecFields = useMemo(
-    () => buildStoreSettingSpecFields(storeSettingSourceSkuItems),
-    [storeSettingSourceSkuItems]
-  );
-  const storeSettingSpecDimensions = useMemo<StoreSettingSpecDimension[]>(
-    () =>
-      buildStoreSettingSpecDimensions(
-        storeSettingSourceSkuItems,
-        storeSettingDraft?.localSpecValuesByField || {},
-        storeSettingSpecFields
-      ),
-    [storeSettingDraft?.localSpecValuesByField, storeSettingSourceSkuItems, storeSettingSpecFields]
-  );
-  const storeSettingGeneratedLocalSkuCombos = useMemo(
-    () =>
-      buildStoreSettingGeneratedLocalSkuCombos(
-        storeSettingSpecDimensions,
-        storeSettingSourceSkuItems
-      ),
-    [storeSettingSourceSkuItems, storeSettingSpecDimensions]
-  );
-  const storeSettingLocalSkuValidationMap = useMemo(
-    () => getStoreSettingLocalSkuValidationMap(storeSettingDraft),
-    [storeSettingDraft]
-  );
   const priceSettingErrorMap = useMemo(() => {
     if (
       !storeSettingTarget ||
@@ -685,13 +586,17 @@ function ProductListPage() {
 
     return storeSettingSourceSkuItems.reduce<Record<string, string>>(
       (result, sku) => {
+        const hasPriceChanges = storeSettingSourceSkuItems.some((item) =>
+          hasDraftSkuPriceChange(storeSettingDraft, item)
+        );
+
+        if (!hasPriceChanges) {
+          return result;
+        }
+
         const error = getSkuPriceLimitError(
           sku,
-          resolveDraftSkuCurrentPrice(
-            storeSettingDraft,
-            sku.id,
-            sku.currentPrice
-          )
+          resolveDraftSkuCurrentPrice(storeSettingDraft, sku.id)
         );
 
         if (error) {
@@ -704,9 +609,6 @@ function ProductListPage() {
     );
   }, [storeSettingDraft, storeSettingSourceSkuItems, storeSettingTarget]);
   const hasPriceSettingError = Object.keys(priceSettingErrorMap).length > 0;
-  const hasLocalSkuSettingError = Object.keys(
-    storeSettingLocalSkuValidationMap
-  ).length > 0 || Boolean(storeSettingDraft?.legacyLocalSkuIssues.length);
   const derivedStoreSettingPriceMode = useMemo<ProductStorePriceMode>(() => {
     if (
       !storeSettingTarget ||
@@ -717,13 +619,7 @@ function ProductListPage() {
     }
 
     const hasPriceChanges = storeSettingSourceSkuItems.some((sku) => {
-      const currentPrice = resolveDraftSkuCurrentPrice(
-        storeSettingDraft,
-        sku.id,
-        sku.currentPrice
-      );
-
-      return Number(currentPrice) !== Number(sku.originalPrice);
+      return hasDraftSkuPriceChange(storeSettingDraft, sku);
     });
 
     return hasPriceChanges ? 'independent' : 'follow';
@@ -752,6 +648,9 @@ function ProductListPage() {
       startIndex + STORE_SETTING_SKU_PAGE_SIZE
     );
   }, [storeSettingSkuPage, storeSettingSourceSkuItems]);
+  const storeSettingSourceSkuConfigState = resolveStoreSettingSourceSkuConfigState(
+    Boolean(storeSettingTarget?.storeView.canManageIndependentPrice)
+  );
 
   useEffect(() => {
     const visibleKeys = new Set(tableData.map((item) => item.id));
@@ -849,14 +748,6 @@ function ProductListPage() {
     Message.info(text);
   }
 
-  function openPublishModal() {
-    if (!selectedRowKeys.length) {
-      return;
-    }
-
-    setPublishModalVisible(true);
-  }
-
   function closePublishModal() {
     setPublishModalVisible(false);
   }
@@ -910,6 +801,29 @@ function ProductListPage() {
 
   function closeSalesStoreModal() {
     setSalesStoreTarget(null);
+    setSalesStoreSubmitting(false);
+  }
+
+  async function handleSalesStoreSubmit(
+    productPoolStoreConfigs: ProductStoreChannelProductPoolStoreConfigItem[]
+  ) {
+    if (!salesStoreTarget) {
+      return;
+    }
+
+    try {
+      setSalesStoreSubmitting(true);
+      await productService.updateProductStoreChannelConfig({
+        productId: salesStoreTarget.id,
+        productPoolStoreConfigs,
+      });
+      Message.success('在售门店已更新');
+      closeSalesStoreModal();
+      setRefreshKey((value) => value + 1);
+    } catch (error) {
+      setSalesStoreSubmitting(false);
+      Message.error(getErrorMessage(error));
+    }
   }
 
   async function handleSharePoolSubmit() {
@@ -959,18 +873,13 @@ function ProductListPage() {
       return;
     }
 
-    const nextChannelStatus: ProductStoreChannelStatus =
-      nextSellStatus === 'sellable' && getRecordDisplayStatus(record) === 'on'
-        ? 'on'
-        : 'off';
-
     try {
       await productService.publishProductsToStores({
         productIds: [record.id],
         targetMode: 'specific',
         targetStoreIds: [currentStoreId],
         sellStatus: nextSellStatus,
-        channelStatus: nextChannelStatus,
+        channelStatus: nextSellStatus === 'sellable' ? 'on' : 'off',
         visibleStoreIds,
       });
       setRefreshKey((value) => value + 1);
@@ -1031,6 +940,42 @@ function ProductListPage() {
     }
   }
 
+  async function handleBatchSellStatusChange(nextSellStatus: ProductStoreSellStatus) {
+    if (!selectedRowKeys.length || !currentStoreId) {
+      return;
+    }
+
+    try {
+      const ids = selectedRowKeys.map(String);
+      const tableDataMap = new Map(tableData.map((item) => [item.id, item]));
+      const updatableIds = ids.filter((id) => tableDataMap.get(id)?.storeView.canManageStoreStatus);
+      const skippedCount = ids.length - updatableIds.length;
+
+      if (!updatableIds.length) {
+        Message.warning('暂无可批量设置的商品');
+        return;
+      }
+
+      await productService.publishProductsToStores({
+        productIds: updatableIds,
+        targetMode: 'specific',
+        targetStoreIds: [currentStoreId],
+        sellStatus: nextSellStatus,
+        channelStatus: nextSellStatus === 'sellable' ? 'on' : 'off',
+        visibleStoreIds,
+      });
+      setRefreshKey((value) => value + 1);
+      setSelectedRowKeys([]);
+      Message.success(
+        `已批量设为${nextSellStatus === 'sellable' ? '可售' : '不可售'}${updatableIds.length}个商品${
+          skippedCount ? `，跳过${skippedCount}个不可操作商品` : ''
+        }`
+      );
+    } catch (error) {
+      Message.error(getErrorMessage(error));
+    }
+  }
+
   function closePriceSettingModal() {
     setStoreSettingTarget(null);
     setStoreSettingDraft(null);
@@ -1057,7 +1002,7 @@ function ProductListPage() {
           ? {
               ...item,
               currentPrice:
-                typeof value === 'number' && Number.isFinite(value) ? value : item.currentPrice,
+                typeof value === 'number' && Number.isFinite(value) ? value : undefined,
             }
           : item
       );
@@ -1070,216 +1015,6 @@ function ProductListPage() {
       return {
         ...nextDraft,
         currentPrice: buildDraftCurrentPriceValue(storeSettingTarget, nextDraft),
-      };
-    });
-  }
-
-  function handleSkuStockChange(skuId: string, value?: number) {
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        skuStockOverrides: previous.skuStockOverrides.map((item) =>
-          item.skuId === skuId
-            ? {
-                ...item,
-                currentStock:
-                  typeof value === 'number' && Number.isFinite(value)
-                    ? Math.max(0, Math.floor(value))
-                    : item.currentStock,
-              }
-            : item
-        ),
-      };
-    });
-  }
-
-  function syncDraftLocalSkuRows(
-    previous: ProductStoreSettingDraft,
-    nextLocalSpecValuesByField: StoreSettingLocalSpecValueMap
-  ) {
-    if (!storeSettingTarget) {
-      return previous.localSkuRows;
-    }
-
-    const nextSpecDimensions = buildStoreSettingSpecDimensions(
-      storeSettingSourceSkuItems,
-      nextLocalSpecValuesByField,
-      storeSettingSpecFields
-    );
-    const nextCombos = buildStoreSettingGeneratedLocalSkuCombos(
-      nextSpecDimensions,
-      storeSettingSourceSkuItems
-    );
-
-    return syncStoreSettingLocalSkuRows(
-      nextCombos,
-      previous.localSkuRows,
-      (specText) =>
-        createStoreSettingLocalSkuId(
-          storeSettingTarget.storeView.currentStoreId || storeSettingTarget.id,
-          specText
-        )
-    );
-  }
-
-  function handleLocalSpecValueInputChange(fieldKey: string, value: string) {
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        localSpecValueInputs: {
-          ...previous.localSpecValueInputs,
-          [fieldKey]: value,
-        },
-      };
-    });
-  }
-
-  function handleAddLocalSpecValue(fieldKey: string) {
-    if (!storeSettingDraft || !storeSettingTarget) {
-      return;
-    }
-
-    const currentDimension = storeSettingSpecDimensions.find(
-      (item) => item.key === fieldKey
-    );
-
-    if (!currentDimension) {
-      return;
-    }
-
-    const nextValue = (storeSettingDraft.localSpecValueInputs[fieldKey] || '').trim();
-
-    if (!nextValue) {
-      Message.warning(
-        currentDimension.named ? `请输入${currentDimension.label}` : '请输入规格值'
-      );
-      return;
-    }
-
-    if (
-      currentDimension.sourceValues.includes(nextValue) ||
-      currentDimension.localValues.includes(nextValue)
-    ) {
-      Message.warning(
-        currentDimension.named
-          ? `${currentDimension.label}已存在该规格值`
-          : '规格值不能重复'
-      );
-      return;
-    }
-
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      const nextLocalSpecValuesByField = {
-        ...previous.localSpecValuesByField,
-        [fieldKey]: [
-          ...(previous.localSpecValuesByField[fieldKey] || []),
-          nextValue,
-        ],
-      };
-      const nextDraft = {
-        ...previous,
-        localSpecValuesByField: nextLocalSpecValuesByField,
-        localSpecValueInputs: {
-          ...previous.localSpecValueInputs,
-          [fieldKey]: '',
-        },
-        localSkuRows: syncDraftLocalSkuRows(previous, nextLocalSpecValuesByField),
-      };
-
-      return {
-        ...nextDraft,
-        currentPrice: buildDraftCurrentPriceValue(storeSettingTarget, nextDraft),
-      };
-    });
-  }
-
-  function handleRemoveLocalSpecValue(fieldKey: string, value: string) {
-    if (!storeSettingTarget) {
-      return;
-    }
-
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      const nextLocalSpecValuesByField = {
-        ...previous.localSpecValuesByField,
-        [fieldKey]: (previous.localSpecValuesByField[fieldKey] || []).filter(
-          (item) => item !== value
-        ),
-      };
-      const nextDraft = {
-        ...previous,
-        localSpecValuesByField: nextLocalSpecValuesByField,
-        localSkuRows: syncDraftLocalSkuRows(previous, nextLocalSpecValuesByField),
-      };
-
-      return {
-        ...nextDraft,
-        currentPrice: buildDraftCurrentPriceValue(storeSettingTarget, nextDraft),
-      };
-    });
-  }
-
-  function handleLocalSkuItemChange(
-    specText: string,
-    field: keyof Pick<StoreSettingLocalSkuDraftRow, 'price' | 'stock'>,
-    value?: number
-  ) {
-    setStoreSettingDraft((previous) => {
-      if (!previous || !storeSettingTarget) {
-        return previous;
-      }
-
-      const nextLocalSkuRows = previous.localSkuRows.map((item) =>
-        item.specText === specText
-          ? {
-              ...item,
-              [field]:
-                typeof value === 'number' && Number.isFinite(value)
-                  ? field === 'stock'
-                    ? Math.max(0, Math.floor(value))
-                    : value
-                  : undefined,
-            }
-          : item
-      );
-      const nextDraft = {
-        ...previous,
-        localSkuRows: nextLocalSkuRows,
-      };
-
-      return {
-        ...nextDraft,
-        currentPrice: buildDraftCurrentPriceValue(storeSettingTarget, nextDraft),
-      };
-    });
-  }
-
-  function handleRemoveLegacyLocalSkuIssue(skuId: string) {
-    setStoreSettingDraft((previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        legacyLocalSkuIssues: previous.legacyLocalSkuIssues.filter(
-          (item) => item.skuId !== skuId
-        ),
       };
     });
   }
@@ -1302,17 +1037,16 @@ function ProductListPage() {
       return;
     }
 
-    if (storeSettingDraft.legacyLocalSkuIssues.length) {
-      Message.warning('请先处理历史本店新增 SKU 异常项');
-      return;
-    }
-
-    if (hasLocalSkuSettingError) {
-      Message.warning('请先完善本店新增 SKU 配置');
-      return;
-    }
-
     try {
+      const normalizedSkuPriceOverrides: ProductStoreSkuPriceOverrideItem[] =
+        storeSettingDraft.skuPriceOverrides.filter(
+          (
+            item
+          ): item is ProductStoreSkuPriceOverrideItem =>
+            typeof item.currentPrice === 'number' &&
+            Number.isFinite(item.currentPrice)
+        );
+
       setStoreSettingSaving(true);
       await productService.updateProductStoreOverride({
         productId: storeSettingTarget.id,
@@ -1320,17 +1054,9 @@ function ProductListPage() {
         priceMode: derivedStoreSettingPriceMode,
         stockMode: derivedStoreSettingStockMode,
         currentPrice: storeSettingDraft.currentPrice,
-        skuPriceOverrides: storeSettingDraft.skuPriceOverrides,
+        skuPriceOverrides: normalizedSkuPriceOverrides,
         skuStockOverrides: storeSettingDraft.skuStockOverrides,
         skuStatusOverrides: storeSettingDraft.skuStatusOverrides,
-        localSkuItems: storeSettingDraft.localSkuRows.map((item) => ({
-          skuId: item.skuId,
-          specText: item.specText,
-          price: typeof item.price === 'number' ? item.price : 0,
-          stock: typeof item.stock === 'number' ? Math.floor(item.stock) : 0,
-          sellStatus: item.sellStatus,
-          status: item.status,
-        })) as ProductStoreLocalSkuItem[],
         nameMode: storeSettingDraft.nameMode,
         overrideName: storeSettingDraft.overrideName,
         carouselMode: storeSettingDraft.carouselMode,
@@ -1432,6 +1158,18 @@ function ProductListPage() {
       ),
     },
     {
+      title: '在售店铺',
+      dataIndex: 'salesStores',
+      width: 120,
+      render: (_: unknown, record: ProductListItem) => (
+        <OnSaleStoreCountLink
+          className={styles.actionLinkButton}
+          product={record}
+          onOpen={(product) => setSalesStoreDetailTarget(product)}
+        />
+      ),
+    },
+    {
       title: '可售状态',
       dataIndex: 'sellStatus',
       width: 116,
@@ -1444,16 +1182,20 @@ function ProductListPage() {
           <Typography.Text type="secondary">--</Typography.Text>
         ),
     },
-    {
-      title: '上架状态',
-      dataIndex: 'status',
-      width: 116,
-      render: (_: ProductStatus, record: ProductListItem) => (
-        <Tag color={getRecordDisplayStatus(record) === 'on' ? 'green' : 'gray'}>
-          {PRODUCT_STATUS_LABEL_MAP[getRecordDisplayStatus(record)]}
-        </Tag>
-      ),
-    },
+    ...(!currentStoreId
+      ? [
+          {
+            title: '上架状态',
+            dataIndex: 'status',
+            width: 116,
+            render: (_: ProductStatus, record: ProductListItem) => (
+              <Tag color={getRecordDisplayStatus(record) === 'on' ? 'green' : 'gray'}>
+                {PRODUCT_STATUS_LABEL_MAP[getRecordDisplayStatus(record)]}
+              </Tag>
+            ),
+          },
+        ]
+      : []),
     {
       title: '商品售价',
       dataIndex: 'price',
@@ -1518,7 +1260,7 @@ function ProductListPage() {
           {
             key: 'detail',
             label: '详情',
-            onClick: () => showPendingMessage(`${record.name}详情暂未实现`),
+            onClick: () => setDetailTarget(record),
           },
           ...(record.storeView.isShared
             ? [
@@ -1541,7 +1283,7 @@ function ProductListPage() {
                 {
                   key: 'edit',
                   label: '编辑',
-                  onClick: () => goToProductCreate('edit', record),
+                  onClick: () => handleUnavailableProductEdit(showPendingMessage),
                 },
                 {
                   key: 'copy',
@@ -1552,7 +1294,7 @@ function ProductListPage() {
                   ? [
                       {
                         key: 'sales-store',
-                        label: '销售店铺',
+                        label: '在售店铺管理',
                         onClick: () => openSalesStoreModal(record),
                       },
                     ]
@@ -1572,12 +1314,16 @@ function ProductListPage() {
                 },
               ]
             : []),
-          {
-            key: 'channel-status',
-            label: currentStatus === 'on' ? '下架' : '上架',
-            onClick: () =>
-              handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
-          },
+          ...(!currentStoreId
+            ? [
+                {
+                  key: 'channel-status',
+                  label: currentStatus === 'on' ? '下架' : '上架',
+                  onClick: () =>
+                    handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
+                },
+              ]
+            : []),
           ...(currentStoreId
             ? [
                 {
@@ -1667,16 +1413,6 @@ function ProductListPage() {
       render: (value: number) => formatPriceNumber(value),
     },
     {
-      title: '独立售价范围',
-      dataIndex: 'independentPriceRange',
-      width: 180,
-      render: (_: unknown, sku: ProductStoreSkuViewItem) => (
-        <Typography.Text className={styles.storeSettingRangeText}>
-          {formatIndependentPriceLimit(sku)}
-        </Typography.Text>
-      ),
-    },
-    {
       title: '独立售价',
       dataIndex: 'currentPrice',
       width: 180,
@@ -1694,11 +1430,7 @@ function ProductListPage() {
               precision={2}
               value={
                 storeSettingDraft
-                  ? resolveDraftSkuCurrentPrice(
-                      storeSettingDraft,
-                      sku.id,
-                      sku.currentPrice
-                    )
+                  ? resolveDraftSkuCurrentPrice(storeSettingDraft, sku.id)
                   : sku.currentPrice
               }
               onChange={(value) =>
@@ -1712,112 +1444,6 @@ function ProductListPage() {
               <div className={styles.storeSettingInputError}>
                 {priceSettingErrorMap[sku.id]}
               </div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: '源库存',
-      dataIndex: 'originalStock',
-      width: 120,
-    },
-    {
-      title: '独立库存',
-      dataIndex: 'currentStock',
-      width: 180,
-      render: (_: number, sku: ProductStoreSkuViewItem) => {
-        return (
-          <InputNumber
-            className={styles.storeSettingNumberInput}
-            min={0}
-            precision={0}
-            value={
-              storeSettingDraft
-                ? resolveDraftSkuCurrentStock(
-                    storeSettingDraft,
-                    sku.id,
-                    sku.currentStock
-                  )
-                : sku.currentStock
-            }
-            onChange={(value) =>
-              handleSkuStockChange(
-                sku.id,
-                typeof value === 'number' ? value : undefined
-              )
-            }
-          />
-        );
-      },
-    },
-  ];
-  const storeSettingLocalSkuColumns = [
-    ...storeSettingSpecDimensions.map((dimension, index) => ({
-      title: dimension.label,
-      dataIndex: dimension.key,
-      width: 180,
-      render: (_: unknown, sku: StoreSettingLocalSkuDraftRow) => (
-        <Typography.Text className={styles.storeSettingSkuName} ellipsis>
-          {sku.specValues[index] || '--'}
-        </Typography.Text>
-      ),
-    })),
-    {
-      title: '本店售价',
-      dataIndex: 'price',
-      width: 180,
-      render: (_: number, sku: StoreSettingLocalSkuDraftRow) => {
-        const error = storeSettingLocalSkuValidationMap[sku.specText];
-
-        return (
-          <div className={styles.storeSettingLocalSkuField}>
-            <InputNumber
-              className={styles.storeSettingNumberInput}
-              min={0}
-              precision={2}
-              placeholder="请输入售价"
-              value={sku.price}
-              onChange={(value) =>
-                handleLocalSkuItemChange(
-                  sku.specText,
-                  'price',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-            {error?.price && (
-              <div className={styles.storeSettingInputError}>{error.price}</div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: '本店库存',
-      dataIndex: 'stock',
-      width: 180,
-      render: (_: number, sku: StoreSettingLocalSkuDraftRow) => {
-        const error = storeSettingLocalSkuValidationMap[sku.specText];
-
-        return (
-          <div className={styles.storeSettingLocalSkuField}>
-            <InputNumber
-              className={styles.storeSettingNumberInput}
-              min={0}
-              precision={0}
-              placeholder="请输入库存"
-              value={sku.stock}
-              onChange={(value) =>
-                handleLocalSkuItemChange(
-                  sku.specText,
-                  'stock',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-            {error?.stock && (
-              <div className={styles.storeSettingInputError}>{error.stock}</div>
             )}
           </div>
         );
@@ -1855,19 +1481,6 @@ function ProductListPage() {
           {PRODUCT_STORE_SELL_STATUS_LABEL_MAP[value]}
         </Tag>
       ),
-    },
-    {
-      title: '上下架状态',
-      dataIndex: 'currentStatus',
-      width: 140,
-      render: (value: ProductStatus, sku: ProductStoreSkuViewItem) =>
-        sku.currentSellStatus === 'unsellable' ? (
-          <Tag color="gray">已下架</Tag>
-        ) : (
-          <Tag color={value === 'on' ? 'green' : 'arcoblue'}>
-            {PRODUCT_STATUS_LABEL_MAP[value]}
-          </Tag>
-        ),
     },
   ];
 
@@ -2050,20 +1663,25 @@ function ProductListPage() {
           <Button type="primary" onClick={() => history.push('/product/create')}>
             添加商品
           </Button>
-          <Button disabled={!selectedRowKeys.length} onClick={openPublishModal}>
-            发布到店铺
+          <Button
+            disabled={!selectedRowKeys.length}
+            onClick={() =>
+              currentStoreId
+                ? handleBatchSellStatusChange('sellable')
+                : handleBatchStatusChange('on')
+            }
+          >
+            {currentStoreId ? '批量设为可售' : '批量上架'}
           </Button>
           <Button
             disabled={!selectedRowKeys.length}
-            onClick={() => handleBatchStatusChange('on')}
+            onClick={() =>
+              currentStoreId
+                ? handleBatchSellStatusChange('unsellable')
+                : handleBatchStatusChange('off')
+            }
           >
-            批量上架
-          </Button>
-          <Button
-            disabled={!selectedRowKeys.length}
-            onClick={() => handleBatchStatusChange('off')}
-          >
-            批量下架
+            {currentStoreId ? '批量设为不可售' : '批量下架'}
           </Button>
         </div>
 
@@ -2115,11 +1733,25 @@ function ProductListPage() {
         onSubmit={handlePublishSubmit}
       />
 
+      <ProductDetailModal
+        product={detailTarget}
+        visible={Boolean(detailTarget)}
+        onCancel={() => setDetailTarget(null)}
+      />
+
       <SalesStoreModal
         visible={Boolean(salesStoreTarget)}
         product={salesStoreTarget}
-        storeItems={visibleStoreItems}
+        storeItems={salesStoreItems}
+        submitting={salesStoreSubmitting}
         onCancel={closeSalesStoreModal}
+        onSubmit={handleSalesStoreSubmit}
+      />
+
+      <SalesStoreDetailModal
+        product={salesStoreDetailTarget}
+        visible={Boolean(salesStoreDetailTarget)}
+        onCancel={() => setSalesStoreDetailTarget(null)}
       />
 
       <Modal
@@ -2157,7 +1789,7 @@ function ProductListPage() {
         cancelText="取消"
         confirmLoading={storeSettingSaving}
         okButtonProps={{
-          disabled: hasPriceSettingError || hasLocalSkuSettingError,
+          disabled: hasPriceSettingError,
         }}
         onCancel={closePriceSettingModal}
         onOk={handleStoreSettingSubmit}
@@ -2185,174 +1817,37 @@ function ProductListPage() {
                   <Typography.Text className={styles.storeSettingSectionTitle}>
                     源 SKU 配置
                   </Typography.Text>
-                  <Typography.Paragraph className={styles.storeSettingSectionHint}>
-                    源 SKU 保持只读，仅支持调整独立售价和独立库存。
-                  </Typography.Paragraph>
                 </div>
               </div>
 
-              <div className={styles.storeSettingTableWrap}>
-                <Table
-                  rowKey="id"
-                  columns={storeSettingSkuColumns}
-                  data={storeSettingSourceSkuPageRows}
-                  noDataElement="暂无源 SKU 数据"
-                  pagination={{
-                    current: storeSettingSkuPage,
-                    pageSize: STORE_SETTING_SKU_PAGE_SIZE,
-                    total: storeSettingSourceSkuItems.length,
-                    simple: true,
-                    sizeCanChange: false,
-                    onChange: (pageNumber) => setStoreSettingSkuPage(pageNumber),
-                  }}
-                  scroll={{ x: 960 }}
-                  tableLayoutFixed
-                />
-              </div>
+              {storeSettingSourceSkuConfigState.mode === 'price' ? (
+                <div className={styles.storeSettingTableWrap}>
+                  <Table
+                    rowKey="id"
+                    columns={storeSettingSkuColumns}
+                    data={storeSettingSourceSkuPageRows}
+                    noDataElement="暂无源 SKU 数据"
+                    pagination={{
+                      current: storeSettingSkuPage,
+                      pageSize: STORE_SETTING_SKU_PAGE_SIZE,
+                      total: storeSettingSourceSkuItems.length,
+                      simple: true,
+                      sizeCanChange: false,
+                      onChange: (pageNumber) => setStoreSettingSkuPage(pageNumber),
+                    }}
+                    scroll={{ x: 620 }}
+                    tableLayoutFixed
+                  />
+                </div>
+              ) : (
+                <div className={styles.storeSettingEmptyState}>
+                  <Typography.Text>
+                    {storeSettingSourceSkuConfigState.emptyText}
+                  </Typography.Text>
+                </div>
+              )}
             </div>
 
-            {storeSettingTarget.specMode === 'multi' && (
-              <div className={styles.storeSettingSection}>
-                <div className={styles.storeSettingSectionHeader}>
-                  <div>
-                    <Typography.Text className={styles.storeSettingSectionTitle}>
-                      本店新增 SKU
-                    </Typography.Text>
-                    <Typography.Paragraph className={styles.storeSettingSectionHint}>
-                      先在规格项下新增规格值，再自动生成仅包含新增值的组合 SKU。
-                    </Typography.Paragraph>
-                  </div>
-                </div>
-
-                <div className={styles.storeSettingSpecPanel}>
-                  {storeSettingSpecDimensions.map((dimension) => (
-                    <div
-                      key={dimension.key}
-                      className={styles.storeSettingSpecDimensionCard}
-                    >
-                      <div className={styles.storeSettingSpecDimensionHeader}>
-                        <Typography.Text className={styles.storeSettingSpecDimensionTitle}>
-                          {dimension.label}
-                        </Typography.Text>
-                      </div>
-
-                      <div className={styles.storeSettingSpecTagGroup}>
-                        {dimension.sourceValues.map((value) => (
-                          <Tag key={`${dimension.key}-source-${value}`}>{value}</Tag>
-                        ))}
-                        {dimension.localValues.map((value) => (
-                          <Tag
-                            key={`${dimension.key}-local-${value}`}
-                            closable
-                            color="arcoblue"
-                            onClose={() =>
-                              handleRemoveLocalSpecValue(dimension.key, value)
-                            }
-                          >
-                            {value}
-                          </Tag>
-                        ))}
-                      </div>
-
-                      <div className={styles.storeSettingSpecInputRow}>
-                        <Input
-                          allowClear
-                          className={styles.storeSettingSpecInput}
-                          placeholder={
-                            dimension.named
-                              ? `请输入${dimension.label}`
-                              : '请输入规格值，例如：红色'
-                          }
-                          value={
-                            storeSettingDraft.localSpecValueInputs[dimension.key] || ''
-                          }
-                          onChange={(value) =>
-                            handleLocalSpecValueInputChange(dimension.key, value)
-                          }
-                          onPressEnter={() => handleAddLocalSpecValue(dimension.key)}
-                        />
-                        <Button
-                          icon={<IconPlus />}
-                          type="text"
-                          onClick={() => handleAddLocalSpecValue(dimension.key)}
-                        >
-                          添加规格值
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {Boolean(storeSettingDraft.legacyLocalSkuIssues.length) && (
-                  <div className={styles.storeSettingLegacyIssuePanel}>
-                    <Typography.Text className={styles.storeSettingLegacyIssueTitle}>
-                      历史本店新增 SKU 需要处理
-                    </Typography.Text>
-                    <Typography.Paragraph className={styles.storeSettingLegacyIssueHint}>
-                      以下旧数据无法按当前规格结构自动还原，删除后才能保存新的本店新增 SKU。
-                    </Typography.Paragraph>
-                    <div className={styles.storeSettingLegacyIssueList}>
-                      {storeSettingDraft.legacyLocalSkuIssues.map((item) => (
-                        <div
-                          key={item.skuId}
-                          className={styles.storeSettingLegacyIssueItem}
-                        >
-                          <div className={styles.storeSettingLegacyIssueContent}>
-                            <Typography.Text className={styles.storeSettingLegacyIssueSpec}>
-                              {item.specText || item.skuId}
-                            </Typography.Text>
-                            <Typography.Text
-                              className={styles.storeSettingLegacyIssueReason}
-                            >
-                              {item.reason}
-                            </Typography.Text>
-                          </div>
-                          <Button
-                            size="mini"
-                            type="text"
-                            status="danger"
-                            onClick={() => handleRemoveLegacyLocalSkuIssue(item.skuId)}
-                          >
-                            删除
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {storeSettingDraft.localSkuRows.length > 0 && (
-                  <div className={styles.storeSettingSection}>
-                    <div className={styles.storeSettingSectionHeader}>
-                      <div>
-                        <Typography.Text className={styles.storeSettingSectionTitle}>
-                          新增组合 SKU
-                        </Typography.Text>
-                        <Typography.Paragraph className={styles.storeSettingSectionHint}>
-                          组合行由上方规格值自动生成，如需删除请回到上方移除对应规格值。
-                        </Typography.Paragraph>
-                      </div>
-                    </div>
-
-                    <div className={styles.storeSettingTableWrap}>
-                      <Table
-                        rowKey="specText"
-                        columns={storeSettingLocalSkuColumns}
-                        data={storeSettingDraft.localSkuRows}
-                        pagination={false}
-                        scroll={{
-                          x: Math.max(
-                            960,
-                            storeSettingSpecDimensions.length * 180 + 360
-                          ),
-                        }}
-                        tableLayoutFixed
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </Modal>
@@ -2379,22 +1874,6 @@ function ProductListPage() {
               onClick={() => handleSkuStatusBatchSubmit('unsellable')}
             >
               设为不可售
-            </Button>
-            <Button
-              disabled={!skuStatusSelectedRowKeys.length || Boolean(skuStatusSubmitting)}
-              loading={skuStatusSubmitting === 'on'}
-              type="primary"
-              onClick={() => handleSkuStatusBatchSubmit('on')}
-            >
-              上架
-            </Button>
-            <Button
-              disabled={!skuStatusSelectedRowKeys.length || Boolean(skuStatusSubmitting)}
-              loading={skuStatusSubmitting === 'off'}
-              type="primary"
-              onClick={() => handleSkuStatusBatchSubmit('off')}
-            >
-              下架
             </Button>
           </div>
         }

@@ -11,6 +11,7 @@ import {
   Button,
   Typography,
 } from '@arco-design/web-react';
+import { useHistory } from 'react-router-dom';
 import {
   IconLanguage,
   IconNotification,
@@ -34,16 +35,21 @@ import defaultLocale from '@/locale';
 import useStorage from '@/utils/useStorage';
 import {
   buildDemoUserInfo,
+  getAvailableDemoIdentityIds,
+  getAvailableOrganizationsForSelection,
+  getDemoCurrentPresetTitle,
+  getDemoOrganizationSelectionLabel,
   getDefaultDemoIdentityForSystem,
-  getDemoIdentityPreset,
   persistDemoSelection,
   resolveDemoSelection,
   DEMO_SYSTEM_LABEL_MAP,
+  DemoIdentityId,
   DemoSystemId,
 } from '@/utils/demo';
 import { buildCurrentOrganizationOptions, writeCurrentOrganizationId } from '@/utils/organization';
 
 function Navbar({ show }: { show: boolean }) {
+  const history = useHistory();
   const t = useLocale();
   const {
     userInfo,
@@ -56,6 +62,9 @@ function Navbar({ show }: { show: boolean }) {
   const [, setUserStatus] = useStorage('userStatus');
 
   const { setLang, lang, theme, setTheme } = useContext(GlobalContext);
+  const organizationOptions = useMemo(() => buildCurrentOrganizationOptions(), []);
+  const activeDemoSystem = currentDemoSystem || 'merchant';
+  const activeDemoIdentity = currentDemoIdentity || 'merchant_admin';
 
   function logout() {
     setUserStatus('logout');
@@ -71,7 +80,6 @@ function Navbar({ show }: { show: boolean }) {
     Message.info(`You clicked ${key}`);
   }
 
-  const organizationOptions = useMemo(() => buildCurrentOrganizationOptions(), []);
   const systemOptions = useMemo(
     () =>
       (['merchant', 'store'] as DemoSystemId[]).map((item) => ({
@@ -80,6 +88,72 @@ function Navbar({ show }: { show: boolean }) {
       })),
     []
   );
+  const organizationSelectOptions = useMemo(() => {
+    return getAvailableOrganizationsForSelection(
+      activeDemoSystem,
+      activeDemoIdentity,
+      organizationOptions
+    ).map((item) => ({
+      label: getDemoOrganizationSelectionLabel(
+        activeDemoSystem,
+        activeDemoIdentity,
+        item
+      ),
+      value: item.id,
+    }));
+  }, [activeDemoIdentity, activeDemoSystem, organizationOptions]);
+  const selectedOrganizationId = useMemo(() => {
+    if (
+      currentOrganization?.id &&
+      organizationSelectOptions.some((item) => item.value === currentOrganization.id)
+    ) {
+      return currentOrganization.id;
+    }
+
+    return organizationSelectOptions[0]?.value;
+  }, [currentOrganization?.id, organizationSelectOptions]);
+  const fallbackOrganization = useMemo(
+    () =>
+      organizationOptions.find((item) => item.id === selectedOrganizationId) ||
+      currentOrganization ||
+      organizationOptions[0],
+    [currentOrganization, organizationOptions, selectedOrganizationId]
+  );
+  const identityOptions = useMemo(() => {
+    if (!fallbackOrganization) {
+      return [];
+    }
+
+    return getAvailableDemoIdentityIds(
+      activeDemoSystem,
+      fallbackOrganization,
+      organizationOptions
+    ).map((item) => ({
+      label:
+        item === 'merchant_admin'
+          ? '商户管理员'
+          : item === 'region_admin'
+            ? '区域管理员'
+            : '店铺员工',
+      value: item,
+    }));
+  }, [activeDemoSystem, fallbackOrganization, organizationOptions]);
+  const currentPresetTitle = useMemo(() => {
+    if (!currentOrganization) {
+      return demoContext?.identityLabel || '商户管理员';
+    }
+
+    return getDemoCurrentPresetTitle(
+      activeDemoSystem,
+      activeDemoIdentity,
+      currentOrganization
+    );
+  }, [
+    activeDemoIdentity,
+    activeDemoSystem,
+    currentOrganization,
+    demoContext?.identityLabel,
+  ]);
 
   const applyResolvedSelection = useCallback((
     nextSelection: ReturnType<typeof resolveDemoSelection>
@@ -102,7 +176,7 @@ function Navbar({ show }: { show: boolean }) {
     const resolvedSelection = resolveDemoSelection({
       currentDemoSystem,
       currentDemoIdentity,
-      currentOrganizationId: currentOrganization?.id,
+      currentOrganizationId: selectedOrganizationId || currentOrganization?.id,
       organizationOptions,
     });
 
@@ -118,6 +192,7 @@ function Navbar({ show }: { show: boolean }) {
     currentDemoIdentity,
     currentDemoSystem,
     currentOrganization?.id,
+    selectedOrganizationId,
     applyResolvedSelection,
     organizationOptions,
   ]);
@@ -137,17 +212,36 @@ function Navbar({ show }: { show: boolean }) {
   const handleSystemChange = (value: string) => {
     const targetSystem = value as DemoSystemId;
     const targetIdentity = getDefaultDemoIdentityForSystem(targetSystem);
-    const targetPreset = getDemoIdentityPreset(targetIdentity);
     const resolvedSelection = resolveDemoSelection({
       currentDemoSystem: targetSystem,
       currentDemoIdentity: targetIdentity,
-      currentOrganizationId:
-        targetSystem === 'store'
-          ? currentOrganization?.id
-          : targetPreset.defaultOrganizationId,
+      currentOrganizationId: selectedOrganizationId || currentOrganization?.id,
       organizationOptions,
     });
     applyResolvedSelection(resolvedSelection);
+    history.push(`/${resolvedSelection.demoContext.defaultHomeRoute}`);
+  };
+  const handleIdentityChange = (value: string) => {
+    const resolvedSelection = resolveDemoSelection({
+      currentDemoSystem: activeDemoSystem,
+      currentDemoIdentity: value as DemoIdentityId,
+      currentOrganizationId: fallbackOrganization?.id,
+      organizationOptions,
+    });
+
+    applyResolvedSelection(resolvedSelection);
+    history.push(`/${resolvedSelection.demoContext.defaultHomeRoute}`);
+  };
+  const handleOrganizationChange = (value: string) => {
+    const resolvedSelection = resolveDemoSelection({
+      currentDemoSystem: activeDemoSystem,
+      currentDemoIdentity: activeDemoIdentity,
+      currentOrganizationId: value,
+      organizationOptions,
+    });
+
+    applyResolvedSelection(resolvedSelection);
+    history.push(`/${resolvedSelection.demoContext.defaultHomeRoute}`);
   };
 
   const droplist = (
@@ -202,16 +296,40 @@ function Navbar({ show }: { show: boolean }) {
             <Select
               className={styles.systemSelect}
               options={systemOptions}
-              value={currentDemoSystem}
+              value={activeDemoSystem}
               onChange={handleSystemChange}
+            />
+          </div>
+          <div className={styles.selectorField}>
+            <span className={styles.selectorLabel}>{t['menu.user.switchRoles']}</span>
+            <Select
+              className={styles.identitySelect}
+              options={identityOptions}
+              value={activeDemoIdentity}
+              onChange={handleIdentityChange}
+              disabled={identityOptions.length <= 1}
+            />
+          </div>
+          <div className={styles.selectorField}>
+            <span className={styles.selectorLabel}>当前店铺</span>
+            <Select
+              className={styles.organizationSelect}
+              options={organizationSelectOptions}
+              value={selectedOrganizationId}
+              onChange={handleOrganizationChange}
+              disabled={
+                activeDemoSystem === 'merchant' ||
+                Boolean(demoContext?.organizationLocked) ||
+                organizationSelectOptions.length <= 1
+              }
             />
           </div>
           <div className={styles.currentPreset}>
             <Typography.Text className={styles.currentPresetTitle}>
-              {demoContext?.identityLabel}
+              {currentPresetTitle}
             </Typography.Text>
             <Typography.Text type="secondary">
-              {userInfo?.organization}
+              {currentOrganization?.name || userInfo?.organization}
             </Typography.Text>
           </div>
         </div>

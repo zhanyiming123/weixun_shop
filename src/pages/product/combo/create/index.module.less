@@ -1,0 +1,1011 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 80px;
+}
+
+.pageActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sectionCard {
+  :global(.arco-card-body) {
+    padding-top: 12px;
+  }
+}
+
+.actionCard {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 4%);
+
+  :global(.arco-card-body) {
+    padding: 18px 24px;
+  }
+}
+
+.sectionHeader {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  margin: 0 0 6px;
+}
+
+.sectionForm {
+  :global(.arco-form-item) {
+    margin-bottom: 0;
+  }
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--platform-form-item-spacing) 20px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.fieldHelp {
+  margin-top: 6px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.singleFieldControl {
+  width: min(100%, 520px);
+}
+
+.limitSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limitSwitchText {
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.channelSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channelSwitchText {
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.storeChannelSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.storeChannelSwitchText {
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.independentPriceSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.independentPriceSwitchText {
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.channelSkuTable {
+  border: 1px solid var(--color-border-2);
+  border-radius: 2px;
+  overflow: hidden;
+
+  :global(.arco-table-th) {
+    background: var(--color-fill-1);
+  }
+
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.independentPriceRuleTable {
+  border: 1px solid var(--color-border-2);
+  border-radius: 2px;
+  overflow: hidden;
+
+  :global(.arco-table-th) {
+    background: var(--color-fill-1);
+  }
+
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.storeChannelTable {
+  border: 1px solid var(--color-border-2);
+  border-radius: 2px;
+  width: 100%;
+  overflow: hidden;
+
+  :global(.arco-table-th) {
+    background: var(--color-fill-1);
+  }
+
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.storeChannelTablePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.storeChannelTableHint {
+  margin: 0;
+  color: var(--color-text-3);
+}
+
+.storeChannelRuleHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 2px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 93, 255, 0.16);
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    rgba(22, 93, 255, 0.08) 0%,
+    rgba(22, 93, 255, 0.04) 100%
+  );
+}
+
+.storeChannelRuleHintIcon {
+  flex: none;
+  margin-top: 2px;
+  color: rgb(22, 93, 255);
+  font-size: 16px;
+}
+
+.storeChannelRuleHintText {
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.storeChannelRuleHintEmphasis {
+  color: var(--color-text-1);
+  font-weight: 600;
+}
+
+.storeScopedSpecWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.storeChannelRuleList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.storeChannelRuleCard {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-bg-2);
+}
+
+.storeChannelRuleCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-fill-1);
+}
+
+.storeChannelRuleTitle {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.storeChannelRuleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+}
+
+.storeChannelRuleLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.storeChannelRuleLabel {
+  width: 96px;
+  flex: none;
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 32px;
+}
+
+.storeChannelRuleContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storeChannelSummaryRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.storeChannelInlineButton {
+  padding-left: 0;
+  align-self: flex-start;
+}
+
+.storeChannelSelectorRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.storeChannelAddRuleRow {
+  display: flex;
+  align-items: center;
+}
+
+.storeChannelFieldModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.storeChannelFieldModalTip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgb(var(--arcoblue-3));
+  border-radius: 4px;
+  background: rgb(var(--arcoblue-1));
+  color: var(--color-text-1);
+  line-height: 24px;
+}
+
+.storeChannelFieldModalTipIcon {
+  margin-top: 4px;
+  color: rgb(var(--arcoblue-6));
+}
+
+.storeChannelFieldOptionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.channelSkuSpecText {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.channelSkuDisabledText {
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+
+.channelSkuRowDisabled {
+  :global(.arco-table-td) {
+    background: var(--color-fill-1);
+  }
+}
+
+.channelRequiredMark {
+  color: rgb(var(--danger-6));
+  margin-right: 2px;
+}
+
+.channelMoneyInput {
+  width: 160px;
+}
+
+.independentMoneyInput {
+  width: 160px;
+}
+
+.storeChannelNumberInput {
+  width: 160px;
+}
+
+.independentPriceText {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.storeChannelRangeInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.storeChannelRangeInput {
+  width: 132px;
+}
+
+.storeChannelRangeSeparator {
+  color: var(--color-text-2);
+}
+
+.channelRangeInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.channelRangeInput {
+  width: 132px;
+}
+
+.channelRangeSeparator {
+  color: var(--color-text-2);
+}
+
+.limitConfigRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limitConfigLabel,
+.limitConfigUnit {
+  color: var(--color-text-1);
+  font-size: 13px;
+}
+
+.storeSummaryPanel {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  background: var(--color-bg-2);
+  padding: 28px 32px;
+}
+
+.storeSummaryContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storeSummaryLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.storeSummaryLabel {
+  color: var(--color-text-1);
+}
+
+.storeSummaryValue {
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.storeSummaryAction {
+  padding-left: 0;
+}
+
+.storeSummaryHint {
+  margin: 0;
+  color: var(--color-text-3);
+}
+
+.storeSummaryEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.storeSummaryEmptyText {
+  color: var(--color-text-2);
+}
+
+.limitCountInput {
+  width: 120px;
+}
+
+.specPanel {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  padding: 12px;
+  background: var(--color-fill-1);
+}
+
+.specList {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--platform-form-item-spacing);
+}
+
+.specItem {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  padding: 10px;
+  background: var(--color-bg-2);
+}
+
+.specItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.specItemTitle {
+  color: var(--color-text-1);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.specInputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--platform-form-item-spacing) 20px;
+}
+
+.singleSpecGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 240px));
+  gap: var(--platform-form-item-spacing) 20px;
+  align-items: start;
+}
+
+.singleSpecField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.singleSpecLabel {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.singleSpecUpload {
+  :global(.arco-upload-list-picture-card .arco-upload-list-item),
+  :global(.arco-upload-picture-card) {
+    width: 126px;
+    height: 126px;
+  }
+}
+
+.singleSpecControl {
+  width: 100%;
+}
+
+.singleSpecInputRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.singleSpecUnit {
+  color: var(--color-text-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.specEmpty {
+  margin: 10px 0 0;
+  color: var(--color-text-3);
+}
+
+.specAttributeTip {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  padding: 12px;
+  background: var(--color-fill-1);
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.specAttributePanel {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  padding: 14px 16px;
+  background: var(--color-fill-1);
+}
+
+.detailLayout {
+  display: grid;
+  grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.detailPreview,
+.detailEditor {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-bg-2);
+}
+
+.detailPanelHeader {
+  height: 38px;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-fill-1);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.detailPanelBody {
+  min-height: 280px;
+  max-height: 460px;
+  overflow: auto;
+  padding: 14px;
+}
+
+.detailPreviewContent {
+  color: var(--color-text-1);
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+
+  img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 8px 0;
+  }
+}
+
+.detailToolbar {
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-fill-1);
+}
+
+.detailToolbarRow {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.detailToolbarRow + .detailToolbarRow {
+  border-top: 1px solid var(--color-border-2);
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+  background: var(--color-border-2);
+}
+
+.toolbarSelectCompact {
+  width: 92px;
+}
+
+.toolbarSelect {
+  width: 116px;
+}
+
+.toolbarIconButton {
+  width: 30px;
+  height: 30px;
+  color: var(--color-text-2);
+
+  &:hover {
+    background: var(--color-fill-2);
+  }
+}
+
+.detailEditable {
+  min-height: 280px;
+  max-height: 460px;
+  overflow: auto;
+  padding: 12px;
+  color: var(--color-text-1);
+  outline: none;
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+
+  &:focus {
+    box-shadow: inset 0 0 0 1px rgb(var(--arcoblue-6));
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 8px 0;
+  }
+
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: var(--color-text-3);
+    pointer-events: none;
+  }
+}
+
+.detailEmpty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-3);
+  padding: 0 20px;
+}
+
+.uploadPanel {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  padding: 12px;
+  background: var(--color-fill-1);
+}
+
+.uploadContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.uploadPrimary {
+  width: 126px;
+  flex: none;
+}
+
+.uploadTrigger {
+  width: 126px;
+  height: 126px;
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  background: var(--color-bg-2);
+  color: var(--color-text-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.uploadTriggerText {
+  font-size: 12px;
+}
+
+.uploadTips {
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.thumbList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.thumbItem {
+  width: 126px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-bg-2);
+  cursor: grab;
+}
+
+.thumbItemDragging {
+  opacity: 0.5;
+}
+
+.thumbImageBox {
+  width: 126px;
+  height: 126px;
+  position: relative;
+  overflow: hidden;
+}
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbNoPreview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-3);
+  background: var(--color-fill-2);
+  font-size: 12px;
+}
+
+.thumbDelete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.thumbFooter {
+  padding: 6px 8px;
+  border-top: 1px solid var(--color-border-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.thumbOrder {
+  color: var(--color-text-2);
+  font-size: 12px;
+}
+
+.thumbMain {
+  color: rgb(var(--arcoblue-6));
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.attributePanel {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--color-fill-1);
+}
+
+.attributeHint {
+  margin-bottom: 8px;
+  color: var(--color-text-2);
+}
+
+.attributeFieldList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 520px));
+  gap: var(--platform-form-item-spacing) 20px;
+  align-items: start;
+}
+
+.attributeFieldItem {
+  margin-bottom: 0;
+}
+
+.attributeCheckboxGroup {
+  width: min(100%, 520px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.attributeEmpty {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.storeConfigModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.storeConfigFilterRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px)) minmax(260px, 1fr);
+  gap: 16px;
+}
+
+.storeConfigFilter,
+.storeConfigSearch {
+  width: 100%;
+}
+
+.storeConfigToolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.storeConfigToolbarText {
+  color: var(--color-text-2);
+}
+
+.storeConfigBatchSelect {
+  width: 140px;
+}
+
+.storeConfigBatchTreeSelect {
+  width: 260px;
+}
+
+.storeConfigTable {
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+  }
+}
+
+.storeCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.storeTag {
+  flex: none;
+}
+
+.storeName {
+  min-width: 0;
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
+.storeStatusSelect {
+  width: 120px;
+}
+
+.storeSkuTreeSelect {
+  width: 100%;
+}
+
+.storeShareModeSelect {
+  width: 180px;
+}
+
+.placeholderRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.placeholderRow {
+  height: 38px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-fill-2) 0%,
+    var(--color-fill-3) 50%,
+    var(--color-fill-2) 100%
+  );
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .uploadTrigger {
+    width: 100%;
+  }
+
+  .uploadContent {
+    flex-direction: column;
+  }
+
+  .uploadPrimary {
+    width: 100%;
+  }
+
+  .thumbItem,
+  .thumbImageBox {
+    width: 100px;
+    height: 100px;
+  }
+
+  .specInputs {
+    grid-template-columns: 1fr;
+  }
+
+  .singleSpecGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .limitConfigRow {
+    flex-wrap: wrap;
+  }
+
+  .channelRangeInputGroup {
+    flex-wrap: wrap;
+  }
+
+  .storeChannelRangeInputGroup {
+    flex-wrap: wrap;
+  }
+
+  .storeChannelRuleLine,
+  .storeChannelFieldOptionRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .storeChannelRuleLabel {
+    width: auto;
+    line-height: 22px;
+  }
+
+  .attributeFieldList {
+    grid-template-columns: 1fr;
+  }
+
+  .actionRow {
+    justify-content: flex-start;
+  }
+
+  .storeSummaryEmpty {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .storeConfigFilterRow {
+    grid-template-columns: 1fr;
+  }
+}

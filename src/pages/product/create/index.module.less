@@ -466,6 +466,56 @@
   background: var(--color-fill-1);
 }
 
+.specTemplateHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.specTemplateTitle {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.specTemplateActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.specTemplateSelect {
+  width: min(100%, 260px);
+}
+
+.specTemplateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.specTemplateLabel {
+  color: var(--color-text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.specTemplateCheckboxGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.requiredMark {
+  color: rgb(var(--red-6));
+  margin-right: 4px;
+}
+
 .specList {
   margin-top: 12px;
   display: flex;
@@ -475,8 +525,8 @@
 
 .specItem {
   border: 1px solid var(--color-border-2);
-  border-radius: 4px;
-  padding: 10px;
+  border-radius: 12px;
+  padding: 14px 16px;
   background: var(--color-bg-2);
 }
 
@@ -491,13 +541,86 @@
 .specItemTitle {
   color: var(--color-text-1);
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.specInputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--platform-form-item-spacing) 20px;
+.specReadonlyField,
+.specSelectorRow,
+.specValueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.specReadonlyField,
+.specSelectorRow {
+  width: min(100%, 320px);
+  margin-bottom: 12px;
+}
+
+.specItemSelect {
+  width: min(100%, 320px);
+}
+
+.specDragHandle {
+  flex: none;
+  color: var(--color-text-3);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.specReadonlyValue {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.specValueList {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding-left: 20px;
+}
+
+.specValueRow {
+  min-width: 0;
+}
+
+.specValueSelect {
+  width: min(100%, 320px);
+}
+
+.specSelectionHint {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.specActionRow {
+  display: flex;
+  align-items: center;
+}
+
+.specValueRemove {
+  flex: none;
+  color: var(--color-text-3);
+}
+
+.specAddItemButton,
+.specAddValueButton {
+  flex: none;
+  padding-left: 0;
+  padding-right: 0;
+  color: rgb(var(--arcoblue-6));
 }
 
 .singleSpecGrid {
@@ -564,6 +687,53 @@
   border-radius: 4px;
   padding: 14px 16px;
   background: var(--color-fill-1);
+}
+
+.multiSpecAttributeTable {
+  border: 1px solid var(--color-border-2);
+  border-radius: 2px;
+  overflow: hidden;
+
+  :global(.arco-table-th) {
+    background: var(--color-fill-1);
+  }
+
+  :global(.arco-table-th-item),
+  :global(.arco-table-td) {
+    font-size: 14px;
+    vertical-align: top;
+  }
+}
+
+.multiSpecFilterSelect,
+.multiSpecNumberInput {
+  width: 100%;
+}
+
+.multiSpecImageUpload {
+  :global(.arco-upload-list-picture-card .arco-upload-list-item),
+  :global(.arco-upload-picture-card) {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+.multiSpecBatchActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multiSpecStatusCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.multiSpecStatusText {
+  color: var(--color-text-2);
+  font-size: 13px;
 }
 
 .detailLayout {
@@ -876,6 +1046,23 @@
   width: 140px;
 }
 
+.storeConfigBatchTreeSelect {
+  width: 260px;
+
+  :global(.arco-input-tag-inner) {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  :global(.arco-input-tag-tag) {
+    max-width: 100%;
+  }
+
+  :global(.arco-tag) {
+    max-width: 100%;
+  }
+}
+
 .storeConfigTable {
   :global(.arco-table-th-item),
   :global(.arco-table-td) {
@@ -906,6 +1093,19 @@
 
 .storeSkuTreeSelect {
   width: 100%;
+
+  :global(.arco-input-tag-inner) {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  :global(.arco-input-tag-tag) {
+    max-width: 100%;
+  }
+
+  :global(.arco-tag) {
+    max-width: 100%;
+  }
 }
 
 .storeShareModeSelect {

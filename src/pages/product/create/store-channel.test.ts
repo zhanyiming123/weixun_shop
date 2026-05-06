@@ -1,40 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildStoreChannelSkuMetaItems,
   buildStoreChannelCreateSkuPayload,
-  canRemoveStoreChannelRule,
-  createEmptyStoreChannelRule,
-  removeStoreChannelRuleDrafts,
+  buildStoreChannelSkuMetaItems,
+  createEmptyStoreChannelConfig,
+  createStoreChannelConfigDraftFromProductConfig,
   STORE_CHANNEL_SINGLE_SKU_KEY,
-  syncStoreChannelRuleDrafts,
+  syncStoreChannelConfigDraft,
   validateStoreChannelSkuDraftMap,
-  type StoreChannelRuleDraftItem,
-  type StoreChannelSkuDraftMap,
   type StoreChannelSpecItem,
 } from './store-channel';
 
 describe('product create store channel helpers', () => {
-  it('creates the default rule draft shape', () => {
-    expect(createEmptyStoreChannelRule()).toMatchObject({
-      fieldKeys: [],
+  it('creates the default single config draft shape', () => {
+    expect(createEmptyStoreChannelConfig()).toEqual({
+      shareMode: 'product_pool',
       storeScope: 'allStores',
       storeIds: [],
-      skuScope: 'allSkus',
-      skuKeys: [],
-      shareMode: 'product_pool',
-      skuConfigs: [],
+      productPoolStoreConfigs: [],
     });
-  });
-
-  it('allows deleting the last rule draft', () => {
-    const rule = createEmptyStoreChannelRule();
-
-    expect(removeStoreChannelRuleDrafts([rule], rule.id)).toEqual([]);
-  });
-
-  it('keeps the first rule non-removable', () => {
-    expect(canRemoveStoreChannelRule(0)).toBe(false);
-    expect(canRemoveStoreChannelRule(1)).toBe(true);
   });
 
   it('builds sku meta items from the shared source draft map', () => {
@@ -87,7 +70,7 @@ describe('product create store channel helpers', () => {
           sourceStock: 28,
         },
       },
-      rules: [],
+      config: createEmptyStoreChannelConfig(),
       targetStoreIds: ['store_guangzhou'],
       createdAt: '2026-04-27 10:00:00',
     });
@@ -104,7 +87,7 @@ describe('product create store channel helpers', () => {
     expect(result.price).toBe(199.5);
     expect(result.stock).toBe(28);
     expect(result.shareTargets).toEqual([]);
-    expect(result.storeChannelRules).toEqual([]);
+    expect(result.storeChannelConfig).toBeUndefined();
     expect(result.independentPriceRule).toEqual({
       enabled: false,
       skuRules: [],
@@ -115,27 +98,7 @@ describe('product create store channel helpers', () => {
     });
   });
 
-  it('maps store channel rules and share targets when channel is on', () => {
-    const rules: StoreChannelRuleDraftItem[] = [
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice', 'productStock'],
-        storeScope: 'specificStores',
-        storeIds: ['store_guangzhou'],
-        skuScope: 'allSkus',
-        skuKeys: [],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuKey: STORE_CHANNEL_SINGLE_SKU_KEY,
-            suggestedMinPrice: 260,
-            suggestedMaxPrice: 320,
-            suggestedMinStock: 12,
-            suggestedMaxStock: 42,
-          },
-        ],
-      },
-    ];
+  it('maps store channel config and share targets when channel is on', () => {
     const result = buildStoreChannelCreateSkuPayload({
       productId: 'product_1',
       specMode: 'single',
@@ -147,7 +110,27 @@ describe('product create store channel helpers', () => {
           sourceStock: 36,
         },
       },
-      rules,
+      config: {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_guangzhou'],
+        productPoolStoreConfigs: [
+          {
+            storeId: 'store_guangzhou',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+            sellableSkuKeys: [STORE_CHANNEL_SINGLE_SKU_KEY],
+            allowSelfPrice: true,
+          },
+          {
+            storeId: 'store_shenzhen',
+            sellStatus: 'unsellable',
+            channelStatus: 'off',
+            sellableSkuKeys: [],
+            allowSelfPrice: false,
+          },
+        ],
+      },
       targetStoreIds: ['store_guangzhou', 'store_shenzhen'],
       createdAt: '2026-04-27 10:00:00',
     });
@@ -161,26 +144,25 @@ describe('product create store channel helpers', () => {
         status: 'on',
       },
     ]);
-    expect(result.storeChannelRules).toEqual([
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice', 'productStock'],
-        storeScope: 'specificStores',
-        storeIds: ['store_guangzhou'],
-        skuScope: 'allSkus',
-        skuIds: [],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-product_1-1',
-            minSuggestedPrice: 260,
-            maxSuggestedPrice: 320,
-            minSuggestedStock: 12,
-            maxSuggestedStock: 42,
-          },
-        ],
-      },
-    ]);
+    expect(result.storeChannelConfig).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_guangzhou'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_guangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku-product_1-1'],
+          allowSelfPrice: true,
+        },
+        {
+          storeId: 'store_shenzhen',
+          sellStatus: 'unsellable',
+          channelStatus: 'on',
+        },
+      ],
+    });
     expect(result.shareTargets).toEqual([
       {
         storeId: 'store_guangzhou',
@@ -188,11 +170,68 @@ describe('product create store channel helpers', () => {
         sharedAt: '2026-04-27 10:00:00',
         referencedAt: '2026-04-27 10:00:00',
         sellableSkuIds: ['sku-product_1-1'],
+        allowSelfPrice: true,
       },
     ]);
   });
 
-  it('uses per-sku source values and per-rule ranges for multi-spec products', () => {
+  it('preserves sku image, default flag and display status in store-scoped payload', () => {
+    const result = buildStoreChannelCreateSkuPayload({
+      productId: 'product_1',
+      specMode: 'multi',
+      specItems: [
+        { id: 'sku_a', name: '年级', value: '10年级' },
+        { id: 'sku_b', name: '年级', value: '11年级' },
+      ],
+      storeChannelEnabled: false,
+      sourceDraftMap: {
+        sku_a: {
+          sourcePrice: 199,
+          sourceStock: 12,
+          status: 'on',
+          image: {
+            id: 'image_1',
+            name: '10年级图',
+            url: 'https://example.com/10.png',
+          },
+          isDefaultSelected: true,
+        },
+        sku_b: {
+          sourcePrice: 299,
+          sourceStock: 8,
+          status: 'off',
+        },
+      },
+      config: createEmptyStoreChannelConfig(),
+      targetStoreIds: [],
+      createdAt: '2026-04-27 10:00:00',
+    });
+
+    expect(result.skus).toEqual([
+      {
+        id: 'sku-product_1-1',
+        specText: '年级：10年级',
+        price: 199,
+        stock: 12,
+        status: 'on',
+        image: {
+          id: 'image_1',
+          name: '10年级图',
+          url: 'https://example.com/10.png',
+        },
+        isDefaultSelected: true,
+      },
+      {
+        id: 'sku-product_1-2',
+        specText: '年级：11年级',
+        price: 299,
+        stock: 8,
+        status: 'off',
+      },
+    ]);
+  });
+
+  it('supports shared-pool specific stores in payload', () => {
     const specItems: StoreChannelSpecItem[] = [
       { id: 1, name: '班级', value: '1v1' },
       { id: 2, name: '班级', value: '1v3' },
@@ -212,320 +251,207 @@ describe('product create store channel helpers', () => {
           sourceStock: 20,
         },
       },
-      rules: [
-        {
-          id: 'rule_1',
-          fieldKeys: ['productPrice'],
-          storeScope: 'allStores',
-          storeIds: [],
-          skuScope: 'specificSkus',
-          skuKeys: ['1'],
-          shareMode: 'product_pool',
-          skuConfigs: [
-            {
-              skuKey: '1',
-              suggestedMinPrice: 700,
-              suggestedMaxPrice: 900,
-            },
-          ],
-        },
-        {
-          id: 'rule_2',
-          fieldKeys: ['productStock'],
-          storeScope: 'specificStores',
-          storeIds: ['store_shenzhen'],
-          skuScope: 'specificSkus',
-          skuKeys: ['2'],
-          shareMode: 'product_pool',
-          skuConfigs: [
-            {
-              skuKey: '2',
-              suggestedMinStock: 15,
-              suggestedMaxStock: 30,
-            },
-          ],
-        },
-      ],
+      config: {
+        shareMode: 'shared_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_shenzhen'],
+        productPoolStoreConfigs: [],
+      },
       targetStoreIds: ['store_guangzhou', 'store_shenzhen'],
       createdAt: '2026-04-27 11:00:00',
     });
 
-    expect(result.skus).toEqual([
-      {
-        id: 'sku-product_2-1',
-        specText: '班级：1v1',
-        price: 800,
-        stock: 10,
-        status: 'on',
-      },
-      {
-        id: 'sku-product_2-2',
-        specText: '班级：1v3',
-        price: 600,
-        stock: 20,
-        status: 'on',
-      },
-    ]);
-    expect(result.storeChannelRules).toEqual([
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice'],
-        storeScope: 'allStores',
-        storeIds: [],
-        skuScope: 'specificSkus',
-        skuIds: ['sku-product_2-1'],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-product_2-1',
-            minSuggestedPrice: 700,
-            maxSuggestedPrice: 900,
-          },
-        ],
-      },
-      {
-        id: 'rule_2',
-        fieldKeys: ['productStock'],
-        storeScope: 'specificStores',
-        storeIds: ['store_shenzhen'],
-        skuScope: 'specificSkus',
-        skuIds: ['sku-product_2-2'],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-product_2-2',
-            minSuggestedStock: 15,
-            maxSuggestedStock: 30,
-          },
-        ],
-      },
-    ]);
+    expect(result.storeChannelConfig).toEqual({
+      shareMode: 'shared_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_shenzhen'],
+      productPoolStoreConfigs: [],
+    });
     expect(result.shareTargets).toEqual([
       {
-        storeId: 'store_guangzhou',
-        status: 'referenced',
-        sharedAt: '2026-04-27 11:00:00',
-        referencedAt: '2026-04-27 11:00:00',
-        sellableSkuIds: ['sku-product_2-1'],
-      },
-      {
         storeId: 'store_shenzhen',
-        status: 'referenced',
+        status: 'pending',
         sharedAt: '2026-04-27 11:00:00',
-        referencedAt: '2026-04-27 11:00:00',
+        referencedAt: undefined,
         sellableSkuIds: ['sku-product_2-1', 'sku-product_2-2'],
       },
     ]);
   });
 
-  it('filters stale sku references when specs change', () => {
-    const synced = syncStoreChannelRuleDrafts(
-      [
-        {
-          id: 'rule_1',
-          fieldKeys: ['productPrice', 'bad_key' as never],
-          storeScope: 'specificStores',
-          storeIds: ['store_guangzhou', 'store_guangzhou'],
-          skuScope: 'specificSkus',
-          skuKeys: ['1', '2'],
-          shareMode: 'product_pool',
-          skuConfigs: [
-            {
-              skuKey: '1',
-              suggestedMinPrice: 100,
-              suggestedMinStock: 5,
-            },
-            {
-              skuKey: '2',
-              suggestedMinPrice: 200,
-              suggestedMinStock: 8,
-            },
-          ],
-        },
-      ],
-      ['1']
-    );
-
-    expect(synced).toEqual([
-      {
-        id: 'rule_1',
-        fieldKeys: ['productPrice'],
-        storeScope: 'specificStores',
-        storeIds: ['store_guangzhou'],
-        skuScope: 'specificSkus',
-        skuKeys: ['1'],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuKey: '1',
-            suggestedMinPrice: 100,
-            suggestedMaxPrice: undefined,
-            suggestedMinStock: undefined,
-            suggestedMaxStock: undefined,
-          },
-        ],
-      },
-    ]);
-  });
-
-  it('drops hidden price and stock suggestions from submitted rules', () => {
-    const result = buildStoreChannelCreateSkuPayload({
-      productId: 'product_3',
-      specMode: 'single',
-      specItems: [],
-      storeChannelEnabled: true,
-      sourceDraftMap: {
-        [STORE_CHANNEL_SINGLE_SKU_KEY]: {
-          sourcePrice: 199,
-          sourceStock: 30,
-        },
-      },
-      rules: [
-        {
-          id: 'rule_price_hidden',
-          fieldKeys: ['productStock'],
-          storeScope: 'allStores',
-          storeIds: [],
-          skuScope: 'allSkus',
-          skuKeys: [],
-          shareMode: 'product_pool',
-          skuConfigs: [
-            {
-              skuKey: STORE_CHANNEL_SINGLE_SKU_KEY,
-              suggestedMinPrice: 100,
-              suggestedMaxPrice: 120,
-              suggestedMinStock: 10,
-              suggestedMaxStock: 20,
-            },
-          ],
-        },
-        {
-          id: 'rule_stock_hidden',
-          fieldKeys: ['productPrice'],
-          storeScope: 'allStores',
-          storeIds: [],
-          skuScope: 'allSkus',
-          skuKeys: [],
-          shareMode: 'shared_pool',
-          skuConfigs: [
-            {
-              skuKey: STORE_CHANNEL_SINGLE_SKU_KEY,
-              suggestedMinPrice: 160,
-              suggestedMaxPrice: 220,
-              suggestedMinStock: 8,
-              suggestedMaxStock: 18,
-            },
-          ],
-        },
-      ],
-      targetStoreIds: ['store_guangzhou'],
-      createdAt: '2026-04-27 12:00:00',
-    });
-
-    expect(result.storeChannelRules).toEqual([
-      {
-        id: 'rule_price_hidden',
-        fieldKeys: ['productStock'],
-        storeScope: 'allStores',
-        storeIds: [],
-        skuScope: 'allSkus',
-        skuIds: [],
-        shareMode: 'product_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-product_3-1',
-            minSuggestedStock: 10,
-            maxSuggestedStock: 20,
-          },
-        ],
-      },
-      {
-        id: 'rule_stock_hidden',
-        fieldKeys: ['productPrice'],
-        storeScope: 'allStores',
-        storeIds: [],
-        skuScope: 'allSkus',
-        skuIds: [],
-        shareMode: 'shared_pool',
-        skuConfigs: [
-          {
-            skuId: 'sku-product_3-1',
-            minSuggestedPrice: 160,
-            maxSuggestedPrice: 220,
-          },
-        ],
-      },
-    ]);
-  });
-
-  it('allows empty custom fields and still validates rule overlaps', () => {
-    const sourceDraftMap: StoreChannelSkuDraftMap = {
-      '1': {
-        sourcePrice: 100,
-        sourceStock: 10,
-      },
-      '2': {
-        sourcePrice: 120,
-        sourceStock: 12,
-      },
-    };
-    const specItems: StoreChannelSpecItem[] = [
-      { id: 1, name: '规格', value: 'A' },
-      { id: 2, name: '规格', value: 'B' },
-    ];
-
+  it('requires at least one sellable store when product pool sharing is enabled', () => {
     expect(
       validateStoreChannelSkuDraftMap({
-        specMode: 'multi',
-        specItems,
+        specMode: 'single',
+        specItems: [],
         storeChannelEnabled: true,
-        sourceDraftMap,
-        targetStoreIds: ['store_guangzhou'],
-        rules: [
-          {
-            id: 'rule_1',
-            fieldKeys: [],
-            storeScope: 'allStores',
-            storeIds: [],
-            skuScope: 'allSkus',
-            skuKeys: [],
-            shareMode: 'product_pool',
-            skuConfigs: [],
+        sourceDraftMap: {
+          [STORE_CHANNEL_SINGLE_SKU_KEY]: {
+            sourcePrice: 199,
+            sourceStock: 30,
           },
-        ],
+        },
+        targetStoreIds: ['store_guangzhou'],
+        config: {
+          shareMode: 'product_pool',
+          storeScope: 'specificStores',
+          storeIds: ['store_guangzhou'],
+          productPoolStoreConfigs: [
+            {
+              storeId: 'store_guangzhou',
+              sellStatus: 'unsellable',
+              channelStatus: 'off',
+              sellableSkuKeys: [],
+              allowSelfPrice: false,
+            },
+          ],
+        },
       })
-    ).toBeUndefined();
+    ).toBe('请至少选择 1 家可售门店');
+  });
 
-    expect(() =>
+  it('requires specific stores when shared pool is selected', () => {
+    expect(
       validateStoreChannelSkuDraftMap({
-        specMode: 'multi',
-        specItems,
+        specMode: 'single',
+        specItems: [],
         storeChannelEnabled: true,
-        sourceDraftMap,
-        targetStoreIds: ['store_guangzhou'],
-        rules: [
-          {
-            id: 'rule_1',
-            fieldKeys: ['productPrice'],
-            storeScope: 'specificStores',
-            storeIds: ['store_guangzhou'],
-            skuScope: 'specificSkus',
-            skuKeys: ['1'],
-            shareMode: 'product_pool',
-            skuConfigs: [],
+        sourceDraftMap: {
+          [STORE_CHANNEL_SINGLE_SKU_KEY]: {
+            sourcePrice: 199,
+            sourceStock: 30,
           },
+        },
+        targetStoreIds: ['store_guangzhou'],
+        config: {
+          shareMode: 'shared_pool',
+          storeScope: 'specificStores',
+          storeIds: [],
+          productPoolStoreConfigs: [],
+        },
+      })
+    ).toBe('请选择店铺');
+  });
+
+  it('filters stale sku references when specs change', () => {
+    const synced = syncStoreChannelConfigDraft(
+      {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_guangzhou'],
+        productPoolStoreConfigs: [
           {
-            id: 'rule_2',
-            fieldKeys: ['productStock'],
-            storeScope: 'specificStores',
-            storeIds: ['store_guangzhou'],
-            skuScope: 'specificSkus',
-            skuKeys: ['1'],
-            shareMode: 'product_pool',
-            skuConfigs: [],
+            storeId: 'store_guangzhou',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+            sellableSkuKeys: ['1', '2'],
+            allowSelfPrice: true,
           },
         ],
-      })
-    ).toThrow('同一店铺下的同一 SKU 不能命中多条规则');
+      },
+      ['1'],
+      ['store_guangzhou', 'store_shenzhen']
+    );
+
+    expect(synced).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_guangzhou'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_guangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuKeys: ['1'],
+          allowSelfPrice: true,
+        },
+        {
+          storeId: 'store_shenzhen',
+          sellStatus: 'unsellable',
+          channelStatus: 'off',
+          sellableSkuKeys: [],
+          allowSelfPrice: false,
+        },
+      ],
+    });
+  });
+
+  it('keeps explicit sellable status when sku selection becomes empty', () => {
+    const synced = syncStoreChannelConfigDraft(
+      {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_guangzhou'],
+        productPoolStoreConfigs: [
+          {
+            storeId: 'store_guangzhou',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+            sellableSkuKeys: ['stale_sku'],
+            allowSelfPrice: true,
+          },
+        ],
+      },
+      ['1'],
+      ['store_guangzhou']
+    );
+
+    expect(synced).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_guangzhou'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_guangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuKeys: [],
+          allowSelfPrice: false,
+        },
+      ],
+    });
+  });
+
+  it('creates draft config from persisted config for page rehydration', () => {
+    const draft = createStoreChannelConfigDraftFromProductConfig(
+      {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_guangzhou'],
+        productPoolStoreConfigs: [
+          {
+            storeId: 'store_guangzhou',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+            sellableSkuIds: ['sku-product_1-1'],
+            allowSelfPrice: true,
+          },
+        ],
+      },
+      [
+        {
+          key: STORE_CHANNEL_SINGLE_SKU_KEY,
+          skuId: 'sku-product_1-1',
+          specLabel: '默认规格',
+          sourcePrice: 299,
+          sourceStock: 20,
+        },
+      ],
+      ['store_guangzhou']
+    );
+
+    expect(draft).toEqual({
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_guangzhou'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_guangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuKeys: [STORE_CHANNEL_SINGLE_SKU_KEY],
+          allowSelfPrice: true,
+        },
+      ],
+    });
   });
 });

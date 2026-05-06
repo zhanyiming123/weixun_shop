@@ -3,7 +3,7 @@ export type ProductStatus = 'on' | 'off';
 export type ProductType = 'virtual' | 'course' | 'service';
 export type ProductSpecMode = 'single' | 'multi';
 export type ProductSourceType = 'headquarter' | 'store';
-export type ProductKind = 'standard' | 'bundle';
+export type ProductKind = 'standard' | 'combo' | 'bundle';
 export type ProductTab = 'all' | 'selling' | 'warehouse';
 export type OrganizationScope = 'headquarter' | 'region' | 'store';
 export type ProductStoreOverrideMode = 'follow' | 'override';
@@ -50,6 +50,8 @@ export type ProductStoreLocalSkuItem = {
   stock: number;
   sellStatus: ProductStoreSellStatus;
   status: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 
 export type ProductSkuIndependentPriceRule = {
@@ -83,6 +85,24 @@ export type ProductStoreChannelStoreScope = 'allStores' | 'specificStores';
 export type ProductStoreChannelSkuScope = 'allSkus' | 'specificSkus';
 export type ProductStoreChannelShareMode = 'product_pool' | 'shared_pool';
 
+export type ProductStoreChannelProductPoolStoreConfigItem = {
+  storeId: string;
+  sellStatus: ProductStoreSellStatus;
+  channelStatus?: ProductStoreChannelStatus;
+  sellableSkuIds?: string[];
+  allowSelfPrice?: boolean;
+};
+
+export type ProductStoreChannelConfigItem = {
+  shareMode: ProductStoreChannelShareMode;
+  storeScope: ProductStoreChannelStoreScope;
+  storeIds: string[];
+  productPoolStoreConfigs?: ProductStoreChannelProductPoolStoreConfigItem[];
+};
+
+/**
+ * @deprecated 仅用于兼容历史 `storeChannelRules` 数据读取。
+ */
 export type ProductStoreChannelRuleSkuConfigItem = {
   skuId: string;
   minSuggestedPrice?: number;
@@ -91,6 +111,9 @@ export type ProductStoreChannelRuleSkuConfigItem = {
   maxSuggestedStock?: number;
 };
 
+/**
+ * @deprecated 仅用于兼容历史 `storeChannelRules` 数据读取。
+ */
 export type ProductStoreChannelRuleItem = {
   id: string;
   fieldKeys: ProductStoreChannelCustomFieldKey[];
@@ -134,6 +157,8 @@ export type ProductSkuItem = {
   stock: number;
   sellStatus?: ProductStoreSellStatus;
   status: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 
 export type ProductStoreSkuViewItem = {
@@ -142,6 +167,8 @@ export type ProductStoreSkuViewItem = {
   stock: number;
   sellStatus: ProductStoreSellStatus;
   status: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
   isLocalSku?: boolean;
   originalStock: number;
   currentStock: number;
@@ -162,12 +189,24 @@ export type ProductBundleComponentItem = {
   skuId: string;
 };
 
+export type ProductPurchaseLimit = {
+  enabled: boolean;
+  count?: number;
+};
+
+export type ProductDetailContent = {
+  html: string;
+  fontSize?: string;
+  lineHeight?: string;
+};
+
 export type ProductShareTargetItem = {
   storeId: string;
   status: ProductShareStatus;
   sharedAt: string;
   referencedAt?: string;
   sellableSkuIds?: string[];
+  allowSelfPrice?: boolean;
 };
 
 export type ProductItem = {
@@ -178,6 +217,9 @@ export type ProductItem = {
   productOwnershipId: string;
   productType: ProductType;
   inventoryUnit: string;
+  isLimited?: boolean;
+  limitCount?: number;
+  detailHtml?: string;
   specMode: ProductSpecMode;
   skus: ProductSkuItem[];
   status: ProductStatus;
@@ -190,9 +232,15 @@ export type ProductItem = {
   bundleComponents?: ProductBundleComponentItem[];
   shareTargets?: ProductShareTargetItem[];
   carouselImages?: ProductCarouselImage[];
+  purchaseLimit?: ProductPurchaseLimit;
+  detailContent?: ProductDetailContent;
   storeOverrides?: ProductStoreOverrideMap;
   independentPriceRule?: ProductIndependentPriceRule;
   independentStockRule?: ProductIndependentStockRule;
+  storeChannelConfig?: ProductStoreChannelConfigItem;
+  /**
+   * @deprecated 仅用于兼容历史 `storeChannelRules` 数据读取。
+   */
   storeChannelRules?: ProductStoreChannelRuleItem[];
 };
 
@@ -306,6 +354,11 @@ export type UpdateProductStoreChannelStatusInput = {
 export type UpdateProductStoreConfigsInput = {
   productId: string;
   storeConfigs: ProductStoreConfigItem[];
+};
+
+export type UpdateProductStoreChannelConfigInput = {
+  productId: string;
+  productPoolStoreConfigs: ProductStoreChannelProductPoolStoreConfigItem[];
 };
 
 export type UpdateProductSkuStatusesInput = {

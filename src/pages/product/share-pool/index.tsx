@@ -40,6 +40,9 @@ import {
 } from '@/lib/product';
 import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
+import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
+import ProductDetailModal from '@/pages/product/components/product-detail-modal';
+import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
 import { readOrganizationItems } from '@/pages/enterprise/organization/data';
 import { readProductStoreItems } from '@/pages/product/store-config/data';
 import { ProductService } from '@/services/ProductService';
@@ -50,7 +53,6 @@ import type {
   ProductSearchType,
   ProductSharePoolItem,
   ProductShareStatus,
-  ProductStoreSkuViewItem,
 } from '@/types/product';
 import { filterStoreItemsByIds } from '@/utils/organization';
 
@@ -60,7 +62,7 @@ type ProductSourceFilterOption = {
   children?: ProductSourceFilterOption[];
 };
 
-type SharePoolKindTab = 'all' | ProductKind;
+type SharePoolKindTab = 'all' | 'standard' | 'combo';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -126,10 +128,6 @@ function parseSourceFilterStoreIds(
   return Array.from(nextStoreIdSet);
 }
 
-function getSkuLabel(item: ProductStoreSkuViewItem, index: number) {
-  return item.specText || (index === 0 ? '默认规格' : `规格${index + 1}`);
-}
-
 function formatPriceRange(prices: number[]) {
   const validPrices = prices.filter(
     (price) => typeof price === 'number' && Number.isFinite(price)
@@ -191,6 +189,8 @@ function ProductSharePoolPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [operatingId, setOperatingId] = useState('');
   const [viewTarget, setViewTarget] = useState<ProductSharePoolItem | null>(null);
+  const [salesStoreDetailTarget, setSalesStoreDetailTarget] =
+    useState<ProductSharePoolItem | null>(null);
   const visibleStoreIds = useMemo(
     () => currentOrganization?.storeIds || [],
     [currentOrganization?.storeIds]
@@ -514,7 +514,7 @@ function ProductSharePoolPage() {
         >
           <TabPane key="all" title="全部" />
           <TabPane key="standard" title="单商品" />
-          <TabPane key="bundle" title="商品套餐" />
+          <TabPane key="combo" title="组合商品" />
         </Tabs>
 
         <div className={styles.toolbar}>
@@ -532,8 +532,8 @@ function ProductSharePoolPage() {
                 render: (_: string, record: ProductSharePoolItem) => (
                   <div className={styles.nameCell}>
                     <div className={styles.productTitleRow}>
-                      <Tag color={record.productKind === 'bundle' ? 'purple' : 'arcoblue'}>
-                        {record.productKind === 'bundle' ? '套餐' : '单品'}
+                      <Tag color={record.productKind === 'combo' ? 'purple' : 'arcoblue'}>
+                        {record.productKind === 'combo' ? '组合' : '单品'}
                       </Tag>
                       <Typography.Text className={styles.productName}>
                         {record.name}
@@ -561,6 +561,18 @@ function ProductSharePoolPage() {
                 width: 200,
                 render: (_: string, record: ProductSharePoolItem) =>
                   record.storeView.sourceStoreName || '--',
+              },
+              {
+                title: '在售店铺',
+                dataIndex: 'salesStores',
+                width: 120,
+                render: (_: unknown, record: ProductSharePoolItem) => (
+                  <OnSaleStoreCountLink
+                    className={styles.actionLinkButton}
+                    product={record}
+                    onOpen={(product) => setSalesStoreDetailTarget(product)}
+                  />
+                ),
               },
               {
                 title: '商品售价',
@@ -653,168 +665,17 @@ function ProductSharePoolPage() {
         </div>
       </Card>
 
-      <Modal
-        title={
-          viewTarget
-            ? `${viewTarget.productKind === 'bundle' ? '套餐' : '商品'}详情`
-            : '商品详情'
-        }
+      <ProductDetailModal
+        product={viewTarget}
         visible={Boolean(viewTarget)}
-        footer={null}
-        style={{ width: 980 }}
         onCancel={() => setViewTarget(null)}
-      >
-        {viewTarget && (
-          <div className={styles.storeDetailModal}>
-            <Typography.Text type="secondary">
-              已隐藏店铺渠道配置相关项，以下为可查看的商品配置。
-            </Typography.Text>
+      />
 
-            <div>
-              <Typography.Title heading={6}>基础信息</Typography.Title>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  gap: '8px 20px',
-                }}
-              >
-                <Typography.Text>商品名称：{viewTarget.name}</Typography.Text>
-                <Typography.Text>商品 ID：{viewTarget.id}</Typography.Text>
-                <Typography.Text>
-                  商品类目：
-                  {getProductCatalogFullLabel(viewTarget.productCatalogId, catalogItems)}
-                </Typography.Text>
-                <Typography.Text>
-                  商品分类：
-                  {getProductOwnershipFullLabel(viewTarget.productOwnershipId, ownershipItems)}
-                </Typography.Text>
-                <Typography.Text>
-                  商品来源：{viewTarget.storeView.sourceStoreName || '--'}
-                </Typography.Text>
-                <Typography.Text>
-                  商品售价：
-                  {formatPriceRange(
-                    viewTarget.storeView.currentSkus.map((sku) => sku.currentPrice)
-                  )}
-                </Typography.Text>
-                <Typography.Text>
-                  库存：{viewTarget.stock} {viewTarget.inventoryUnit || '份'}
-                </Typography.Text>
-                <Typography.Text>创建时间：{viewTarget.createdAt}</Typography.Text>
-                <Typography.Text>
-                  分享时间：{viewTarget.shareTarget.sharedAt || '--'}
-                </Typography.Text>
-              </div>
-            </div>
-
-            {(viewTarget.storeView.currentCarouselImages || []).length > 0 && (
-              <div>
-                <Typography.Title heading={6}>商品轮播图</Typography.Title>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {viewTarget.storeView.currentCarouselImages.map((image) => (
-                    <div key={image.id} style={{ width: 160 }}>
-                      <img
-                        alt={image.name}
-                        src={image.url}
-                        style={{
-                          width: '100%',
-                          height: 96,
-                          borderRadius: 4,
-                          objectFit: 'cover',
-                          display: 'block',
-                        }}
-                      />
-                      <Typography.Text type="secondary">{image.name}</Typography.Text>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <Typography.Title heading={6}>规格配置</Typography.Title>
-              <Table
-                rowKey="id"
-                columns={[
-                  {
-                    title: 'SKU名称',
-                    dataIndex: 'specText',
-                    render: (_: string, sku: ProductStoreSkuViewItem, index: number) => (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          minWidth: 0,
-                        }}
-                      >
-                        {sku.isLocalSku && (
-                          <Tag color="arcoblue">本店新增</Tag>
-                        )}
-                        <Typography.Text ellipsis>
-                          {getSkuLabel(sku, index)}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  },
-                  {
-                    title: '售价',
-                    dataIndex: 'currentPrice',
-                    width: 140,
-                    render: (value: number) => formatPriceNumber(value),
-                  },
-                  {
-                    title: '库存',
-                    dataIndex: 'currentStock',
-                    width: 120,
-                  },
-                  {
-                    title: '状态',
-                    dataIndex: 'currentStatus',
-                    width: 120,
-                    render: (value: ProductStoreSkuViewItem['currentStatus']) =>
-                      value === 'on' ? '上架' : '下架',
-                  },
-                ]}
-                data={viewTarget.storeView.currentSkus}
-                noDataElement="暂无规格数据"
-                pagination={false}
-                tableLayoutFixed
-              />
-            </div>
-
-            {viewTarget.productKind === 'bundle' && (
-              <div>
-                <Typography.Title heading={6}>套餐组合</Typography.Title>
-                <Table
-                  rowKey={(item) => `${item.productId}_${item.skuId}`}
-                  columns={[
-                    {
-                      title: '组件商品 ID',
-                      dataIndex: 'productId',
-                    },
-                    {
-                      title: '组件 SKU ID',
-                      dataIndex: 'skuId',
-                    },
-                  ]}
-                  data={viewTarget.bundleComponents || []}
-                  noDataElement="暂无套餐组合数据"
-                  pagination={false}
-                  tableLayoutFixed
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+      <SalesStoreDetailModal
+        product={salesStoreDetailTarget}
+        visible={Boolean(salesStoreDetailTarget)}
+        onCancel={() => setSalesStoreDetailTarget(null)}
+      />
     </div>
   );
 }

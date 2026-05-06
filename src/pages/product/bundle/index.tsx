@@ -75,7 +75,7 @@ function normalizePath(value: (string | string[])[] | undefined): string[] {
 
 function getRecordDisplayStatus(record: ProductListItem): ProductStatus {
   if (record.storeView.currentStoreId) {
-    return record.storeView.currentStoreChannelStatus === 'on' ? 'on' : 'off';
+    return record.storeView.currentStoreSellStatus === 'sellable' ? 'on' : 'off';
   }
 
   return record.status;
@@ -233,7 +233,9 @@ function ProductBundlePage() {
   async function handleRowStatusChange(checked: boolean, record: ProductListItem) {
     try {
       await updateProductStatus([record.id], checked ? 'on' : 'off');
-      Message.success(`${record.name}已${checked ? '上架' : '下架'}`);
+      Message.success(
+        `${record.name}已${checked ? (currentStoreId ? '设为可售' : '上架') : (currentStoreId ? '设为不可售' : '下架')}`
+      );
     } catch (error) {
       Message.error(getErrorMessage(error));
     }
@@ -249,7 +251,7 @@ function ProductBundlePage() {
       await updateProductStatus(ids, nextStatus);
       setSelectedRowKeys([]);
       Message.success(
-        `已批量${nextStatus === 'on' ? '上架' : '下架'}${ids.length}个套餐`
+        `已批量${nextStatus === 'on' ? (currentStoreId ? '设为可售' : '上架') : (currentStoreId ? '设为不可售' : '下架')}${ids.length}个套餐`
       );
     } catch (error) {
       Message.error(getErrorMessage(error));
@@ -290,15 +292,15 @@ function ProductBundlePage() {
         record.storeView.sourceStoreName || '--',
     },
     {
-      title: '上架状态',
+      title: currentStoreId ? '可售状态' : '上架状态',
       dataIndex: 'status',
       width: 170,
       render: (_: ProductStatus, record: ProductListItem) => (
         <Switch
           className={styles.statusSwitch}
           checked={getRecordDisplayStatus(record) === 'on'}
-          checkedText="上架"
-          uncheckedText="下架"
+          checkedText={currentStoreId ? '可售' : '上架'}
+          uncheckedText={currentStoreId ? '不可售' : '下架'}
           disabled={Boolean(currentStoreId) && !record.storeView.canManageStoreStatus}
           onChange={(checked) => handleRowStatusChange(checked, record)}
         />
@@ -484,13 +486,13 @@ function ProductBundlePage() {
             disabled={!selectedRowKeys.length}
             onClick={() => handleBatchStatusChange('on')}
           >
-            批量上架
+            {currentStoreId ? '批量设为可售' : '批量上架'}
           </Button>
           <Button
             disabled={!selectedRowKeys.length}
             onClick={() => handleBatchStatusChange('off')}
           >
-            批量下架
+            {currentStoreId ? '批量设为不可售' : '批量下架'}
           </Button>
         </div>
 

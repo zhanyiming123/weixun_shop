@@ -12,7 +12,6 @@ import {
   Modal,
   Radio,
   Select,
-  Space,
   Switch,
   Table,
   Tag,
@@ -29,8 +28,9 @@ import {
   IconBgColors,
   IconBold,
   IconCheckSquare,
+  IconDelete,
+  IconDragDotVertical,
   IconFontColors,
-  IconInfoCircleFill,
   IconImage,
   IconItalic,
   IconLink,
@@ -53,17 +53,17 @@ import {
   type StoreShareSettingItem,
 } from './share-config';
 import {
+  buildStoreChannelPayloadFromSkuMetaItems,
   buildStoreChannelCreateSkuPayload,
   buildStoreChannelSkuMetaItems,
-  canRemoveStoreChannelRule,
-  createEmptyStoreChannelRule,
-  getStoreChannelRuleMatchedSkuKeys,
-  removeStoreChannelRuleDrafts,
-  syncStoreChannelRuleDrafts,
+  createStoreChannelConfigDraftFromProductConfig,
+  createEmptyStoreChannelConfig,
+  createDefaultStoreChannelProductPoolStoreConfig,
+  syncStoreChannelConfigDraft,
   syncStoreChannelSkuDraftMap,
   validateStoreChannelSkuDraftMap,
-  type StoreChannelRuleDraftItem,
-  type StoreChannelRuleSkuConfigDraftItem,
+  type StoreChannelConfigDraftItem,
+  type StoreChannelProductPoolStoreConfigDraftItem,
   type StoreChannelSkuDraftItem,
   type StoreChannelSkuDraftMap,
   type StoreChannelSkuMetaItem,
@@ -87,6 +87,17 @@ import {
   readProductCatalogAttributes,
 } from '../attribute/data';
 import {
+  getEnabledSpecsByCatalogId,
+  readProductCatalogSpecs,
+  type ProductCatalogSpecItem,
+} from '../spec/data';
+import {
+  buildSelectedCatalogSpecIdsFromTemplate,
+  buildSelectedCatalogSpecValueMapFromTemplate,
+  getEnabledSpecTemplatesByCatalogId,
+  readProductCatalogSpecTemplates,
+} from '../spec/template-data';
+import {
   DEFAULT_INVENTORY_UNIT,
   INVENTORY_UNIT_OPTIONS,
   createProductId,
@@ -101,6 +112,7 @@ import {
   createDefaultProductStoreConfig,
   getProductStoreSummary,
   normalizeProductStoreConfigs,
+  ProductStoreChannelStatus,
   PRODUCT_STORE_SELL_STATUS_LABEL_MAP,
   PRODUCT_STORE_TYPE_LABEL_MAP,
   ProductStoreConfigItem,
@@ -111,21 +123,41 @@ import {
 } from '../store-config/data';
 import {
   createDefaultProductStoreOverride,
+  getProductStoreChannelConfig,
   getProductStatusByStoreConfigs,
 } from '@/lib/product';
 import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import type {
+  ProductCarouselImage,
   ProductIndependentPriceRule,
   ProductItem as DomainProductItem,
   ProductShareTargetItem,
-  ProductStoreChannelCustomFieldKey,
+  ProductStatus,
   ProductStoreOverrideMap,
 } from '@/types/product';
 import { GlobalState } from '@/store';
 import { filterStoreItemsByIds } from '@/utils/organization';
 import { ProductService } from '@/services/ProductService';
 import CouponStoreSelector from '@/pages/marketing/center/components/store-selector';
+import {
+  applyProductSkuBatchPatch,
+  buildProductCreateSpecItems,
+  buildProductSkuAttributeRowsFromSkus,
+  buildProductSkuAttributeRowsFromSpecItems,
+  buildProductSpecDimensionsFromCatalogSpecs,
+  buildProductSpecDimensionsFromSkus,
+  formatProductCreateSpecText,
+  getSelectableProductSpecsForRow,
+  hasProductSpecSelectionDraft,
+  normalizeProductSkuAttributeRows,
+  parseProductSpecText,
+  normalizeSelectedProductSpecIds,
+  normalizeSelectedProductSpecValues,
+  type ProductCreateSpecItem,
+  type ProductSkuAttributeRow,
+  type ProductSpecDimension,
+} from './spec';
 
 type CarouselImage = {
   uid: string;
@@ -133,11 +165,7 @@ type CarouselImage = {
   url?: string;
 };
 
-type SpecItem = {
-  id: number;
-  name: string;
-  value: string;
-};
+type SpecItem = ProductCreateSpecItem;
 
 type SpecMode = 'single' | 'multi';
 type ProductCreateMode = 'create' | 'edit' | 'copy';
@@ -148,9 +176,21 @@ type ProductCreateLocationState = {
 
 type StoreConfigFilterType = 'all' | ProductStoreType;
 type StoreConfigFilterStatus = 'all' | ProductStoreSellStatus;
+type StoreChannelProductPoolFilterStatus =
+  | 'all'
+  | ProductStoreSellStatus;
 type StoreConfigTableItem = ProductStoreItem & ProductStoreConfigItem & StoreShareSettingItem;
+type StoreChannelProductPoolTableItem = ProductStoreItem &
+  StoreChannelProductPoolStoreConfigDraftItem & {
+    shareMode: ProductChannelShareMode;
+  };
 type ChannelSkuDraftItem = {
   disabled?: boolean;
+  status?: ProductStatus;
+  price?: number;
+  stock?: number;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 type ChannelSkuDraftMap = Record<string, ChannelSkuDraftItem>;
 type ChannelSkuTableItem = {
@@ -161,6 +201,9 @@ type ChannelSkuTableItem = {
 type EditSkuDraftItem = {
   price?: number;
   stock?: number;
+  status?: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 type EditSkuDraftMap = Record<string, EditSkuDraftItem>;
 type EditSkuTableItem = {
@@ -169,6 +212,11 @@ type EditSkuTableItem = {
   specText: string;
   price: number;
   stock: number;
+};
+type EditCatalogSpecDraft = {
+  specIds: string[];
+  valueMap: Record<string, string[]>;
+  existingValueMap: Record<string, string[]>;
 };
 type IndependentPriceRuleDraftField = 'minPrice' | 'maxPrice';
 type IndependentPriceRuleDraftItem = {
@@ -184,50 +232,20 @@ type IndependentPriceRuleTableItem = {
   maxPrice?: number;
   disabled: boolean;
 };
-type StoreChannelRuleTableItem = StoreChannelSkuMetaItem & {
-  suggestedMinPrice?: number;
-  suggestedMaxPrice?: number;
-  suggestedMinStock?: number;
-  suggestedMaxStock?: number;
+type MultiSpecBatchDraft = {
+  specFilters: Record<string, string>;
+  price?: number;
+  stock?: number;
+  image?: ProductCarouselImage;
 };
-
-const STORE_CHANNEL_CUSTOM_FIELD_OPTIONS: Array<{
-  key: ProductStoreChannelCustomFieldKey;
-  label: string;
-}> = [
-  {
-    key: 'productPrice',
-    label: '商品价格',
-  },
-  {
-    key: 'productStock',
-    label: '商品库存',
-  },
-  {
-    key: 'addSpecValue',
-    label: '新增规格值',
-  },
-];
-
-function getStoreChannelFieldLabels(
-  fieldKeys: ProductStoreChannelCustomFieldKey[] = []
-) {
-  return STORE_CHANNEL_CUSTOM_FIELD_OPTIONS.filter((item) =>
-    fieldKeys.includes(item.key)
-  ).map((item) => item.label);
-}
-
-function formatStoreChannelSourcePrice(value?: number) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? `¥${formatPriceNumber(value)}`
-    : '--';
-}
-
-function formatStoreChannelSourceStock(value?: number) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? `${Math.floor(value)}`
-    : '--';
-}
+type MultiSpecAttributeTableRow =
+  | {
+      rowType: 'batch';
+      key: 'batch';
+    }
+  | ({
+      rowType: 'sku';
+    } & ProductSkuAttributeRow);
 
 const PRODUCT_TYPE_OPTIONS = [
   {
@@ -239,6 +257,12 @@ const PRODUCT_TYPE_OPTIONS = [
     value: 'virtual',
   },
 ];
+
+function getStoreChannelProductPoolSellState(
+  sellStatus: ProductStoreSellStatus
+) {
+  return sellStatus === 'sellable' ? 'sellable' : 'unsellable';
+}
 
 function normalizePath(value: (string | string[])[] | undefined): string[] {
   if (!Array.isArray(value) || !value.length) {
@@ -367,6 +391,7 @@ const COPY_PRODUCT_NAME_SUFFIX = '（副本）';
 const STORE_CONFIG_PAGE_SIZE_OPTIONS = [20, 50];
 const EMPTY_STORE_IDS: string[] = [];
 const CHANNEL_SINGLE_SKU_KEY = 'single';
+const EDIT_NEW_SKU_KEY_PREFIX = 'new:';
 const SKU_TREE_ROOT_KEY = '__all_skus__';
 const PRODUCT_CHANNEL_SHARE_MODE_LABEL_MAP: Record<ProductChannelShareMode, string> = {
   product_pool: '店铺商品池',
@@ -391,10 +416,7 @@ function buildCopyProductName(name: string) {
 }
 
 function buildSpecText(item: SpecItem, index: number) {
-  return (
-    [item.name.trim(), item.value.trim()].filter(Boolean).join('：') ||
-    `规格${index + 1}`
-  );
+  return formatProductCreateSpecText(item, index);
 }
 
 function buildIndependentPriceRuleDraftMap(
@@ -422,6 +444,136 @@ function uniqueStringArray(values: string[] = []) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function buildPurchaseLimitState(
+  product?: Pick<
+    DomainProductItem,
+    'purchaseLimit' | 'isLimited' | 'limitCount'
+  >
+) {
+  const enabled =
+    product?.purchaseLimit?.enabled === true || product?.isLimited === true;
+  const count =
+    enabled &&
+    typeof (product?.purchaseLimit?.count ?? product?.limitCount) === 'number' &&
+    Number.isFinite(product.purchaseLimit?.count ?? product?.limitCount) &&
+    Number(product.purchaseLimit?.count ?? product?.limitCount) > 0
+      ? Math.floor(Number(product.purchaseLimit?.count ?? product?.limitCount))
+      : 1;
+
+  return {
+    enabled,
+    count,
+  };
+}
+
+function buildDetailContentState(
+  product?: Pick<
+    DomainProductItem,
+    'detailContent' | 'detailHtml'
+  >
+) {
+  return {
+    html:
+      typeof product?.detailContent?.html === 'string'
+        ? product.detailContent.html
+        : typeof product?.detailHtml === 'string'
+          ? product.detailHtml
+        : DEFAULT_DETAIL_HTML,
+    fontSize:
+      typeof product?.detailContent?.fontSize === 'string' &&
+      product.detailContent.fontSize
+        ? product.detailContent.fontSize
+        : '16',
+    lineHeight:
+      typeof product?.detailContent?.lineHeight === 'string' &&
+      product.detailContent.lineHeight
+        ? product.detailContent.lineHeight
+        : '1.75',
+  };
+}
+
+function buildEditCatalogSpecDraftFromSkus(
+  skus: ProductSkuItem[] = [],
+  specs: ProductCatalogSpecItem[] = []
+): EditCatalogSpecDraft {
+  const dimensions = buildProductSpecDimensionsFromSkus(skus);
+
+  if (!dimensions.length || dimensions.some((item) => !item.named)) {
+    return {
+      specIds: [],
+      valueMap: {},
+      existingValueMap: {},
+    };
+  }
+
+  const specIds: string[] = [];
+  const valueMap: Record<string, string[]> = {};
+  const existingValueMap: Record<string, string[]> = {};
+
+  for (const dimension of dimensions) {
+    const matchedSpec = specs.find((item) => item.name === dimension.label);
+
+    if (!matchedSpec) {
+      return {
+        specIds: [],
+        valueMap: {},
+        existingValueMap: {},
+      };
+    }
+
+    const values = uniqueStringArray(dimension.values.map((item) => item.trim()).filter(Boolean));
+    specIds.push(matchedSpec.id);
+    valueMap[matchedSpec.id] = values;
+    existingValueMap[matchedSpec.id] = values;
+  }
+
+  return {
+    specIds,
+    valueMap,
+    existingValueMap,
+  };
+}
+
+function buildStoreShareSettingMapFromProduct(
+  product: ProductItem,
+  storeItems: ProductStoreItem[],
+  enabledSkuKeys: string[]
+) {
+  const shareTargetMap = new Map(
+    (product.shareTargets || []).map((item) => [item.storeId, item])
+  );
+  const enabledSkuKeySet = new Set(enabledSkuKeys);
+
+  return storeItems.reduce<Record<string, StoreShareSettingItem>>((result, item) => {
+    const shareTarget = shareTargetMap.get(item.id);
+    const isSourceStore = Boolean(product.sourceStoreId) && item.id === product.sourceStoreId;
+    const sellableSkuKeys = isSourceStore
+      ? [...enabledSkuKeys]
+      : uniqueStringArray(
+          (shareTarget?.sellableSkuIds || []).filter((skuKey) =>
+            enabledSkuKeySet.has(skuKey)
+          )
+        );
+
+    result[item.id] = {
+      shareMode:
+        isSourceStore || shareTarget?.status === 'referenced'
+          ? ('product_pool' as const)
+          : ('shared_pool' as const),
+      sellableSkuKeys,
+    };
+    return result;
+  }, {});
+}
+
+function isNewEditSkuKey(key: string) {
+  return key.startsWith(EDIT_NEW_SKU_KEY_PREFIX);
+}
+
+function buildEditSkuDraftKeyFromSpecText(specText: string) {
+  return `${EDIT_NEW_SKU_KEY_PREFIX}${specText}`;
+}
+
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -445,11 +597,228 @@ function normalizeStringArray(value: unknown): string[] {
   );
 }
 
+function buildCompactSkuLabel(label: string) {
+  const compactLabel = label
+    .split('/')
+    .map((segment) => {
+      const trimmedSegment = segment.trim();
+
+      if (!trimmedSegment) {
+        return '';
+      }
+
+      const valueOnlySegment = trimmedSegment.split(/[：:]/).slice(-1)[0]?.trim();
+      return valueOnlySegment || trimmedSegment;
+    })
+    .filter(Boolean)
+    .join(' / ');
+
+  return compactLabel || label;
+}
+
+function normalizeTreeSelectSkuKeys(value: unknown, availableSkuKeys: string[]) {
+  const normalizedAvailableSkuKeys = uniqueStringArray(availableSkuKeys);
+  const normalizedValue = normalizeStringArray(value);
+
+  if (normalizedValue.includes(SKU_TREE_ROOT_KEY)) {
+    return normalizedAvailableSkuKeys;
+  }
+
+  const availableSkuKeySet = new Set(normalizedAvailableSkuKeys);
+  return normalizedValue.filter((skuKey) => availableSkuKeySet.has(skuKey));
+}
+
+function buildTreeSelectDisplaySkuKeys(
+  selectedSkuKeys: string[],
+  availableSkuKeys: string[]
+) {
+  const normalizedAvailableSkuKeys = uniqueStringArray(availableSkuKeys);
+  const availableSkuKeySet = new Set(normalizedAvailableSkuKeys);
+  const normalizedSelectedSkuKeys = uniqueStringArray(
+    selectedSkuKeys.filter((skuKey) => availableSkuKeySet.has(skuKey))
+  );
+
+  if (
+    normalizedAvailableSkuKeys.length > 0 &&
+    normalizedSelectedSkuKeys.length === normalizedAvailableSkuKeys.length
+  ) {
+    return [SKU_TREE_ROOT_KEY];
+  }
+
+  return normalizedSelectedSkuKeys;
+}
+
+function buildEditMultiSpecAttributeRows(
+  sourceSkus: ProductSkuItem[] = [],
+  selectedSpecs: ProductCatalogSpecItem[] = [],
+  selectedValueMap: Record<string, string[]> = {},
+  draftMap: EditSkuDraftMap = {}
+) {
+  if (!selectedSpecs.length) {
+    return buildProductSkuAttributeRowsFromSkus(sourceSkus, draftMap);
+  }
+
+  const generatedSpecItems = buildProductCreateSpecItems(selectedSpecs, selectedValueMap);
+
+  if (!generatedSpecItems.length) {
+    return buildProductSkuAttributeRowsFromSkus(sourceSkus, draftMap);
+  }
+
+  const sourceSkuMap = new Map(
+    sourceSkus.map((sku) => [sku.specText || '', sku])
+  );
+  const coveredSourceSkuIdSet = new Set<string>();
+  const rows = generatedSpecItems.map((item, index) => {
+    const specText = formatProductCreateSpecText(item, index);
+    const sourceSku = sourceSkuMap.get(specText);
+    const draftKey = sourceSku ? sourceSku.id : buildEditSkuDraftKeyFromSpecText(specText);
+    const draft = draftMap[draftKey] || {};
+    const specValueMap = item.specPairs.reduce<Record<string, string>>((result, pair, pairIndex) => {
+      result[`spec_${pairIndex}`] = pair.value;
+      return result;
+    }, {});
+
+    if (sourceSku) {
+      coveredSourceSkuIdSet.add(sourceSku.id);
+    }
+
+    return {
+      key: draftKey,
+      specText,
+      specPairs: item.specPairs.map((pair) => ({
+        name: pair.name,
+        value: pair.value,
+      })),
+      specValueMap,
+      price:
+        typeof draft.price === 'number' && Number.isFinite(draft.price)
+          ? draft.price
+          : sourceSku?.price,
+      stock:
+        typeof draft.stock === 'number' && Number.isFinite(draft.stock)
+          ? draft.stock
+          : sourceSku?.stock,
+      status:
+        draft.status === 'off'
+          ? ('off' as const)
+          : draft.status === 'on'
+            ? ('on' as const)
+            : sourceSku?.status || ('on' as const),
+      ...(draft.image || sourceSku?.image
+        ? { image: draft.image || sourceSku?.image }
+        : {}),
+      isDefaultSelected:
+        draft.isDefaultSelected === true ||
+        (draft.isDefaultSelected !== false && sourceSku?.isDefaultSelected === true),
+    };
+  });
+
+  sourceSkus.forEach((sku) => {
+    if (coveredSourceSkuIdSet.has(sku.id)) {
+      return;
+    }
+
+    const fallbackDraft = draftMap[sku.id] || {};
+    rows.push({
+      key: sku.id,
+      specText: sku.specText,
+      specPairs: parseProductSpecText(sku.specText || ''),
+      specValueMap: parseProductSpecText(sku.specText || '').reduce<Record<string, string>>(
+        (result, pair, pairIndex) => {
+          result[`spec_${pairIndex}`] = pair.value;
+          return result;
+        },
+        {}
+      ),
+      price:
+        typeof fallbackDraft.price === 'number' && Number.isFinite(fallbackDraft.price)
+          ? fallbackDraft.price
+          : sku.price,
+      stock:
+        typeof fallbackDraft.stock === 'number' && Number.isFinite(fallbackDraft.stock)
+          ? fallbackDraft.stock
+          : sku.stock,
+      status:
+        fallbackDraft.status === 'off'
+          ? ('off' as const)
+          : fallbackDraft.status === 'on'
+            ? ('on' as const)
+            : sku.status,
+      ...(fallbackDraft.image || sku.image
+        ? { image: fallbackDraft.image || sku.image }
+        : {}),
+      isDefaultSelected:
+        fallbackDraft.isDefaultSelected === true ||
+        (fallbackDraft.isDefaultSelected !== false && sku.isDefaultSelected === true),
+    });
+  });
+
+  return normalizeProductSkuAttributeRows(rows);
+}
+
+function normalizeSpecValueDraftArray(values: string[] = []) {
+  const seenValues = new Set<string>();
+
+  return values.map((item) => {
+    const value = item.trim();
+
+    if (!value) {
+      return '';
+    }
+
+    if (seenValues.has(value)) {
+      return '';
+    }
+
+    seenValues.add(value);
+    return value;
+  });
+}
+
 function buildDefaultStoreShareSetting(enabledSkuKeys: string[]): StoreShareSettingItem {
   return {
     shareMode: 'product_pool',
     sellableSkuKeys: uniqueStringArray(enabledSkuKeys),
   };
+}
+
+function buildStoreChannelProductPoolConfigDraftMap(
+  storeItems: ProductStoreItem[],
+  productPoolStoreConfigs: StoreChannelProductPoolStoreConfigDraftItem[] = [],
+  allowedSkuKeys: string[] = []
+) {
+  const allowedSkuKeySet = new Set(uniqueStringArray(allowedSkuKeys));
+  const configMap = new Map(
+    productPoolStoreConfigs.map((item) => [item.storeId, item])
+  );
+
+  return storeItems.reduce<
+    Record<string, StoreChannelProductPoolStoreConfigDraftItem>
+  >((result, item) => {
+    const current =
+      configMap.get(item.id) ||
+      createDefaultStoreChannelProductPoolStoreConfig(item.id);
+    const normalizedSellableSkuKeys = uniqueStringArray(
+      current.sellableSkuKeys || []
+    ).filter((skuKey) => allowedSkuKeySet.has(skuKey));
+    const isSellable = current.sellStatus === 'sellable';
+    const nextSellableSkuKeys = isSellable
+      ? normalizedSellableSkuKeys.length
+        ? normalizedSellableSkuKeys
+        : Array.from(allowedSkuKeySet)
+      : [];
+
+    result[item.id] = {
+      ...current,
+      sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+      channelStatus:
+        isSellable && current.channelStatus === 'on' ? ('on' as const) : ('off' as const),
+      sellableSkuKeys: nextSellableSkuKeys,
+      allowSelfPrice:
+        isSellable && nextSellableSkuKeys.length > 0 && current.allowSelfPrice === true,
+    };
+    return result;
+  }, {});
 }
 
 function renderCatalogAttributeField(
@@ -520,6 +889,8 @@ function ProductCreatePage() {
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const catalogSpecs = useMemo(() => readProductCatalogSpecs(), []);
+  const catalogSpecTemplates = useMemo(() => readProductCatalogSpecTemplates(), []);
   const storeItems = useMemo(() => readProductStoreItems(), []);
   const visibleStoreIds = currentOrganization?.storeIds || EMPTY_STORE_IDS;
   const currentStoreId =
@@ -573,6 +944,14 @@ function ProductCreatePage() {
       location.state?.sourceProduct
     );
   }, [location.state, productItems, sourceProductId]);
+  const isStoreScopedOwnedEditPage =
+    currentOrganization?.scope === 'store' &&
+    isEditMode &&
+    Boolean(currentStoreId) &&
+    sourceProduct?.sourceType === 'store' &&
+    sourceProduct?.sourceStoreId === currentStoreId;
+  const useStoreScopedChannelConfig =
+    isStoreScopedCreatePage || isStoreScopedOwnedEditPage;
   const productCatalogOptions = useMemo(
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
@@ -589,29 +968,61 @@ function ProductCreatePage() {
   const [draggingUid, setDraggingUid] = useState<string>('');
   const [inventoryUnit, setInventoryUnit] = useState(DEFAULT_INVENTORY_UNIT);
   const [specMode, setSpecMode] = useState<SpecMode>('multi');
-  const [specItems, setSpecItems] = useState<SpecItem[]>([]);
+  const [selectedCatalogSpecTemplateId, setSelectedCatalogSpecTemplateId] = useState<
+    string | undefined
+  >();
+  const [selectedCatalogSpecIds, setSelectedCatalogSpecIds] = useState<string[]>([]);
+  const [selectedCatalogSpecValueMap, setSelectedCatalogSpecValueMap] = useState<
+    Record<string, string[]>
+  >({});
+  const [multiSpecBatchDraft, setMultiSpecBatchDraft] = useState<MultiSpecBatchDraft>({
+    specFilters: {},
+  });
   const [singleSpecFileList, setSingleSpecFileList] = useState<UploadItem[]>([]);
   const [singleSpecPrice, setSingleSpecPrice] = useState<number | undefined>();
   const [singleSpecStock, setSingleSpecStock] = useState<number | undefined>();
   const [storeChannelEnabled, setStoreChannelEnabled] = useState(true);
   const [storeChannelSkuDraftMap, setStoreChannelSkuDraftMap] =
     useState<StoreChannelSkuDraftMap>({});
-  const [storeChannelRules, setStoreChannelRules] = useState<
-    StoreChannelRuleDraftItem[]
-  >([createEmptyStoreChannelRule()]);
-  const [storeChannelFieldModalVisible, setStoreChannelFieldModalVisible] =
-    useState(false);
+  const [storeChannelConfigDraft, setStoreChannelConfigDraft] =
+    useState<StoreChannelConfigDraftItem>(createEmptyStoreChannelConfig());
   const [storeChannelStoreSelectorVisible, setStoreChannelStoreSelectorVisible] =
     useState(false);
-  const [storeChannelSkuSelectorVisible, setStoreChannelSkuSelectorVisible] =
-    useState(false);
-  const [activeStoreChannelRuleId, setActiveStoreChannelRuleId] = useState('');
-  const [draftStoreChannelFieldKeys, setDraftStoreChannelFieldKeys] = useState<
-    ProductStoreChannelCustomFieldKey[]
-  >([]);
-  const [draftStoreChannelSkuKeys, setDraftStoreChannelSkuKeys] = useState<
-    string[]
-  >([]);
+  const [
+    storeChannelProductPoolModalVisible,
+    setStoreChannelProductPoolModalVisible,
+  ] = useState(false);
+  const [
+    draftStoreChannelProductPoolConfigMap,
+    setDraftStoreChannelProductPoolConfigMap,
+  ] = useState<Record<string, StoreChannelProductPoolStoreConfigDraftItem>>({});
+  const [
+    storeChannelProductPoolSelectedStoreKeys,
+    setStoreChannelProductPoolSelectedStoreKeys,
+  ] = useState<(string | number)[]>([]);
+  const [
+    storeChannelProductPoolStatusFilter,
+    setStoreChannelProductPoolStatusFilter,
+  ] = useState<StoreChannelProductPoolFilterStatus>('all');
+  const [
+    storeChannelProductPoolKeyword,
+    setStoreChannelProductPoolKeyword,
+  ] = useState('');
+  const [storeChannelProductPoolPage, setStoreChannelProductPoolPage] = useState(1);
+  const [storeChannelProductPoolPageSize, setStoreChannelProductPoolPageSize] =
+    useState(20);
+  const [
+    storeChannelProductPoolBatchSellStatus,
+    setStoreChannelProductPoolBatchSellStatus,
+  ] = useState<ProductStoreSellStatus>();
+  const [
+    storeChannelProductPoolBatchSellableSkuKeys,
+    setStoreChannelProductPoolBatchSellableSkuKeys,
+  ] = useState<string[]>([]);
+  const [
+    storeChannelProductPoolBatchAllowSelfPrice,
+    setStoreChannelProductPoolBatchAllowSelfPrice,
+  ] = useState<'on' | 'off'>();
   const [channelSkuDraftMap, setChannelSkuDraftMap] =
     useState<ChannelSkuDraftMap>({});
   const [editSkuDraftMap, setEditSkuDraftMap] = useState<EditSkuDraftMap>({});
@@ -656,6 +1067,179 @@ function ProductCreatePage() {
     useState<ProductStoreSellStatus>();
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
+  const currentCatalogSpecs = useMemo(
+    () => getEnabledSpecsByCatalogId(catalogSpecs, productCatalogId),
+    [catalogSpecs, productCatalogId]
+  );
+  const sourceEditCatalogSpecDraft = useMemo(
+    () =>
+      isEditMode && sourceProduct?.specMode === 'multi'
+        ? buildEditCatalogSpecDraftFromSkus(
+            sourceProduct.skus || [],
+            currentCatalogSpecs
+          )
+        : {
+            specIds: [],
+            valueMap: {},
+            existingValueMap: {},
+          },
+    [currentCatalogSpecs, isEditMode, sourceProduct]
+  );
+  const currentCatalogSpecTemplates = useMemo(
+    () =>
+      getEnabledSpecTemplatesByCatalogId(catalogSpecTemplates, productCatalogId),
+    [catalogSpecTemplates, productCatalogId]
+  );
+  const normalizedSelectedCatalogSpecIds = useMemo(
+    () =>
+      normalizeSelectedProductSpecIds(selectedCatalogSpecIds, currentCatalogSpecs),
+    [currentCatalogSpecs, selectedCatalogSpecIds]
+  );
+  const selectedCatalogSpecs = useMemo(() => {
+    const currentCatalogSpecMap = new Map(
+      currentCatalogSpecs.map((item) => [item.id, item])
+    );
+
+    return normalizedSelectedCatalogSpecIds.flatMap((specId) => {
+      const matchedSpec = currentCatalogSpecMap.get(specId);
+      if (!matchedSpec) {
+        return [];
+      }
+
+      const selectedValues = uniqueStringArray(
+        (selectedCatalogSpecValueMap[specId] || [])
+          .map((item) => item.trim())
+          .filter(Boolean)
+      );
+
+      return [
+        {
+          ...matchedSpec,
+          values: uniqueStringArray([...matchedSpec.values, ...selectedValues]),
+        },
+      ];
+    });
+  }, [
+    currentCatalogSpecs,
+    normalizedSelectedCatalogSpecIds,
+    selectedCatalogSpecValueMap,
+  ]);
+  const specItems = useMemo(
+    () =>
+      buildProductCreateSpecItems(
+        selectedCatalogSpecs,
+        selectedCatalogSpecValueMap
+      ),
+    [selectedCatalogSpecValueMap, selectedCatalogSpecs]
+  );
+  const createMultiSpecAttributeRows = useMemo(
+    () => buildProductSkuAttributeRowsFromSpecItems(specItems, channelSkuDraftMap),
+    [channelSkuDraftMap, specItems]
+  );
+  const editMultiSpecAttributeRows = useMemo(
+    () =>
+      isEditMode && sourceProduct?.specMode === 'multi'
+        ? buildEditMultiSpecAttributeRows(
+            sourceProduct.skus || [],
+            selectedCatalogSpecs,
+            selectedCatalogSpecValueMap,
+            editSkuDraftMap
+          )
+        : [],
+    [
+      editSkuDraftMap,
+      isEditMode,
+      selectedCatalogSpecValueMap,
+      selectedCatalogSpecs,
+      sourceProduct,
+    ]
+  );
+  const multiSpecAttributeRows = useMemo(
+    () => (isEditMode ? editMultiSpecAttributeRows : createMultiSpecAttributeRows),
+    [createMultiSpecAttributeRows, editMultiSpecAttributeRows, isEditMode]
+  );
+  const multiSpecDimensions = useMemo<ProductSpecDimension[]>(
+    () =>
+      isEditMode
+        ? selectedCatalogSpecs.length
+          ? buildProductSpecDimensionsFromCatalogSpecs(
+              selectedCatalogSpecs,
+              selectedCatalogSpecValueMap
+            )
+          : buildProductSpecDimensionsFromSkus(sourceProduct?.skus || [])
+        : buildProductSpecDimensionsFromCatalogSpecs(
+            selectedCatalogSpecs,
+            selectedCatalogSpecValueMap
+          ),
+    [isEditMode, selectedCatalogSpecValueMap, selectedCatalogSpecs, sourceProduct]
+  );
+  const editableStoreSkuItems = useMemo<ChannelSkuTableItem[]>(() => {
+    if (!isEditMode || !sourceProduct) {
+      if (specMode === 'single') {
+        const draft = channelSkuDraftMap[CHANNEL_SINGLE_SKU_KEY] || {};
+
+        return [
+          {
+            key: CHANNEL_SINGLE_SKU_KEY,
+            specLabel: '单规格',
+            disabled: Boolean(draft.disabled),
+          },
+        ];
+      }
+
+      const specNameSet = new Set(
+        specItems.map((item) => item.name.trim()).filter(Boolean)
+      );
+      const [specName] = Array.from(specNameSet);
+      const channelSkuSpecTitle = specNameSet.size === 1 ? specName : '规格';
+
+      return specItems.map((item, index) => {
+        const draft = channelSkuDraftMap[String(item.id)] || {};
+        const specValue = item.value.trim();
+
+        return {
+          key: String(item.id),
+          specLabel:
+            channelSkuSpecTitle !== '规格' && specValue
+              ? specValue
+              : buildSpecText(item, index),
+          disabled: Boolean(draft.disabled),
+        };
+      });
+    }
+
+    if (sourceProduct.specMode === 'multi') {
+      return multiSpecAttributeRows.map((row, index) => ({
+        key: row.key,
+        specLabel: row.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+        disabled: row.status === 'off',
+      }));
+    }
+
+    return (sourceProduct.skus || []).map((sku, index) => {
+      const draft = editSkuDraftMap[sku.id] || {};
+      const status =
+        draft.status === 'off' ? ('off' as const) : draft.status === 'on' ? ('on' as const) : sku.status;
+
+      return {
+        key: sku.id,
+        specLabel: sku.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+        disabled: status === 'off',
+      };
+    });
+  }, [
+    channelSkuDraftMap,
+    editSkuDraftMap,
+    isEditMode,
+    multiSpecAttributeRows,
+    specItems,
+    specMode,
+    sourceProduct,
+  ]);
+  const editableEnabledSkuKeys = useMemo(
+    () => editableStoreSkuItems.filter((item) => !item.disabled).map((item) => item.key),
+    [editableStoreSkuItems]
+  );
 
   useEffect(() => {
     const objectUrlMap = objectUrlMapRef.current;
@@ -664,6 +1248,16 @@ function ProductCreatePage() {
       objectUrlMap.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!detailEditorRef.current) {
+      return;
+    }
+
+    if (detailEditorRef.current.innerHTML !== detailHtml) {
+      detailEditorRef.current.innerHTML = detailHtml;
+    }
+  }, [detailHtml]);
 
   useEffect(() => {
     const visibleStoreIdSet = new Set(scopedStoreItems.map((item) => item.id));
@@ -676,23 +1270,36 @@ function ProductCreatePage() {
       setCarouselImages([]);
       setInventoryUnit(DEFAULT_INVENTORY_UNIT);
       setSpecMode('multi');
-      setSpecItems([]);
+      setSelectedCatalogSpecTemplateId(undefined);
+      setSelectedCatalogSpecIds([]);
+      setSelectedCatalogSpecValueMap({});
+      setMultiSpecBatchDraft({ specFilters: {} });
       setSingleSpecFileList([]);
       setSingleSpecPrice(undefined);
       setSingleSpecStock(undefined);
       setStoreChannelEnabled(true);
       setStoreChannelSkuDraftMap({});
-      setStoreChannelRules([createEmptyStoreChannelRule()]);
-      setStoreChannelFieldModalVisible(false);
+      setStoreChannelConfigDraft(createEmptyStoreChannelConfig());
       setStoreChannelStoreSelectorVisible(false);
-      setStoreChannelSkuSelectorVisible(false);
-      setActiveStoreChannelRuleId('');
-      setDraftStoreChannelFieldKeys([]);
-      setDraftStoreChannelSkuKeys([]);
+      setStoreChannelProductPoolModalVisible(false);
+      setDraftStoreChannelProductPoolConfigMap({});
+      setStoreChannelProductPoolSelectedStoreKeys([]);
+      setStoreChannelProductPoolStatusFilter('all');
+      setStoreChannelProductPoolKeyword('');
+      setStoreChannelProductPoolPage(1);
+      setStoreChannelProductPoolPageSize(20);
+      setStoreChannelProductPoolBatchSellStatus(undefined);
+      setStoreChannelProductPoolBatchSellableSkuKeys([]);
+      setStoreChannelProductPoolBatchAllowSelfPrice(undefined);
       setChannelSkuDraftMap({});
       setEditSkuDraftMap({});
       setIndependentPriceEnabled(true);
       setIndependentPriceRuleDraftMap({});
+      setIsLimited(false);
+      setLimitCount(1);
+      setDetailHtml(DEFAULT_DETAIL_HTML);
+      setDetailFontSize('16');
+      setDetailLineHeight('1.75');
       setStoreShareSettingMap({});
       setDraftStoreShareSettingMap({});
       setProductStoreConfigs(
@@ -714,20 +1321,69 @@ function ProductCreatePage() {
     );
     setCarouselImages(buildCarouselImageState(sourceProduct.carouselImages || []));
     setInventoryUnit(sourceProduct.inventoryUnit || DEFAULT_INVENTORY_UNIT);
-    setSpecMode('single');
-    setSpecItems([]);
+    setSpecMode(sourceProduct.specMode);
+    setSelectedCatalogSpecTemplateId(undefined);
+    setSelectedCatalogSpecIds(
+      isEditMode && sourceProduct.specMode === 'multi'
+        ? sourceEditCatalogSpecDraft.specIds
+        : []
+    );
+    setSelectedCatalogSpecValueMap(
+      isEditMode && sourceProduct.specMode === 'multi'
+        ? sourceEditCatalogSpecDraft.valueMap
+        : {}
+    );
+    setMultiSpecBatchDraft({ specFilters: {} });
     setSingleSpecFileList([]);
-    setSingleSpecPrice(sourceProduct.price);
-    setSingleSpecStock(sourceProduct.stock);
-    setStoreChannelEnabled(true);
+    setSingleSpecPrice(
+      pageMode === 'copy' && sourceProduct.specMode === 'multi'
+        ? undefined
+        : sourceProduct.price
+    );
+    setSingleSpecStock(
+      pageMode === 'copy' && sourceProduct.specMode === 'multi'
+        ? undefined
+        : sourceProduct.stock
+    );
+    const sourceStoreChannelConfig = getProductStoreChannelConfig(
+      sourceProduct as DomainProductItem
+    );
+    const sourceStoreChannelSkuMetaItems = (sourceProduct.skus || []).map((sku, index) => ({
+      key: sku.id,
+      skuId: sku.id,
+      specLabel: sku.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+      sourcePrice: sku.price,
+      sourceStock: sku.stock,
+    }));
+    const sourceCurrentStoreConfig = (sourceProduct.storeConfigs || []).find(
+      (item) => item.storeId === currentStoreId
+    );
+    setStoreChannelEnabled(
+      isStoreScopedOwnedEditPage
+        ? sourceCurrentStoreConfig?.channelStatus !== 'off'
+        : true
+    );
     setStoreChannelSkuDraftMap({});
-    setStoreChannelRules([createEmptyStoreChannelRule()]);
-    setStoreChannelFieldModalVisible(false);
+    setStoreChannelConfigDraft(
+      isStoreScopedOwnedEditPage
+        ? createStoreChannelConfigDraftFromProductConfig(
+            sourceStoreChannelConfig,
+            sourceStoreChannelSkuMetaItems,
+            storeChannelTargetStoreIds
+          )
+        : createEmptyStoreChannelConfig()
+    );
     setStoreChannelStoreSelectorVisible(false);
-    setStoreChannelSkuSelectorVisible(false);
-    setActiveStoreChannelRuleId('');
-    setDraftStoreChannelFieldKeys([]);
-    setDraftStoreChannelSkuKeys([]);
+    setStoreChannelProductPoolModalVisible(false);
+    setDraftStoreChannelProductPoolConfigMap({});
+    setStoreChannelProductPoolSelectedStoreKeys([]);
+    setStoreChannelProductPoolStatusFilter('all');
+    setStoreChannelProductPoolKeyword('');
+    setStoreChannelProductPoolPage(1);
+    setStoreChannelProductPoolPageSize(20);
+    setStoreChannelProductPoolBatchSellStatus(undefined);
+    setStoreChannelProductPoolBatchSellableSkuKeys([]);
+    setStoreChannelProductPoolBatchAllowSelfPrice(undefined);
     setChannelSkuDraftMap({});
     setEditSkuDraftMap(
       (sourceProduct.skus || []).reduce((result, sku) => {
@@ -745,6 +1401,17 @@ function ProductCreatePage() {
         sourceProduct.skus || []
       )
     );
+    const purchaseLimitState = buildPurchaseLimitState(
+      sourceProduct as DomainProductItem
+    );
+    const detailContentState = buildDetailContentState(
+      sourceProduct as DomainProductItem
+    );
+    setIsLimited(purchaseLimitState.enabled);
+    setLimitCount(purchaseLimitState.count);
+    setDetailHtml(detailContentState.html);
+    setDetailFontSize(detailContentState.fontSize);
+    setDetailLineHeight(detailContentState.lineHeight);
     setProductStoreConfigs(
       normalizeProductStoreConfigs(
         (sourceProduct.storeConfigs || []).filter((item) =>
@@ -758,9 +1425,37 @@ function ProductCreatePage() {
         (item) => !visibleStoreIdSet.has(item.storeId)
       )
     );
-    setStoreShareSettingMap({});
-    setDraftStoreShareSettingMap({});
-  }, [pageMode, scopedStoreItems, sourceProduct, visibleStoreIds]);
+    const enabledSkuKeys = (sourceProduct.skus || []).map((sku) => sku.id);
+    const nextStoreShareSettingMap = buildStoreShareSettingMapFromProduct(
+      sourceProduct,
+      scopedStoreItems,
+      enabledSkuKeys
+    );
+    setStoreShareSettingMap(nextStoreShareSettingMap);
+    setDraftStoreShareSettingMap(nextStoreShareSettingMap);
+  }, [
+    isEditMode,
+    pageMode,
+    scopedStoreItems,
+    sourceEditCatalogSpecDraft.specIds,
+    sourceEditCatalogSpecDraft.valueMap,
+    sourceProduct,
+    visibleStoreIds,
+  ]);
+
+  useEffect(() => {
+    if (!isEditMode || sourceProduct?.specMode !== 'multi') {
+      return;
+    }
+
+    setSelectedCatalogSpecIds(sourceEditCatalogSpecDraft.specIds);
+    setSelectedCatalogSpecValueMap(sourceEditCatalogSpecDraft.valueMap);
+  }, [
+    isEditMode,
+    sourceEditCatalogSpecDraft.specIds,
+    sourceEditCatalogSpecDraft.valueMap,
+    sourceProduct?.specMode,
+  ]);
 
   useEffect(() => {
     if (isEditMode || !isStoreScopedCreatePage) {
@@ -773,19 +1468,64 @@ function ProductCreatePage() {
   }, [isEditMode, isStoreScopedCreatePage, specItems, specMode]);
 
   useEffect(() => {
-    if (isEditMode || !isStoreScopedCreatePage) {
+    if (!useStoreScopedChannelConfig) {
       return;
     }
 
-    setStoreChannelRules((previous) => {
-      return syncStoreChannelRuleDrafts(
-        previous,
-        specMode === 'single'
+    const nextTargetStoreIds = scopedStoreItems
+      .filter((item) => item.type === 'store' && item.id !== currentStoreId)
+      .map((item) => item.id);
+
+    const nextSkuKeys =
+      isStoreScopedOwnedEditPage && sourceProduct
+        ? sourceProduct.specMode === 'multi'
+          ? editMultiSpecAttributeRows.map((item) => item.key)
+          : (sourceProduct.skus || []).map((item) => item.id)
+        : specMode === 'single'
           ? [STORE_CHANNEL_SINGLE_SKU_KEY]
-          : specItems.map((item) => String(item.id))
-      );
-    });
-  }, [isEditMode, isStoreScopedCreatePage, specItems, specMode]);
+          : specItems.map((item) => String(item.id));
+
+    setStoreChannelConfigDraft((previous) =>
+      syncStoreChannelConfigDraft(
+        previous,
+        nextSkuKeys,
+        nextTargetStoreIds
+      )
+    );
+  }, [
+    currentStoreId,
+    editMultiSpecAttributeRows,
+    isStoreScopedOwnedEditPage,
+    scopedStoreItems,
+    sourceProduct,
+    specItems,
+    specMode,
+    useStoreScopedChannelConfig,
+  ]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      return;
+    }
+
+    const nextKeys =
+      specMode === 'single'
+        ? [CHANNEL_SINGLE_SKU_KEY]
+        : specItems.map((item) => String(item.id));
+
+    setChannelSkuDraftMap((previous) =>
+      nextKeys.reduce<ChannelSkuDraftMap>((result, key) => {
+        result[key] = previous[key] || {};
+        return result;
+      }, {})
+    );
+    setIndependentPriceRuleDraftMap((previous) =>
+      nextKeys.reduce<IndependentPriceRuleDraftMap>((result, key) => {
+        result[key] = previous[key] || {};
+        return result;
+      }, {})
+    );
+  }, [isEditMode, specItems, specMode]);
 
   function revokeObjectUrl(uid: string) {
     const target = objectUrlMapRef.current.get(uid);
@@ -793,6 +1533,41 @@ function ProductCreatePage() {
       URL.revokeObjectURL(target);
       objectUrlMapRef.current.delete(uid);
     }
+  }
+
+  function revokeObjectUrlsByPrefix(prefix: string) {
+    Array.from(objectUrlMapRef.current.keys())
+      .filter((key) => key.startsWith(prefix))
+      .forEach((key) => revokeObjectUrl(key));
+  }
+
+  function buildManagedProductImage(
+    file: UploadItem,
+    objectKey: string,
+    fallbackName: string
+  ) {
+    revokeObjectUrl(objectKey);
+
+    if (file.url) {
+      return {
+        id: file.uid || objectKey,
+        name: file.name?.trim() || fallbackName,
+        url: file.url,
+      };
+    }
+
+    if (file.originFile) {
+      const objectUrl = URL.createObjectURL(file.originFile);
+      objectUrlMapRef.current.set(objectKey, objectUrl);
+
+      return {
+        id: file.uid || objectKey,
+        name: file.name?.trim() || fallbackName,
+        url: objectUrl,
+      };
+    }
+
+    return undefined;
   }
 
   function toCarouselImages(nextFiles: UploadItem[], previous: CarouselImage[]) {
@@ -930,32 +1705,255 @@ function ProductCreatePage() {
     return true;
   }
 
-  function handleAddSpec() {
-    setSpecItems((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
-        name: '',
-        value: '',
-      },
-    ]);
+  function resetMultiSpecDraft() {
+    revokeObjectUrlsByPrefix('product-multi-');
+    setSelectedCatalogSpecTemplateId(undefined);
+    setSelectedCatalogSpecIds([]);
+    setSelectedCatalogSpecValueMap({});
+    setMultiSpecBatchDraft({ specFilters: {} });
+    setChannelSkuDraftMap({});
+    setStoreChannelSkuDraftMap({});
+    setIndependentPriceRuleDraftMap({});
   }
 
-  function handleSpecChange(id: number, field: 'name' | 'value', value: string) {
-    setSpecItems((previous) =>
-      previous.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
+  function applyProductCatalogIdChange(nextCatalogId?: string) {
+    setProductCatalogId(nextCatalogId);
+    resetMultiSpecDraft();
+  }
+
+  function handleProductCatalogChange(value: (string | string[])[] | undefined) {
+    const nextCatalogId = getProductCatalogIdFromPath(normalizePath(value), catalogItems);
+
+    if (
+      (nextCatalogId || '') === (productCatalogId || '') ||
+      isEditMode ||
+      specMode !== 'multi'
+    ) {
+      setProductCatalogId(nextCatalogId);
+      return;
+    }
+
+    const hasDraft =
+      hasProductSpecSelectionDraft(
+        normalizedSelectedCatalogSpecIds,
+        selectedCatalogSpecValueMap
+      ) ||
+      Object.values(channelSkuDraftMap).some(
+        (item) =>
+          typeof item.price === 'number' || typeof item.stock === 'number'
+      ) ||
+      Object.values(storeChannelSkuDraftMap).some(
+        (item) =>
+          typeof item.sourcePrice === 'number' ||
+          typeof item.sourceStock === 'number'
+      ) ||
+      Object.values(independentPriceRuleDraftMap).some(
+        (item) =>
+          typeof item.minPrice === 'number' || typeof item.maxPrice === 'number'
+      );
+
+    if (!hasDraft) {
+      applyProductCatalogIdChange(nextCatalogId);
+      return;
+    }
+
+    Modal.confirm({
+      title: '切换类目后将清空当前规格草稿',
+      content: '已选择的规格项、规格值以及当前 SKU 草稿会被清空，是否继续切换？',
+      onOk: () => applyProductCatalogIdChange(nextCatalogId),
+    });
+  }
+
+  function handleCatalogSpecDraftAdd() {
+    if (selectedCatalogSpecIds.length >= currentCatalogSpecs.length) {
+      return;
+    }
+
+    setSelectedCatalogSpecIds((previous) => [...previous, '']);
+  }
+
+  function handleCatalogSpecDraftChange(rowIndex: number, nextSpecId?: string) {
+    const previousSpecId = selectedCatalogSpecIds[rowIndex]?.trim() || '';
+    const normalizedNextSpecId = typeof nextSpecId === 'string' ? nextSpecId.trim() : '';
+    const matchedSpec = currentCatalogSpecs.find((item) => item.id === normalizedNextSpecId);
+
+    if (
+      normalizedNextSpecId &&
+      selectedCatalogSpecIds.some(
+        (item, index) => index !== rowIndex && item.trim() === normalizedNextSpecId
       )
+    ) {
+      return;
+    }
+
+    setSelectedCatalogSpecIds((previous) => {
+      const next = [...previous];
+      next[rowIndex] = matchedSpec ? normalizedNextSpecId : '';
+      return next;
+    });
+    setSelectedCatalogSpecValueMap((previous) => {
+      const next = { ...previous };
+
+      if (previousSpecId && previousSpecId !== normalizedNextSpecId) {
+        delete next[previousSpecId];
+      }
+
+      if (matchedSpec) {
+        next[matchedSpec.id] = normalizeSelectedProductSpecValues(
+          next[matchedSpec.id] || []
+        ).filter((value) => matchedSpec.values.includes(value));
+      }
+
+      return next;
+    });
+  }
+
+  function handleCatalogSpecDraftRemove(rowIndex: number) {
+    const removedSpecId = selectedCatalogSpecIds[rowIndex]?.trim() || '';
+
+    setSelectedCatalogSpecIds((previous) => previous.filter((_, index) => index !== rowIndex));
+
+    if (!removedSpecId) {
+      return;
+    }
+
+    setSelectedCatalogSpecValueMap((previous) => {
+      const next = { ...previous };
+      delete next[removedSpecId];
+      return next;
+    });
+  }
+
+  function getSelectedCatalogSpecDraftValues(specId: string) {
+    const values = selectedCatalogSpecValueMap[specId] || [];
+    return values.length ? values : [''];
+  }
+
+  function handleCatalogSpecValueDraftChange(
+    specId: string,
+    valueIndex: number,
+    nextValue?: string
+  ) {
+    const matchedSpec = currentCatalogSpecs.find((item) => item.id === specId);
+
+    if (!matchedSpec) {
+      return;
+    }
+
+    setSelectedCatalogSpecValueMap((previous) => {
+      const currentValues = previous[specId]?.length ? [...previous[specId]] : [''];
+      currentValues[valueIndex] = typeof nextValue === 'string' ? nextValue.trim() : '';
+
+      return {
+        ...previous,
+        [specId]: normalizeSpecValueDraftArray(
+          currentValues.map((item) =>
+            matchedSpec.values.includes(item) ? item : ''
+          )
+        ),
+      };
+    });
+  }
+
+  function handleCatalogSpecValueDraftAdd(specId: string) {
+    setSelectedCatalogSpecValueMap((previous) => {
+      const currentValues = previous[specId]?.length ? previous[specId] : [''];
+
+      return {
+        ...previous,
+        [specId]: [...currentValues, ''],
+      };
+    });
+  }
+
+  function handleCatalogSpecValueDraftRemove(specId: string, valueIndex: number) {
+    setSelectedCatalogSpecValueMap((previous) => {
+      const currentValues = previous[specId]?.length ? [...previous[specId]] : [''];
+      currentValues.splice(valueIndex, 1);
+
+      return {
+        ...previous,
+        [specId]: normalizeSpecValueDraftArray(currentValues),
+      };
+    });
+  }
+
+  function handleEditCatalogSpecValueAppend(specId: string, nextValue?: string) {
+    const normalizedValue = typeof nextValue === 'string' ? nextValue.trim() : '';
+
+    if (!normalizedValue) {
+      return;
+    }
+
+    setSelectedCatalogSpecValueMap((previous) => ({
+      ...previous,
+      [specId]: uniqueStringArray([...(previous[specId] || []), normalizedValue]),
+    }));
+  }
+
+  function handleEditCatalogSpecNewValueRemove(specId: string, value: string) {
+    const existingValueSet = new Set(sourceEditCatalogSpecDraft.existingValueMap[specId] || []);
+
+    if (existingValueSet.has(value)) {
+      return;
+    }
+
+    setSelectedCatalogSpecValueMap((previous) => ({
+      ...previous,
+      [specId]: (previous[specId] || []).filter((item) => item !== value),
+    }));
+  }
+
+  function handleCatalogSpecTemplateChange(value?: string) {
+    const nextTemplateId = typeof value === 'string' ? value : undefined;
+
+    setSelectedCatalogSpecTemplateId(nextTemplateId);
+
+    if (!nextTemplateId) {
+      return;
+    }
+
+    const matchedTemplate = currentCatalogSpecTemplates.find(
+      (item) => item.id === nextTemplateId
+    );
+
+    if (!matchedTemplate) {
+      return;
+    }
+
+    setSelectedCatalogSpecIds(
+      buildSelectedCatalogSpecIdsFromTemplate(matchedTemplate, currentCatalogSpecs)
+    );
+    setSelectedCatalogSpecValueMap(
+      buildSelectedCatalogSpecValueMapFromTemplate(matchedTemplate, currentCatalogSpecs)
     );
   }
 
-  function handleRemoveSpec(id: number) {
-    setSpecItems((previous) => previous.filter((item) => item.id !== id));
+  function handleChannelSkuDraftChange(
+    key: string,
+    field: keyof ChannelSkuDraftItem,
+    value?: number
+  ) {
+    const nextValue =
+      typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+    setChannelSkuDraftMap((previous) => ({
+      ...previous,
+      [key]: {
+        ...previous[key],
+        [field]: nextValue,
+      },
+    }));
+
+    if (isStoreScopedCreatePage && (field === 'price' || field === 'stock')) {
+      setStoreChannelSkuDraftMap((previous) => ({
+        ...previous,
+        [key]: {
+          ...previous[key],
+          [field === 'price' ? 'sourcePrice' : 'sourceStock']: nextValue,
+        },
+      }));
+    }
   }
 
   function handleStoreChannelSkuDraftChange(
@@ -963,202 +1961,199 @@ function ProductCreatePage() {
     field: keyof StoreChannelSkuDraftItem,
     value?: number
   ) {
+    const nextValue =
+      typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+    if (isStoreScopedOwnedEditPage && (field === 'sourcePrice' || field === 'sourceStock')) {
+      setEditSkuDraftMap((previous) => ({
+        ...previous,
+        [key]: {
+          ...previous[key],
+          [field === 'sourcePrice' ? 'price' : 'stock']: nextValue,
+        },
+      }));
+      return;
+    }
+
     setStoreChannelSkuDraftMap((previous) => ({
       ...previous,
       [key]: {
         ...previous[key],
-        [field]:
-          typeof value === 'number' && Number.isFinite(value) ? value : undefined,
+        [field]: nextValue,
       },
     }));
   }
 
-  function patchStoreChannelRule(
-    ruleId: string,
-    patch: Partial<StoreChannelRuleDraftItem>
+  function patchStoreChannelConfig(
+    patch: Partial<StoreChannelConfigDraftItem>
   ) {
-    setStoreChannelRules((previous) =>
-      previous.map((item) =>
-        item.id === ruleId
-          ? {
-              ...item,
-              ...patch,
-            }
-          : item
+    setStoreChannelConfigDraft((previous) =>
+      syncStoreChannelConfigDraft(
+        {
+          ...previous,
+          ...patch,
+        },
+        specMode === 'single'
+          ? [STORE_CHANNEL_SINGLE_SKU_KEY]
+          : specItems.map((item) => String(item.id)),
+        storeChannelTargetStoreIds
       )
     );
   }
 
-  function updateStoreChannelRuleSkuConfig(
-    ruleId: string,
-    skuKey: string,
-    field: keyof Omit<StoreChannelRuleSkuConfigDraftItem, 'skuKey'>,
-    value?: number
-  ) {
-    setStoreChannelRules((previous) =>
-      previous.map((rule) => {
-        if (rule.id !== ruleId) {
-          return rule;
-        }
-
-        const nextConfigs = [...rule.skuConfigs];
-        const targetIndex = nextConfigs.findIndex((item) => item.skuKey === skuKey);
-        const nextValue =
-          typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-
-        if (targetIndex >= 0) {
-          nextConfigs[targetIndex] = {
-            ...nextConfigs[targetIndex],
-            [field]: nextValue,
-          };
-
-          const currentConfig = nextConfigs[targetIndex];
-          if (
-            typeof currentConfig.suggestedMinPrice !== 'number' &&
-            typeof currentConfig.suggestedMaxPrice !== 'number' &&
-            typeof currentConfig.suggestedMinStock !== 'number' &&
-            typeof currentConfig.suggestedMaxStock !== 'number'
-          ) {
-            nextConfigs.splice(targetIndex, 1);
-          }
-        } else if (typeof nextValue === 'number') {
-          nextConfigs.push({
-            skuKey,
-            [field]: nextValue,
-          });
-        }
-
-        return {
-          ...rule,
-          skuConfigs: nextConfigs,
-        };
-      })
-    );
-  }
-
-  function addStoreChannelRule() {
-    setStoreChannelRules((previous) => [
-      ...previous,
-      createEmptyStoreChannelRule(),
-    ]);
-  }
-
-  function confirmRemoveStoreChannelRule(ruleId: string, ruleIndex: number) {
-    if (!canRemoveStoreChannelRule(ruleIndex)) {
-      return;
-    }
-
-    Modal.confirm({
-      title: `确定删除规则${ruleIndex + 1}吗？`,
-      content: '删除后不可恢复，请确认是否继续。',
-      onOk: () => {
-        setStoreChannelRules((previous) =>
-          removeStoreChannelRuleDrafts(previous, ruleId)
-        );
-      },
-    });
-  }
-
-  function openStoreChannelFieldModal(ruleId: string) {
-    const matchedRule = storeChannelRules.find((item) => item.id === ruleId);
-    setActiveStoreChannelRuleId(ruleId);
-    setDraftStoreChannelFieldKeys(matchedRule?.fieldKeys || []);
-    setStoreChannelFieldModalVisible(true);
-  }
-
-  function handleStoreChannelFieldModalConfirm() {
-    patchStoreChannelRule(activeStoreChannelRuleId, {
-      fieldKeys: draftStoreChannelFieldKeys,
-    });
-    setStoreChannelFieldModalVisible(false);
-    setActiveStoreChannelRuleId('');
-  }
-
-  function openStoreChannelStoreSelector(ruleId: string) {
-    setActiveStoreChannelRuleId(ruleId);
+  function openStoreChannelStoreSelector() {
     setStoreChannelStoreSelectorVisible(true);
   }
 
   function handleStoreChannelStoreSelectorConfirm(storeIds: string[]) {
-    patchStoreChannelRule(activeStoreChannelRuleId, {
+    patchStoreChannelConfig({
       storeIds,
     });
     setStoreChannelStoreSelectorVisible(false);
-    setActiveStoreChannelRuleId('');
   }
 
-  function openStoreChannelSkuSelector(ruleId: string) {
-    const matchedRule = storeChannelRules.find((item) => item.id === ruleId);
-    setActiveStoreChannelRuleId(ruleId);
-    setDraftStoreChannelSkuKeys(matchedRule?.skuKeys || []);
-    setStoreChannelSkuSelectorVisible(true);
-  }
-
-  function handleStoreChannelSkuSelectorConfirm() {
-    patchStoreChannelRule(activeStoreChannelRuleId, {
-      skuKeys: draftStoreChannelSkuKeys,
-    });
-    setStoreChannelSkuSelectorVisible(false);
-    setActiveStoreChannelRuleId('');
-  }
-
-  function handleChannelSkuDisabledToggle(key: string) {
-    setChannelSkuDraftMap((previous) => {
-      const nextDisabled = !previous[key]?.disabled;
-      const nextMap = {
-        ...previous,
-        [key]: {
-          ...previous[key],
-          disabled: nextDisabled,
-        },
+  function buildChannelSkuDraftMapFromRows(
+    rows: ProductSkuAttributeRow[],
+    previous: ChannelSkuDraftMap
+  ) {
+    return rows.reduce<ChannelSkuDraftMap>((result, row) => {
+      result[row.key] = {
+        ...previous[row.key],
+        price: row.price,
+        stock: row.stock,
+        status: row.status,
+        disabled: row.status === 'off',
+        image: row.image,
+        isDefaultSelected: row.isDefaultSelected || undefined,
       };
-      const nextEnabledSkuKeySet = new Set(
-        channelSkuTableData
-          .map((item) =>
-            item.key === key
-              ? {
-                  ...item,
-                  disabled: nextDisabled,
-                }
-              : item
-          )
-          .filter((item) => !item.disabled)
-          .map((item) => item.key)
-      );
-      const nextEnabledSkuKeys = Array.from(nextEnabledSkuKeySet);
+      return result;
+    }, {});
+  }
 
-      setStoreShareSettingMap((previousShareSetting) =>
-        sanitizeStoreShareSettingMapByEnabledSkuKeys(
-          previousShareSetting,
-          nextEnabledSkuKeys
-        )
+  function buildEditSkuDraftMapFromRows(
+    rows: ProductSkuAttributeRow[],
+    previous: EditSkuDraftMap
+  ) {
+    return rows.reduce<EditSkuDraftMap>((result, row) => {
+      result[row.key] = {
+        ...previous[row.key],
+        price: row.price,
+        stock: row.stock,
+        status: row.status,
+        image: row.image,
+        isDefaultSelected: row.isDefaultSelected || undefined,
+      };
+      return result;
+    }, {});
+  }
+
+  function syncStoreScopedDraftMapFromRows(rows: ProductSkuAttributeRow[]) {
+    if (!isStoreScopedCreatePage) {
+      return;
+    }
+
+    setStoreChannelSkuDraftMap((previous) =>
+      rows.reduce<StoreChannelSkuDraftMap>((result, row) => {
+        result[row.key] = {
+          ...previous[row.key],
+          sourcePrice: row.price,
+          sourceStock: row.stock,
+          status: row.status,
+          image: row.image,
+          isDefaultSelected: row.isDefaultSelected || undefined,
+        };
+        return result;
+      }, {})
+    );
+  }
+
+  function syncEnabledSkuRelatedState(nextRows: ProductSkuAttributeRow[]) {
+    const nextEnabledSkuKeys = nextRows
+      .filter((row) => row.status !== 'off')
+      .map((row) => row.key);
+
+    setStoreShareSettingMap((previousShareSetting) =>
+      sanitizeStoreShareSettingMapByEnabledSkuKeys(
+        previousShareSetting,
+        nextEnabledSkuKeys
+      )
+    );
+    setDraftStoreShareSettingMap((previousShareSetting) =>
+      sanitizeStoreShareSettingMapByEnabledSkuKeys(
+        previousShareSetting,
+        nextEnabledSkuKeys
+      )
+    );
+    setProductStoreConfigs((previousStoreConfigs) =>
+      applyUnsellableWhenNoSellableSku(
+        previousStoreConfigs,
+        storeShareSettingMap,
+        nextEnabledSkuKeys
+      )
+    );
+    setDraftStoreConfigMap((previousDraftStoreConfigMap) =>
+      applyUnsellableWhenNoSellableSku(
+        Object.values(previousDraftStoreConfigMap),
+        draftStoreShareSettingMap,
+        nextEnabledSkuKeys
+      ).reduce<Record<string, ProductStoreConfigItem>>((result, config) => {
+        result[config.storeId] = config;
+        return result;
+      }, {})
+    );
+  }
+
+  function updateCreateMultiSkuRows(
+    updater: (rows: ProductSkuAttributeRow[]) => ProductSkuAttributeRow[],
+    options?: {
+      syncEnabledSkuState?: boolean;
+    }
+  ) {
+    setChannelSkuDraftMap((previous) => {
+      const nextRows = updater(
+        buildProductSkuAttributeRowsFromSpecItems(specItems, previous)
       );
-      setDraftStoreShareSettingMap((previousShareSetting) =>
-        sanitizeStoreShareSettingMapByEnabledSkuKeys(
-          previousShareSetting,
-          nextEnabledSkuKeys
-        )
-      );
-      setProductStoreConfigs((previousStoreConfigs) =>
-        applyUnsellableWhenNoSellableSku(
-          previousStoreConfigs,
-          storeShareSettingMap,
-          nextEnabledSkuKeys
-        )
-      );
-      setDraftStoreConfigMap((previousDraftStoreConfigMap) =>
-        applyUnsellableWhenNoSellableSku(
-          Object.values(previousDraftStoreConfigMap),
-          draftStoreShareSettingMap,
-          nextEnabledSkuKeys
-        ).reduce<Record<string, ProductStoreConfigItem>>((result, config) => {
-          result[config.storeId] = config;
-          return result;
-        }, {})
-      );
+      const nextMap = buildChannelSkuDraftMapFromRows(nextRows, previous);
+
+      syncStoreScopedDraftMapFromRows(nextRows);
+      if (options?.syncEnabledSkuState) {
+        syncEnabledSkuRelatedState(nextRows);
+      }
 
       return nextMap;
     });
+  }
+
+  function updateEditMultiSkuRows(
+    updater: (rows: ProductSkuAttributeRow[]) => ProductSkuAttributeRow[]
+  ) {
+    if (!sourceProduct) {
+      return;
+    }
+
+    setEditSkuDraftMap((previous) =>
+      buildEditSkuDraftMapFromRows(
+        updater(buildProductSkuAttributeRowsFromSkus(sourceProduct.skus || [], previous)),
+        previous
+      )
+    );
+  }
+
+  function handleChannelSkuDisabledToggle(key: string) {
+    updateCreateMultiSkuRows(
+      (rows) =>
+        rows.map((row) =>
+          row.key === key
+            ? {
+                ...row,
+                status: row.status === 'off' ? 'on' : 'off',
+              }
+            : row
+        ),
+      {
+        syncEnabledSkuState: true,
+      }
+    );
   }
 
   function handleEditSkuDraftChange(
@@ -1174,6 +2169,216 @@ function ProductCreatePage() {
           typeof value === 'number' && Number.isFinite(value) ? value : undefined,
       },
     }));
+  }
+
+  function handleMultiSpecBatchFilterChange(specKey: string, value?: string) {
+    setMultiSpecBatchDraft((previous) => ({
+      ...previous,
+      specFilters: {
+        ...previous.specFilters,
+        [specKey]: value || '',
+      },
+    }));
+  }
+
+  function handleMultiSpecBatchFieldChange(
+    field: 'price' | 'stock',
+    value?: number
+  ) {
+    setMultiSpecBatchDraft((previous) => ({
+      ...previous,
+      [field]:
+        typeof value === 'number' && Number.isFinite(value) ? value : undefined,
+    }));
+  }
+
+  function handleMultiSpecBatchClear() {
+    revokeObjectUrl('product-multi-batch-image');
+    setMultiSpecBatchDraft({ specFilters: {} });
+  }
+
+  function handleMultiSpecBatchApply() {
+    const nextRows = applyProductSkuBatchPatch(
+      multiSpecAttributeRows,
+      multiSpecBatchDraft.specFilters,
+      {
+        price: multiSpecBatchDraft.price,
+        stock: multiSpecBatchDraft.stock,
+        image: multiSpecBatchDraft.image,
+      }
+    );
+
+    if (isEditMode) {
+      updateEditMultiSkuRows(() => nextRows);
+    } else {
+      updateCreateMultiSkuRows(() => nextRows);
+    }
+  }
+
+  function handleCreateMultiSkuFieldChange(
+    key: string,
+    field: 'price' | 'stock',
+    value?: number
+  ) {
+    updateCreateMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              [field]:
+                typeof value === 'number' && Number.isFinite(value)
+                  ? value
+                  : undefined,
+            }
+          : row
+      )
+    );
+  }
+
+  function handleEditMultiSkuFieldChange(
+    key: string,
+    field: 'price' | 'stock',
+    value?: number
+  ) {
+    updateEditMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              [field]:
+                typeof value === 'number' && Number.isFinite(value)
+                  ? value
+                  : undefined,
+            }
+          : row
+      )
+    );
+  }
+
+  function handleCreateMultiSkuDefaultChange(key: string, checked: boolean) {
+    updateCreateMultiSkuRows((rows) =>
+      rows.map((row) => ({
+        ...row,
+        isDefaultSelected: row.key === key ? checked : false,
+      }))
+    );
+  }
+
+  function handleEditMultiSkuDefaultChange(key: string, checked: boolean) {
+    updateEditMultiSkuRows((rows) =>
+      rows.map((row) => ({
+        ...row,
+        isDefaultSelected: row.key === key ? checked : false,
+      }))
+    );
+  }
+
+  function handleEditMultiSkuStatusChange(key: string, checked: boolean) {
+    updateEditMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              status: checked ? 'on' : 'off',
+            }
+          : row
+      )
+    );
+  }
+
+  function handleMultiSpecBatchImageChange(nextFileList: UploadItem[]) {
+    const latestFile = nextFileList.slice(-1)[0];
+    const nextImage = latestFile
+      ? buildManagedProductImage(latestFile, 'product-multi-batch-image', '批量图片')
+      : undefined;
+
+    setMultiSpecBatchDraft((previous) => ({
+      ...previous,
+      image: nextImage,
+    }));
+  }
+
+  function handleMultiSpecBatchImageRemove() {
+    revokeObjectUrl('product-multi-batch-image');
+    setMultiSpecBatchDraft((previous) => ({
+      ...previous,
+      image: undefined,
+    }));
+    return true;
+  }
+
+  function handleCreateMultiSkuImageChange(key: string, nextFileList: UploadItem[]) {
+    const latestFile = nextFileList.slice(-1)[0];
+    const nextImage = latestFile
+      ? buildManagedProductImage(
+          latestFile,
+          `product-multi-sku-${key}`,
+          `规格图-${key}`
+        )
+      : undefined;
+
+    updateCreateMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              image: nextImage,
+            }
+          : row
+      )
+    );
+  }
+
+  function handleEditMultiSkuImageChange(key: string, nextFileList: UploadItem[]) {
+    const latestFile = nextFileList.slice(-1)[0];
+    const nextImage = latestFile
+      ? buildManagedProductImage(
+          latestFile,
+          `product-multi-sku-${key}`,
+          `规格图-${key}`
+        )
+      : undefined;
+
+    updateEditMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              image: nextImage,
+            }
+          : row
+      )
+    );
+  }
+
+  function handleCreateMultiSkuImageRemove(key: string) {
+    revokeObjectUrl(`product-multi-sku-${key}`);
+    updateCreateMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              image: undefined,
+            }
+          : row
+      )
+    );
+    return true;
+  }
+
+  function handleEditMultiSkuImageRemove(key: string) {
+    revokeObjectUrl(`product-multi-sku-${key}`);
+    updateEditMultiSkuRows((rows) =>
+      rows.map((row) =>
+        row.key === key
+          ? {
+              ...row,
+              image: undefined,
+            }
+          : row
+      )
+    );
+    return true;
   }
 
   function handleIndependentPriceRuleDraftChange(
@@ -1277,11 +2482,253 @@ function ProductCreatePage() {
     setStoreBatchSellStatus(undefined);
   }
 
+  function resetStoreChannelProductPoolFilters() {
+    setStoreChannelProductPoolStatusFilter('all');
+    setStoreChannelProductPoolKeyword('');
+    setStoreChannelProductPoolPage(1);
+    setStoreChannelProductPoolPageSize(20);
+    setStoreChannelProductPoolBatchSellStatus(undefined);
+    setStoreChannelProductPoolBatchSellableSkuKeys([]);
+    setStoreChannelProductPoolBatchAllowSelfPrice(undefined);
+  }
+
+  function closeStoreChannelProductPoolModal() {
+    setStoreChannelProductPoolModalVisible(false);
+    setDraftStoreChannelProductPoolConfigMap({});
+    setStoreChannelProductPoolSelectedStoreKeys([]);
+    resetStoreChannelProductPoolFilters();
+  }
+
+  function openStoreChannelProductPoolModal() {
+    setDraftStoreChannelProductPoolConfigMap(
+      buildStoreChannelProductPoolConfigDraftMap(
+        storeChannelTargetStoreItems,
+        storeChannelConfigDraft.productPoolStoreConfigs || [],
+        storeChannelSourceTableData.map((item) => item.key)
+      )
+    );
+    setStoreChannelProductPoolSelectedStoreKeys([]);
+    resetStoreChannelProductPoolFilters();
+    setStoreChannelProductPoolModalVisible(true);
+  }
+
+  function updateStoreChannelProductPoolDraftItem(
+    storeId: string,
+    updater: (
+      current: StoreChannelProductPoolStoreConfigDraftItem
+    ) => StoreChannelProductPoolStoreConfigDraftItem
+  ) {
+    setDraftStoreChannelProductPoolConfigMap((previous) => {
+      const current =
+        previous[storeId] ||
+        createDefaultStoreChannelProductPoolStoreConfig(storeId);
+
+      return {
+        ...previous,
+        [storeId]: updater(current),
+      };
+    });
+  }
+
+  function buildStoreChannelProductPoolDraftItem(
+    current: StoreChannelProductPoolStoreConfigDraftItem,
+    sellState: ProductStoreSellStatus,
+    allowedSkuKeys: string[]
+  ) {
+    if (sellState === 'unsellable') {
+      return {
+        ...current,
+        sellStatus: 'unsellable' as const,
+        channelStatus: 'off' as const,
+        sellableSkuKeys: [],
+        allowSelfPrice: false,
+      };
+    }
+
+    const normalizedSellableSkuKeys = uniqueStringArray(
+      current.sellableSkuKeys.filter((skuKey) => allowedSkuKeys.includes(skuKey))
+    );
+    const nextSellableSkuKeys = normalizedSellableSkuKeys.length
+      ? normalizedSellableSkuKeys
+      : [...allowedSkuKeys];
+
+    return {
+      ...current,
+      sellStatus: 'sellable' as const,
+      channelStatus: 'on' as const,
+      sellableSkuKeys: nextSellableSkuKeys,
+      allowSelfPrice:
+        nextSellableSkuKeys.length > 0 && current.allowSelfPrice === true,
+    };
+  }
+
+  function handleStoreChannelProductPoolSellStatusChange(
+    storeId: string,
+    sellState: ProductStoreSellStatus
+  ) {
+    updateStoreChannelProductPoolDraftItem(storeId, (current) =>
+      buildStoreChannelProductPoolDraftItem(
+        current,
+        sellState,
+        storeChannelSourceTableData.map((item) => item.key)
+      )
+    );
+  }
+
+  function handleStoreChannelProductPoolSellableSkuKeysChange(
+    storeId: string,
+    skuKeys: string[]
+  ) {
+    const allowedSkuKeySet = new Set(
+      storeChannelSourceTableData.map((item) => item.key)
+    );
+    const normalizedSkuKeys = uniqueStringArray(
+      skuKeys.filter((skuKey) => allowedSkuKeySet.has(skuKey))
+    );
+
+    updateStoreChannelProductPoolDraftItem(storeId, (current) => ({
+      ...current,
+      sellStatus: current.sellStatus,
+      sellableSkuKeys: normalizedSkuKeys,
+      allowSelfPrice: normalizedSkuKeys.length
+        ? current.allowSelfPrice === true
+        : false,
+    }));
+  }
+
+  function handleStoreChannelProductPoolAllowSelfPriceChange(
+    storeId: string,
+    checked: boolean
+  ) {
+    updateStoreChannelProductPoolDraftItem(storeId, (current) => ({
+      ...current,
+      allowSelfPrice: current.sellStatus === 'sellable' && checked,
+    }));
+  }
+
+  function handleStoreChannelProductPoolSelectionChange(
+    keys: (string | number)[]
+  ) {
+    setStoreChannelProductPoolSelectedStoreKeys(keys.map(String));
+  }
+
+  function updateSelectedStoreChannelProductPoolConfigs(
+    sellState: ProductStoreSellStatus
+  ) {
+    if (!storeChannelProductPoolSelectedStoreKeys.length) {
+      Message.warning('请先选择需要批量设置的店铺');
+      return;
+    }
+
+    setDraftStoreChannelProductPoolConfigMap((previous) => {
+      const next = { ...previous };
+
+      storeChannelProductPoolSelectedStoreKeys.map(String).forEach((storeId) => {
+        const current =
+          next[storeId] ||
+          createDefaultStoreChannelProductPoolStoreConfig(storeId);
+        next[storeId] = buildStoreChannelProductPoolDraftItem(
+          current,
+          sellState,
+          storeChannelSourceTableData.map((item) => item.key)
+        );
+      });
+
+      return next;
+    });
+  }
+
+  function handleStoreChannelProductPoolBatchSellStatusChange(value?: string) {
+    if (!value) {
+      return;
+    }
+
+    updateSelectedStoreChannelProductPoolConfigs(
+      value as ProductStoreSellStatus
+    );
+    setStoreChannelProductPoolBatchSellStatus(undefined);
+  }
+
+  function handleStoreChannelProductPoolBatchSellableSkuKeysChange(
+    value: unknown
+  ) {
+    const nextSkuKeys = normalizeTreeSelectSkuKeys(
+      value,
+      storeChannelAvailableSkuKeys
+    );
+
+    if (!storeChannelProductPoolSelectedStoreKeys.length) {
+      Message.warning('请先选择需要批量设置的店铺');
+      return;
+    }
+
+    setDraftStoreChannelProductPoolConfigMap((previous) => {
+      const next = { ...previous };
+
+      storeChannelProductPoolSelectedStoreKeys.map(String).forEach((storeId) => {
+        const current =
+          next[storeId] ||
+          createDefaultStoreChannelProductPoolStoreConfig(storeId);
+
+        next[storeId] = {
+          ...current,
+          sellStatus: nextSkuKeys.length ? ('sellable' as const) : current.sellStatus,
+          channelStatus:
+            nextSkuKeys.length ? ('on' as const) : ('off' as const),
+          sellableSkuKeys: nextSkuKeys,
+          allowSelfPrice: nextSkuKeys.length
+            ? current.allowSelfPrice === true
+            : false,
+        };
+      });
+
+      return next;
+    });
+    setStoreChannelProductPoolBatchSellableSkuKeys([]);
+  }
+
+  function handleStoreChannelProductPoolBatchAllowSelfPriceChange(value?: string) {
+    if (!value) {
+      return;
+    }
+
+    if (!storeChannelProductPoolSelectedStoreKeys.length) {
+      Message.warning('请先选择需要批量设置的店铺');
+      return;
+    }
+
+    setDraftStoreChannelProductPoolConfigMap((previous) => {
+      const next = { ...previous };
+
+      storeChannelProductPoolSelectedStoreKeys.map(String).forEach((storeId) => {
+        const current =
+          next[storeId] ||
+          createDefaultStoreChannelProductPoolStoreConfig(storeId);
+
+        next[storeId] = {
+          ...current,
+          allowSelfPrice:
+            value === 'on' &&
+            current.sellStatus === 'sellable' &&
+            current.sellableSkuKeys.length > 0,
+        };
+      });
+
+      return next;
+    });
+    setStoreChannelProductPoolBatchAllowSelfPrice(undefined);
+  }
+
+  function handleStoreChannelProductPoolModalConfirm() {
+    patchStoreChannelConfig({
+      productPoolStoreConfigs: Object.values(draftStoreChannelProductPoolConfigMap),
+    });
+    closeStoreChannelProductPoolModal();
+  }
+
   function openStoreConfigModal() {
     const sourceStoreId = getSubmitProductSource().sourceStoreId;
-    const enabledSkuKeys = uniqueStringArray(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeys = uniqueStringArray(editableEnabledSkuKeys);
     const nextMap = normalizeProductStoreConfigs(
       productStoreConfigs,
       scopedStoreItems
@@ -1348,9 +2795,7 @@ function ProductCreatePage() {
   function handleDraftStoreConfigChange<
     K extends keyof Omit<ProductStoreConfigItem, 'storeId'>
   >(storeId: string, field: K, value: ProductStoreConfigItem[K]) {
-    const enabledSkuKeys = uniqueStringArray(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeys = uniqueStringArray(editableEnabledSkuKeys);
     const sourceStoreId = getSubmitProductSource().sourceStoreId;
 
     setDraftStoreConfigMap((previousConfig) => {
@@ -1392,9 +2837,7 @@ function ProductCreatePage() {
   }
 
   function handleDraftStoreSellableSkuKeysChange(storeId: string, skuKeys: string[]) {
-    const enabledSkuKeySet = new Set(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeySet = new Set(editableEnabledSkuKeys);
     const sourceStoreId = getSubmitProductSource().sourceStoreId;
     const isSourceStore = Boolean(sourceStoreId) && storeId === sourceStoreId;
     const normalizedSkuKeys = uniqueStringArray(
@@ -1469,9 +2912,7 @@ function ProductCreatePage() {
       return next;
     });
 
-    const enabledSkuKeys = uniqueStringArray(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeys = uniqueStringArray(editableEnabledSkuKeys);
     setDraftStoreShareSettingMap((previous) => {
       const next = { ...previous };
       selectedStoreKeys.map(String).forEach((storeId) => {
@@ -1495,9 +2936,7 @@ function ProductCreatePage() {
   }
 
   function handleStoreConfigConfirm() {
-    const enabledSkuKeys = uniqueStringArray(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeys = uniqueStringArray(editableEnabledSkuKeys);
     const sourceStoreId = getSubmitProductSource().sourceStoreId;
     const rawStoreConfigs = normalizeProductStoreConfigs(
       Object.values(draftStoreConfigMap),
@@ -1563,17 +3002,21 @@ function ProductCreatePage() {
   }
 
   function applyChannelStoreConfig(storeConfigs: ProductStoreConfigItem[]) {
-    if (isEditMode || !currentStoreId) {
+    if (!currentStoreId) {
       return storeConfigs;
     }
 
-    if (!isStoreScopedCreatePage && !channelEnabled) {
+    if (isEditMode && !isStoreScopedOwnedEditPage) {
+      return storeConfigs;
+    }
+
+    if (!useStoreScopedChannelConfig && !channelEnabled) {
       return storeConfigs;
     }
 
     const nextChannelStatus =
       (
-        isStoreScopedCreatePage && !storeChannelEnabled ? 'off' : 'on'
+        useStoreScopedChannelConfig && !storeChannelEnabled ? 'off' : 'on'
       ) as ProductStoreConfigItem['channelStatus'];
 
     let hasCurrentStoreConfig = false;
@@ -1683,6 +3126,18 @@ function ProductCreatePage() {
   }
 
   function buildSkuKeyToSubmitSkuIdMap(nextSkus: ProductSkuItem[]) {
+    if (isEditMode) {
+      if (sourceProduct?.specMode === 'multi') {
+        return new Map(
+          editMultiSpecAttributeRows.flatMap((row, index) =>
+            nextSkus[index] ? [[row.key, nextSkus[index].id] as [string, string]] : []
+          )
+        );
+      }
+
+      return new Map(nextSkus.map((sku) => [sku.id, sku.id] as [string, string]));
+    }
+
     if (specMode === 'single') {
       return nextSkus[0]
         ? new Map<string, string>([[CHANNEL_SINGLE_SKU_KEY, nextSkus[0].id]])
@@ -1696,34 +3151,82 @@ function ProductCreatePage() {
     );
   }
 
+  function buildStoreScopedEditChannelPayload(
+    createdAt: string,
+    nextSkus: ProductSkuItem[]
+  ) {
+    if (!isStoreScopedOwnedEditPage || !sourceProduct) {
+      return {
+        storeChannelConfig: sourceProduct?.storeChannelConfig,
+        shareTargets: buildSubmitShareTargets(
+          createdAt,
+          nextSkus,
+          getSubmitProductSource().sourceStoreId
+        ),
+      };
+    }
+
+    const skuMetaItems =
+      sourceProduct.specMode === 'multi'
+        ? editMultiSpecAttributeRows.flatMap((row, index) =>
+            nextSkus[index]
+              ? [
+                  {
+                    key: row.key,
+                    skuId: nextSkus[index].id,
+                    specLabel: row.specText || `规格${index + 1}`,
+                    sourcePrice: nextSkus[index].price,
+                    sourceStock: nextSkus[index].stock,
+                  } as StoreChannelSkuMetaItem,
+                ]
+              : []
+          )
+        : nextSkus.map((sku, index) => ({
+            key: sku.id,
+            skuId: sku.id,
+            specLabel: sku.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+            sourcePrice: sku.price,
+            sourceStock: sku.stock,
+          }));
+
+    return buildStoreChannelPayloadFromSkuMetaItems({
+      skuMetaItems,
+      storeChannelEnabled,
+      config: storeChannelConfigDraft,
+      targetStoreIds: storeChannelTargetStoreIds,
+      createdAt,
+    });
+  }
+
   function buildSubmitShareTargets(
     createdAt: string,
     nextSkus: ProductSkuItem[],
     sourceStoreId?: string
   ): ProductShareTargetItem[] {
-    if (isEditMode) {
-      return (
-        ((sourceProduct as ProductItem & { shareTargets?: ProductShareTargetItem[] })
-          ?.shareTargets || [])
-          .map((item) => ({
-            ...item,
-          }))
-      );
-    }
-
-    if (!channelEnabled || !sourceStoreId) {
+    if (!sourceStoreId || (!isEditMode && !channelEnabled)) {
       return [];
     }
 
     const skuKeyToIdMap = buildSkuKeyToSubmitSkuIdMap(nextSkus);
     const sourceStoreIdSet = new Set([sourceStoreId]);
+    const managedStoreItems = scopedStoreItems.filter(
+      (item) => item.type === 'store' && !sourceStoreIdSet.has(item.id)
+    );
+    const managedStoreIdSet = new Set(managedStoreItems.map((item) => item.id));
     const storeConfigMap = new Map(
       productStoreConfigs.map((item) => [item.storeId, item])
     );
+    const existingShareTargets = (
+      ((sourceProduct as ProductItem & { shareTargets?: ProductShareTargetItem[] })
+        ?.shareTargets || []) as ProductShareTargetItem[]
+    ).map((item) => ({
+      ...item,
+    }));
+    const existingShareTargetMap = new Map(
+      existingShareTargets.map((item) => [item.storeId, item])
+    );
 
-    return scopedStoreItems
-      .filter((item) => item.type === 'store' && !sourceStoreIdSet.has(item.id))
-      .flatMap((item) => {
+    const managedShareTargets = managedStoreItems.flatMap((item) => {
         const storeConfig =
           storeConfigMap.get(item.id) || createDefaultProductStoreConfig(item.id);
         const storeShareSetting =
@@ -1742,6 +3245,8 @@ function ProductCreatePage() {
           return [];
         }
 
+        const previousShareTarget = existingShareTargetMap.get(item.id);
+
         return [
           {
             storeId: item.id,
@@ -1749,45 +3254,60 @@ function ProductCreatePage() {
               storeShareSetting.shareMode === 'shared_pool'
                 ? ('pending' as const)
                 : ('referenced' as const),
-            sharedAt: createdAt,
+            sharedAt: previousShareTarget?.sharedAt || createdAt,
             referencedAt:
-              storeShareSetting.shareMode === 'shared_pool' ? undefined : createdAt,
+              storeShareSetting.shareMode === 'shared_pool'
+                ? undefined
+                : previousShareTarget?.referencedAt || createdAt,
             sellableSkuIds,
           },
         ];
       });
+
+    return [
+      ...existingShareTargets.filter((item) => !managedStoreIdSet.has(item.storeId)),
+      ...managedShareTargets,
+    ];
   }
 
   function buildSubmitStoreOverrides(
     nextSkus: ProductSkuItem[],
     nextShareTargets: ProductShareTargetItem[] = []
   ): ProductStoreOverrideMap {
-    if (isEditMode) {
-      return (sourceProduct?.storeOverrides || {}) as ProductStoreOverrideMap;
-    }
-
-    if (!channelEnabled && !isStoreScopedCreatePage) {
+    if (!isEditMode && !channelEnabled && !isStoreScopedCreatePage) {
       return {};
     }
 
+    const baseOverrides = { ...(sourceProduct?.storeOverrides || {}) } as ProductStoreOverrideMap;
     const allSkuIds = nextSkus.map((item) => item.id);
+    const nextShareTargetMap = new Map(
+      nextShareTargets.map((item) => [item.storeId, item])
+    );
+    const sourceStoreId = getSubmitProductSource().sourceStoreId;
+    const managedStoreIds = scopedStoreItems
+      .filter((item) => item.type === 'store' && item.id !== sourceStoreId)
+      .map((item) => item.id);
 
-    return nextShareTargets.reduce<ProductStoreOverrideMap>((result, item) => {
-      if (item.status !== 'referenced') {
+    return managedStoreIds.reduce<ProductStoreOverrideMap>((result, storeId) => {
+      const shareTarget = nextShareTargetMap.get(storeId);
+      if (shareTarget?.status !== 'referenced') {
+        delete result[storeId];
         return result;
       }
 
       const sellableSkuIdSet = new Set(
-        item.sellableSkuIds?.length ? item.sellableSkuIds : allSkuIds
+        shareTarget.sellableSkuIds?.length ? shareTarget.sellableSkuIds : allSkuIds
       );
       const unsellableSkus = nextSkus.filter((sku) => !sellableSkuIdSet.has(sku.id));
 
       if (!unsellableSkus.length) {
+        delete result[storeId];
         return result;
       }
 
-      result[item.storeId] = {
-        ...createDefaultProductStoreOverride(item.storeId),
+      result[storeId] = {
+        ...createDefaultProductStoreOverride(storeId),
+        ...(baseOverrides[storeId] || {}),
         skuSellStatusOverrides: unsellableSkus.map((sku) => ({
           skuId: sku.id,
           currentSellStatus: 'unsellable',
@@ -1796,11 +3316,11 @@ function ProductCreatePage() {
           .filter((sku) => sku.status !== 'off')
           .map((sku) => ({
             skuId: sku.id,
-          currentStatus: 'off',
+            currentStatus: 'off',
           })),
       };
       return result;
-    }, {});
+    }, baseOverrides);
   }
 
   function buildSubmitProduct(productId: string, createdAt: string): ProductItem {
@@ -1810,6 +3330,27 @@ function ProductCreatePage() {
       productOwnershipId || sourceProduct?.productOwnershipId || '';
     const nextSource = getSubmitProductSource();
     const nextCarouselImages = buildSubmitCarouselImages(carouselImages);
+    const nextDetailHtml = typeof detailHtml === 'string' ? detailHtml : '';
+    const nextIsLimited = isLimited === true;
+    const nextLimitCount =
+      nextIsLimited &&
+      typeof limitCount === 'number' &&
+      Number.isFinite(limitCount)
+        ? Math.max(1, Math.floor(limitCount))
+        : undefined;
+    const nextPurchaseLimit = nextIsLimited
+      ? {
+          enabled: true,
+          count: nextLimitCount,
+        }
+      : {
+          enabled: false,
+        };
+    const nextDetailContent = {
+      html: nextDetailHtml,
+      fontSize: detailFontSize,
+      lineHeight: detailLineHeight,
+    };
     const baseStoreConfigs = [
       ...hiddenStoreConfigs.map((item) => ({ ...item })),
       ...productStoreConfigs.map((item) => ({ ...item })),
@@ -1827,21 +3368,75 @@ function ProductCreatePage() {
         delete sourceProductBase.storeView;
       }
 
-      const nextSkus = (sourceProduct.skus || []).map((sku) => {
-        const skuDraft = editSkuDraftMap[sku.id] || {};
+      const nextSkus =
+        sourceProduct.specMode === 'multi'
+          ? (() => {
+              let nextNewSkuIndex = (sourceProduct.skus || []).length;
+              const sourceSkuMap = new Map<string, ProductSkuItem>(
+                (sourceProduct.skus || []).map((sku) => [sku.id, sku] as const)
+              );
 
-        return {
-          ...sku,
-          price:
-            typeof skuDraft.price === 'number' && Number.isFinite(skuDraft.price)
-              ? skuDraft.price
-              : sku.price,
-          stock:
+              return editMultiSpecAttributeRows.map((row) => {
+                const matchedSourceSku = sourceSkuMap.get(row.key);
+                const nextSkuId = matchedSourceSku
+                  ? matchedSourceSku.id
+                  : createProductSkuId(productId, nextNewSkuIndex++);
+                const baseSku: ProductSkuItem = matchedSourceSku || {
+                  id: nextSkuId,
+                  specText: row.specText,
+                  price: 0,
+                  stock: 0,
+                  status: 'on' as const,
+                };
+                const { image: _sourceImage, isDefaultSelected: _sourceDefault, ...restSku } =
+                  baseSku;
+
+                return {
+                  ...restSku,
+                  id: nextSkuId,
+                  specText: row.specText,
+                  price:
+                    typeof row.price === 'number' && Number.isFinite(row.price)
+                      ? row.price
+                      : baseSku.price,
+                  stock:
+                    typeof row.stock === 'number' && Number.isFinite(row.stock)
+                      ? Math.max(0, Math.floor(row.stock))
+                      : baseSku.stock,
+                  status: row.status,
+                  ...(row.image ? { image: row.image } : {}),
+                  ...(row.isDefaultSelected ? { isDefaultSelected: true } : {}),
+                };
+              });
+            })()
+          : (sourceProduct.skus || []).map((sku) => {
+              const skuDraft = editSkuDraftMap[sku.id] || {};
+
+              return {
+                ...sku,
+                price:
+                  typeof skuDraft.price === 'number' && Number.isFinite(skuDraft.price)
+                    ? skuDraft.price
+                    : sku.price,
+                stock:
             typeof skuDraft.stock === 'number' && Number.isFinite(skuDraft.stock)
               ? Math.max(0, Math.floor(skuDraft.stock))
               : sku.stock,
-        };
-      });
+            status:
+              skuDraft.status === 'off'
+                ? ('off' as const)
+                : skuDraft.status === 'on'
+                  ? ('on' as const)
+                  : sku.status,
+            ...(skuDraft.image ? { image: skuDraft.image } : {}),
+            ...(skuDraft.isDefaultSelected ? { isDefaultSelected: true } : {}),
+              };
+            });
+      const nextStoreChannelPayload = buildStoreScopedEditChannelPayload(
+        createdAt,
+        nextSkus
+      );
+      const nextShareTargets = nextStoreChannelPayload.shareTargets;
       const nextPrice = nextSkus.length
         ? Math.min(...nextSkus.map((item) => item.price))
         : 0;
@@ -1855,6 +3450,11 @@ function ProductCreatePage() {
         productCatalogId: nextCatalogId,
         productOwnershipId: nextOwnershipId,
         inventoryUnit,
+        isLimited: nextIsLimited,
+        limitCount: nextLimitCount,
+        detailHtml: nextDetailHtml,
+        purchaseLimit: nextPurchaseLimit,
+        detailContent: nextDetailContent,
         status: nextStatus,
         specMode: sourceProduct.specMode,
         skus: nextSkus,
@@ -1863,12 +3463,9 @@ function ProductCreatePage() {
         createdAt,
         ...nextSource,
         carouselImages: nextCarouselImages,
-        shareTargets: buildSubmitShareTargets(
-          createdAt,
-          nextSkus,
-          nextSource.sourceStoreId
-        ),
-        storeOverrides: buildSubmitStoreOverrides(nextSkus),
+        shareTargets: nextShareTargets,
+        storeChannelConfig: nextStoreChannelPayload.storeChannelConfig,
+        storeOverrides: buildSubmitStoreOverrides(nextSkus, nextShareTargets),
         storeConfigs: nextStoreConfigsByDefault,
         independentPriceRule: buildSubmitIndependentPriceRule(nextSkus),
         independentStockRule: sourceProductBase.independentStockRule,
@@ -1882,11 +3479,16 @@ function ProductCreatePage() {
         specItems,
         storeChannelEnabled,
         sourceDraftMap: storeChannelSkuDraftMap,
-        rules: storeChannelRules,
+        config: storeChannelConfigDraft,
         targetStoreIds: storeChannelTargetStoreIds,
         createdAt,
       });
       const nextShareTargets = storeChannelPayload.shareTargets;
+      const storeChannelProductPoolConfigMap = new Map(
+        (storeChannelPayload.storeChannelConfig?.productPoolStoreConfigs || []).map(
+          (item) => [item.storeId, item]
+        )
+      );
       const referencedStoreIdSet = new Set(
         nextShareTargets
           .filter((item) => item.status === 'referenced')
@@ -1896,8 +3498,14 @@ function ProductCreatePage() {
         referencedStoreIdSet.has(item.storeId)
           ? {
               ...item,
-              sellStatus: 'sellable' as const,
-              channelStatus: 'off' as const,
+              sellStatus:
+                storeChannelProductPoolConfigMap.get(item.storeId)?.sellStatus ||
+                ('sellable' as const),
+              channelStatus:
+                storeChannelProductPoolConfigMap.get(item.storeId)?.channelStatus ===
+                'on'
+                  ? ('on' as const)
+                  : ('off' as const),
             }
           : item
       );
@@ -1919,6 +3527,11 @@ function ProductCreatePage() {
         productOwnershipId: nextOwnershipId,
         productType: sourceProduct?.productType || 'virtual',
         inventoryUnit,
+        isLimited: nextIsLimited,
+        limitCount: nextLimitCount,
+        detailHtml: nextDetailHtml,
+        purchaseLimit: nextPurchaseLimit,
+        detailContent: nextDetailContent,
         specMode,
         skus: nextSkusWithStatus,
         status: nextStatus,
@@ -1936,7 +3549,7 @@ function ProductCreatePage() {
         storeConfigs: nextStoreConfigs,
         independentPriceRule: storeChannelPayload.independentPriceRule,
         independentStockRule: storeChannelPayload.independentStockRule,
-        storeChannelRules: storeChannelPayload.storeChannelRules,
+        storeChannelConfig: storeChannelPayload.storeChannelConfig,
       };
     }
 
@@ -1954,22 +3567,23 @@ function ProductCreatePage() {
           specText: '',
           price: nextPrice,
           stock: nextStock,
-          status:
-            independentPriceEnabled && singleDraft.disabled ? 'off' : 'on',
+          status: singleDraft.disabled ? 'off' : 'on',
         },
       ];
     } else {
-      nextSkus = specItems.map((item, index) => {
-        const draft = channelSkuDraftMap[String(item.id)] || {};
-
-        return {
-          id: createProductSkuId(productId, index),
-          specText: buildSpecText(item, index),
-          price: 0,
-          stock: 0,
-          status: independentPriceEnabled && draft.disabled ? 'off' : 'on',
-        };
-      });
+      nextSkus = multiSpecAttributeRows.map((row, index) => ({
+        id: createProductSkuId(productId, index),
+        specText: row.specText,
+        price:
+          typeof row.price === 'number' && Number.isFinite(row.price) ? row.price : 0,
+        stock:
+          typeof row.stock === 'number' && Number.isFinite(row.stock)
+            ? Math.max(0, Math.floor(row.stock))
+            : 0,
+        status: row.status,
+        ...(row.image ? { image: row.image } : {}),
+        ...(row.isDefaultSelected ? { isDefaultSelected: true } : {}),
+      }));
 
       nextPrice = nextSkus.length
         ? Math.min(...nextSkus.map((item) => item.price))
@@ -2033,6 +3647,11 @@ function ProductCreatePage() {
       productOwnershipId: nextOwnershipId,
       productType: sourceProduct?.productType || 'virtual',
       inventoryUnit,
+      isLimited: nextIsLimited,
+      limitCount: nextLimitCount,
+      detailHtml: nextDetailHtml,
+      purchaseLimit: nextPurchaseLimit,
+      detailContent: nextDetailContent,
       specMode,
       skus: nextSkusWithStatus,
       status: nextStatus,
@@ -2047,7 +3666,7 @@ function ProductCreatePage() {
       storeConfigs: nextStoreConfigs,
       independentPriceRule: buildSubmitIndependentPriceRule(nextSkusWithStatus),
       independentStockRule: sourceProduct?.independentStockRule,
-      storeChannelRules: sourceProduct?.storeChannelRules,
+      storeChannelConfig: sourceProduct?.storeChannelConfig,
     };
   }
 
@@ -2063,6 +3682,35 @@ function ProductCreatePage() {
       }
     }
 
+    if (!isEditMode && specMode === 'multi') {
+      if (!productCatalogId) {
+        Message.warning('请先选择商品类目');
+        return;
+      }
+
+      if (!currentCatalogSpecs.length) {
+        Message.warning('当前类目下暂无可用规格项，请先前往商品规格完成配置');
+        return;
+      }
+
+      if (!selectedCatalogSpecs.length) {
+        Message.warning('请至少添加并选择 1 个规格项');
+        return;
+      }
+
+      const hasIncompleteSpecValues = selectedCatalogSpecs.some(
+        (item) =>
+          normalizeSelectedProductSpecValues(
+            selectedCatalogSpecValueMap[item.id] || []
+          ).length === 0
+      );
+
+      if (hasIncompleteSpecValues || !specItems.length) {
+        Message.warning('请为每个规格项至少选择 1 个规格值');
+        return;
+      }
+    }
+
     if (isStoreScopedCreatePage) {
       try {
         const validationError = validateStoreChannelSkuDraftMap({
@@ -2070,7 +3718,7 @@ function ProductCreatePage() {
           specItems,
           storeChannelEnabled,
           sourceDraftMap: storeChannelSkuDraftMap,
-          rules: storeChannelRules,
+          config: storeChannelConfigDraft,
           targetStoreIds: storeChannelTargetStoreIds,
         });
 
@@ -2080,6 +3728,46 @@ function ProductCreatePage() {
         }
       } catch (error) {
         Message.warning(getErrorMessage(error));
+        return;
+      }
+    }
+
+    if (!isEditMode && specMode === 'multi') {
+      const visibleRows = multiSpecAttributeRows.filter((item) => item.status !== 'off');
+      const hasInvalidVisibleRow = visibleRows.some(
+        (item) =>
+          !item.image ||
+          typeof item.price !== 'number' ||
+          !Number.isFinite(item.price) ||
+          item.price < 0 ||
+          typeof item.stock !== 'number' ||
+          !Number.isFinite(item.stock) ||
+          item.stock < 0 ||
+          !Number.isInteger(item.stock)
+      );
+
+      if (hasInvalidVisibleRow) {
+        Message.warning('请先补齐所有显示 SKU 的图片、售价和库存');
+        return;
+      }
+    }
+
+    if (isEditMode && sourceProduct?.specMode === 'multi') {
+      const visibleRows = multiSpecAttributeRows.filter((item) => item.status !== 'off');
+      const hasInvalidVisibleRow = visibleRows.some(
+        (item) =>
+          !item.image ||
+          typeof item.price !== 'number' ||
+          !Number.isFinite(item.price) ||
+          item.price < 0 ||
+          typeof item.stock !== 'number' ||
+          !Number.isFinite(item.stock) ||
+          item.stock < 0 ||
+          !Number.isInteger(item.stock)
+      );
+
+      if (hasInvalidVisibleRow) {
+        Message.warning('请先补齐所有显示 SKU 的图片、售价和库存');
         return;
       }
     }
@@ -2148,7 +3836,7 @@ function ProductCreatePage() {
     () => storeChannelTargetStoreItems.map((item) => item.id),
     [storeChannelTargetStoreItems]
   );
-  const storeChannelSkuMetaItems = useMemo(
+  const storeChannelCreateSkuMetaItems = useMemo(
     () =>
       buildStoreChannelSkuMetaItems(
         'draft_product',
@@ -2158,10 +3846,49 @@ function ProductCreatePage() {
       ),
     [specItems, specMode, storeChannelSkuDraftMap]
   );
-  const activeStoreChannelRule = useMemo(
+  const storeChannelEditSkuMetaItems = useMemo<StoreChannelSkuMetaItem[]>(() => {
+    if (!isStoreScopedOwnedEditPage || !sourceProduct) {
+      return [];
+    }
+
+    if (sourceProduct.specMode === 'multi') {
+      return editMultiSpecAttributeRows.map((row, index) => ({
+        key: row.key,
+        skuId: row.key,
+        specLabel: row.specText || `规格${index + 1}`,
+        sourcePrice: row.price,
+        sourceStock: row.stock,
+      }));
+    }
+
+    return (sourceProduct.skus || []).map((sku, index) => {
+      const draft = editSkuDraftMap[sku.id] || {};
+
+      return {
+        key: sku.id,
+        skuId: sku.id,
+        specLabel: sku.specText || (index === 0 ? '默认规格' : `规格${index + 1}`),
+        sourcePrice:
+          typeof draft.price === 'number' && Number.isFinite(draft.price)
+            ? draft.price
+            : sku.price,
+        sourceStock:
+          typeof draft.stock === 'number' && Number.isFinite(draft.stock)
+            ? draft.stock
+            : sku.stock,
+      };
+    });
+  }, [editMultiSpecAttributeRows, editSkuDraftMap, isStoreScopedOwnedEditPage, sourceProduct]);
+  const storeChannelSkuMetaItems = useMemo(
     () =>
-      storeChannelRules.find((item) => item.id === activeStoreChannelRuleId),
-    [activeStoreChannelRuleId, storeChannelRules]
+      isStoreScopedOwnedEditPage
+        ? storeChannelEditSkuMetaItems
+        : storeChannelCreateSkuMetaItems,
+    [
+      isStoreScopedOwnedEditPage,
+      storeChannelCreateSkuMetaItems,
+      storeChannelEditSkuMetaItems,
+    ]
   );
   const channelSkuSpecTitle = useMemo(() => {
     if (specMode !== 'multi') {
@@ -2176,7 +3903,7 @@ function ProductCreatePage() {
     return specNameSet.size === 1 ? specName : '规格';
   }, [specItems, specMode]);
   const storeChannelSourceTableData = useMemo<StoreChannelSkuMetaItem[]>(() => {
-    if (!isStoreScopedCreatePage || isEditMode) {
+    if (!useStoreScopedChannelConfig) {
       return [];
     }
 
@@ -2187,13 +3914,85 @@ function ProductCreatePage() {
           ? '默认规格'
           : channelSkuSpecTitle !== '规格'
             ? item.specLabel.split('：').slice(-1)[0] || item.specLabel
-            : item.specLabel,
+            : buildCompactSkuLabel(item.specLabel),
     }));
   }, [
     channelSkuSpecTitle,
-    isEditMode,
-    isStoreScopedCreatePage,
+    useStoreScopedChannelConfig,
     storeChannelSkuMetaItems,
+  ]);
+  const storeChannelAvailableSkuKeys = useMemo(
+    () => storeChannelSourceTableData.map((item) => item.key),
+    [storeChannelSourceTableData]
+  );
+  const storeChannelProductPoolSkuTreeData = useMemo(
+    () => [
+      {
+        key: SKU_TREE_ROOT_KEY,
+        title: '全部 SKU',
+        disabled: !storeChannelAvailableSkuKeys.length,
+        children: storeChannelSourceTableData.map((item) => ({
+          key: item.key,
+          title: buildCompactSkuLabel(item.specLabel),
+        })),
+      },
+    ],
+    [storeChannelAvailableSkuKeys.length, storeChannelSourceTableData]
+  );
+  const storeChannelProductPoolTableData = useMemo<
+    StoreChannelProductPoolTableItem[]
+  >(() => {
+    const keyword = storeChannelProductPoolKeyword.trim().toLowerCase();
+    const matchedSkuKeySet = new Set(storeChannelAvailableSkuKeys);
+
+    return storeChannelTargetStoreItems
+      .map((item) => {
+        const draftConfig =
+          draftStoreChannelProductPoolConfigMap[item.id] ||
+          createDefaultStoreChannelProductPoolStoreConfig(item.id);
+        const normalizedSellableSkuKeys =
+          draftConfig.sellStatus === 'sellable'
+            ? uniqueStringArray(
+                draftConfig.sellableSkuKeys.filter((skuKey) =>
+                  matchedSkuKeySet.has(skuKey)
+                )
+              )
+            : [];
+        const isSellable = draftConfig.sellStatus === 'sellable';
+
+        return {
+          ...item,
+          ...draftConfig,
+          sellStatus: isSellable ? ('sellable' as const) : ('unsellable' as const),
+          channelStatus:
+            isSellable && draftConfig.channelStatus === 'on'
+              ? ('on' as const)
+              : ('off' as const),
+          shareMode: 'product_pool' as const,
+          sellableSkuKeys: isSellable ? normalizedSellableSkuKeys : [],
+          allowSelfPrice: isSellable && draftConfig.allowSelfPrice === true,
+        };
+      })
+      .filter((item) => {
+        if (keyword && !item.name.toLowerCase().includes(keyword)) {
+          return false;
+        }
+
+        if (storeChannelProductPoolStatusFilter !== 'all') {
+          return (
+            getStoreChannelProductPoolSellState(item.sellStatus) ===
+            storeChannelProductPoolStatusFilter
+          );
+        }
+
+        return true;
+      });
+  }, [
+    draftStoreChannelProductPoolConfigMap,
+    storeChannelAvailableSkuKeys,
+    storeChannelProductPoolKeyword,
+    storeChannelProductPoolStatusFilter,
+    storeChannelTargetStoreItems,
   ]);
   const channelSkuTableData = useMemo<ChannelSkuTableItem[]>(() => {
     if (specMode === 'single') {
@@ -2203,7 +4002,7 @@ function ProductCreatePage() {
         {
           key: CHANNEL_SINGLE_SKU_KEY,
           specLabel: '单规格',
-          disabled: independentPriceEnabled ? Boolean(draft.disabled) : false,
+          disabled: Boolean(draft.disabled),
         },
       ];
     }
@@ -2218,16 +4017,30 @@ function ProductCreatePage() {
             channelSkuSpecTitle !== '规格' && specValue
               ? specValue
               : buildSpecText(item, index),
-          disabled: independentPriceEnabled ? Boolean(draft.disabled) : false,
+          disabled: Boolean(draft.disabled),
         };
       });
   }, [
     channelSkuDraftMap,
     channelSkuSpecTitle,
-    independentPriceEnabled,
     specItems,
     specMode,
   ]);
+  const multiSpecSkuTableData = useMemo(
+    () =>
+      specItems.map((item, index) => {
+        const draft = channelSkuDraftMap[String(item.id)] || {};
+
+        return {
+          key: String(item.id),
+          specLabel: buildSpecText(item, index),
+          price: draft.price,
+          stock: draft.stock,
+          disabled: Boolean(draft.disabled),
+        };
+      }),
+    [channelSkuDraftMap, specItems]
+  );
   const storeChannelSourceTableColumns = useMemo<Array<any>>(
     () => [
       {
@@ -2287,164 +4100,6 @@ function ProductCreatePage() {
     []
   );
 
-  function getStoreChannelRuleTableData(
-    rule: StoreChannelRuleDraftItem
-  ): StoreChannelRuleTableItem[] {
-    const matchedSkuKeySet = new Set(
-      getStoreChannelRuleMatchedSkuKeys(
-        rule,
-        storeChannelSourceTableData.map((item) => item.key)
-      )
-    );
-    const skuConfigMap = new Map(rule.skuConfigs.map((item) => [item.skuKey, item]));
-
-    return storeChannelSourceTableData
-      .filter((item) => matchedSkuKeySet.has(item.key))
-      .map((item) => {
-        const skuConfig = skuConfigMap.get(item.key);
-
-        return {
-          ...item,
-          suggestedMinPrice: skuConfig?.suggestedMinPrice,
-          suggestedMaxPrice: skuConfig?.suggestedMaxPrice,
-          suggestedMinStock: skuConfig?.suggestedMinStock,
-          suggestedMaxStock: skuConfig?.suggestedMaxStock,
-        };
-      });
-  }
-
-  function getStoreChannelRuleTableEmptyText(rule: StoreChannelRuleDraftItem) {
-    if (!storeChannelSourceTableData.length) {
-      return '请先添加规格信息';
-    }
-
-    return rule.skuScope === 'specificSkus' ? '请先选择SKU' : '暂无可配置 SKU';
-  }
-
-  function buildStoreChannelRuleTableColumns(rule: StoreChannelRuleDraftItem) {
-    const columns = [
-      {
-        title: 'SKU 名称',
-        dataIndex: 'specLabel',
-        width: 220,
-        render: (value: string) => (
-          <Typography.Text className={styles.channelSkuSpecText} ellipsis>
-            {value}
-          </Typography.Text>
-        ),
-      },
-      {
-        title: '源售价',
-        dataIndex: 'sourcePrice',
-        width: 180,
-        render: (_: number, record: StoreChannelRuleTableItem) => (
-          <span className={styles.independentPriceText}>
-            {formatStoreChannelSourcePrice(record.sourcePrice)}
-          </span>
-        ),
-      },
-      {
-        title: '源库存',
-        dataIndex: 'sourceStock',
-        width: 180,
-        render: (_: number, record: StoreChannelRuleTableItem) => (
-          <span className={styles.independentPriceText}>
-            {formatStoreChannelSourceStock(record.sourceStock)}
-          </span>
-        ),
-      },
-    ];
-
-    if (rule.fieldKeys.includes('productPrice')) {
-      columns.splice(2, 0, {
-        title: '建议零售价区间',
-        dataIndex: 'suggestedMinPrice',
-        width: 340,
-        render: (_: number, record: StoreChannelRuleTableItem) => (
-          <div className={styles.storeChannelRangeInputGroup}>
-            <InputNumber
-              className={styles.storeChannelRangeInput}
-              min={0}
-              precision={2}
-              prefix="¥"
-              placeholder="最低价"
-              value={record.suggestedMinPrice}
-              onChange={(value) =>
-                updateStoreChannelRuleSkuConfig(
-                  rule.id,
-                  record.key,
-                  'suggestedMinPrice',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-            <span className={styles.storeChannelRangeSeparator}>-</span>
-            <InputNumber
-              className={styles.storeChannelRangeInput}
-              min={0}
-              precision={2}
-              prefix="¥"
-              placeholder="最高价"
-              value={record.suggestedMaxPrice}
-              onChange={(value) =>
-                updateStoreChannelRuleSkuConfig(
-                  rule.id,
-                  record.key,
-                  'suggestedMaxPrice',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-          </div>
-        ),
-      });
-    }
-
-    if (rule.fieldKeys.includes('productStock')) {
-      columns.push({
-        title: '建议库存区间',
-        dataIndex: 'suggestedMinStock',
-        width: 300,
-        render: (_: number, record: StoreChannelRuleTableItem) => (
-          <div className={styles.storeChannelRangeInputGroup}>
-            <InputNumber
-              className={styles.storeChannelRangeInput}
-              min={0}
-              precision={0}
-              placeholder="最低库存"
-              value={record.suggestedMinStock}
-              onChange={(value) =>
-                updateStoreChannelRuleSkuConfig(
-                  rule.id,
-                  record.key,
-                  'suggestedMinStock',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-            <span className={styles.storeChannelRangeSeparator}>-</span>
-            <InputNumber
-              className={styles.storeChannelRangeInput}
-              min={0}
-              precision={0}
-              placeholder="最高库存"
-              value={record.suggestedMaxStock}
-              onChange={(value) =>
-                updateStoreChannelRuleSkuConfig(
-                  rule.id,
-                  record.key,
-                  'suggestedMaxStock',
-                  typeof value === 'number' ? value : undefined
-                )
-              }
-            />
-          </div>
-        ),
-      });
-    }
-
-    return columns;
-  }
   const independentPriceRuleTableData = useMemo<
     IndependentPriceRuleTableItem[]
   >(() => {
@@ -2489,7 +4144,10 @@ function ProductCreatePage() {
           channelSkuSpecTitle !== '规格' && specValue
             ? specValue
             : buildSpecText(item, index),
-        sourcePrice: undefined,
+        sourcePrice:
+          typeof channelSkuDraftMap[key]?.price === 'number'
+            ? channelSkuDraftMap[key]?.price
+            : undefined,
         minPrice: draft.minPrice,
         maxPrice: draft.maxPrice,
         disabled: Boolean(channelSkuDraftMap[key]?.disabled),
@@ -2505,6 +4163,84 @@ function ProductCreatePage() {
     specItems,
     specMode,
   ]);
+  const multiSpecSkuColumns: Array<any> = [
+    {
+      title: 'SKU 规格',
+      dataIndex: 'specLabel',
+      width: 260,
+      render: (value: string, record: { disabled: boolean }) => (
+        <Typography.Text
+          className={
+            record.disabled ? styles.channelSkuDisabledText : styles.channelSkuSpecText
+          }
+          ellipsis
+        >
+          {value}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: '售价',
+      dataIndex: 'price',
+      width: 220,
+      render: (_: number, record: { key: string; price?: number; disabled: boolean }) => (
+        <InputNumber
+          className={styles.independentMoneyInput}
+          disabled={record.disabled}
+          min={0}
+          precision={2}
+          prefix="¥"
+          placeholder="请输入售价"
+          value={record.price}
+          onChange={(value) =>
+            handleChannelSkuDraftChange(
+              record.key,
+              'price',
+              typeof value === 'number' ? value : undefined
+            )
+          }
+        />
+      ),
+    },
+    {
+      title: '库存',
+      dataIndex: 'stock',
+      width: 220,
+      render: (_: number, record: { key: string; stock?: number; disabled: boolean }) => (
+        <InputNumber
+          className={styles.independentMoneyInput}
+          disabled={record.disabled}
+          min={0}
+          precision={0}
+          placeholder="请输入库存"
+          value={record.stock}
+          onChange={(value) =>
+            handleChannelSkuDraftChange(
+              record.key,
+              'stock',
+              typeof value === 'number' ? value : undefined
+            )
+          }
+        />
+      ),
+    },
+    {
+      title: '操作',
+      dataIndex: 'operation',
+      width: 120,
+      align: 'right' as const,
+      render: (_: string, record: { key: string; disabled: boolean }) => (
+        <Button
+          size="small"
+          status={record.disabled ? undefined : 'danger'}
+          type="text"
+          onClick={() => handleChannelSkuDisabledToggle(record.key)}
+        >
+          {record.disabled ? '启用' : '禁用'}
+        </Button>
+      ),
+    },
+  ];
   const productStoreSummary = useMemo(
     () => getProductStoreSummary(productStoreConfigs),
     [productStoreConfigs]
@@ -2530,9 +4266,7 @@ function ProductCreatePage() {
   );
   const storeConfigTableData = useMemo<StoreConfigTableItem[]>(() => {
     const keyword = storeKeyword.trim().toLowerCase();
-    const enabledSkuKeys = uniqueStringArray(
-      channelSkuTableData.filter((item) => !item.disabled).map((item) => item.key)
-    );
+    const enabledSkuKeys = uniqueStringArray(editableEnabledSkuKeys);
 
     return scopedStoreItems
       .filter((item) => {
@@ -2586,9 +4320,9 @@ function ProductCreatePage() {
         };
       });
   }, [
-    channelSkuTableData,
     draftStoreConfigMap,
     draftStoreShareSettingMap,
+    editableEnabledSkuKeys,
     sourceStoreIdForSubmit,
     storeDepartmentFilter,
     scopedStoreItems,
@@ -2644,7 +4378,7 @@ function ProductCreatePage() {
       dataIndex: 'sellableSkuKeys',
       width: 360,
       render: (_: string[], record: StoreConfigTableItem) => {
-        const enabledSkuRows = channelSkuTableData.filter((item) => !item.disabled);
+        const enabledSkuRows = editableStoreSkuItems.filter((item) => !item.disabled);
         const treeData = [
           {
             key: SKU_TREE_ROOT_KEY,
@@ -2652,19 +4386,26 @@ function ProductCreatePage() {
             disabled: !enabledSkuRows.length,
             children: enabledSkuRows.map((item) => ({
               key: item.key,
-              title: item.specLabel,
+              title: buildCompactSkuLabel(item.specLabel),
             })),
           },
         ];
-        const selectedKeys = record.sellableSkuKeys.filter((skuKey) =>
-          enabledSkuRows.some((item) => item.key === skuKey)
+        const availableSkuKeys = enabledSkuRows.map((item) => item.key);
+        const selectedKeys = buildTreeSelectDisplaySkuKeys(
+          record.sellableSkuKeys,
+          availableSkuKeys
         );
 
         return (
           <TreeSelect
             multiple
             treeCheckable
+            treeCheckedStrategy={TreeSelect.SHOW_PARENT}
             allowClear
+            maxTagCount={{
+              count: 1,
+              render: (invisibleTagCount) => `+${invisibleTagCount}`,
+            }}
             className={styles.storeSkuTreeSelect}
             disabled={
               record.sellStatus !== 'sellable' ||
@@ -2675,11 +4416,7 @@ function ProductCreatePage() {
             treeData={treeData}
             value={selectedKeys}
             onChange={(value) => {
-              const nextKeys = normalizeStringArray(value).filter(
-                (skuKey) =>
-                  skuKey !== SKU_TREE_ROOT_KEY &&
-                  enabledSkuRows.some((item) => item.key === skuKey)
-              );
+              const nextKeys = normalizeTreeSelectSkuKeys(value, availableSkuKeys);
               handleDraftStoreSellableSkuKeysChange(record.id, nextKeys);
             }}
           />
@@ -2719,6 +4456,97 @@ function ProductCreatePage() {
           </Select>
         );
       },
+    },
+  ];
+  const storeChannelProductPoolColumns: Array<any> = [
+    {
+      title: '店铺名称',
+      dataIndex: 'name',
+      width: 360,
+      render: (_: string, record: StoreChannelProductPoolTableItem) => (
+        <div className={styles.storeCell}>
+          <Tag
+            className={styles.storeTag}
+            color={record.type === 'store' ? 'arcoblue' : 'orangered'}
+          >
+            {PRODUCT_STORE_TYPE_LABEL_MAP[record.type]}
+          </Tag>
+          <span className={styles.storeName}>{record.name}</span>
+        </div>
+      ),
+    },
+    {
+      title: '可售状态',
+      dataIndex: 'sellStatus',
+      width: 180,
+      render: (
+        _: ProductStoreSellStatus,
+        record: StoreChannelProductPoolTableItem
+      ) => (
+        <Select
+          value={getStoreChannelProductPoolSellState(record.sellStatus)}
+          onChange={(value) =>
+            handleStoreChannelProductPoolSellStatusChange(
+              record.id,
+              value as ProductStoreSellStatus
+            )
+          }
+        >
+          {Object.entries(PRODUCT_STORE_SELL_STATUS_LABEL_MAP).map(
+            ([value, label]) => (
+              <Select.Option key={value} value={value}>
+                {label}
+              </Select.Option>
+            )
+          )}
+        </Select>
+      ),
+    },
+    {
+      title: '可售 SKU',
+      dataIndex: 'sellableSkuKeys',
+      width: 340,
+      render: (_: string[], record: StoreChannelProductPoolTableItem) => (
+        <TreeSelect
+          multiple
+          treeCheckable
+          treeCheckedStrategy={TreeSelect.SHOW_PARENT}
+          allowClear
+          maxTagCount={{
+            count: 1,
+            render: (invisibleTagCount) => `+${invisibleTagCount}`,
+          }}
+          className={styles.storeSkuTreeSelect}
+          disabled={record.sellStatus !== 'sellable'}
+          placeholder="请选择可售 SKU"
+          treeData={storeChannelProductPoolSkuTreeData}
+          value={buildTreeSelectDisplaySkuKeys(
+            record.sellableSkuKeys,
+            storeChannelAvailableSkuKeys
+          )}
+          onChange={(value) => {
+            const nextKeys = normalizeTreeSelectSkuKeys(
+              value,
+              storeChannelAvailableSkuKeys
+            );
+            handleStoreChannelProductPoolSellableSkuKeysChange(record.id, nextKeys);
+          }}
+        />
+      ),
+    },
+    {
+      title: '自主定价',
+      dataIndex: 'allowSelfPrice',
+      width: 160,
+      render: (value: boolean, record: StoreChannelProductPoolTableItem) => (
+        <Switch
+          checked={value}
+          disabled={record.sellStatus !== 'sellable'}
+          onChange={(checked) =>
+            handleStoreChannelProductPoolAllowSelfPriceChange(record.id, checked)
+          }
+        />
+      ),
     },
   ];
   const independentPriceRuleColumns = [
@@ -2868,6 +4696,525 @@ function ProductCreatePage() {
       ),
     },
   ];
+  const renderEditMultiSpecSelectorPanel = () => {
+    if (!selectedCatalogSpecs.length) {
+      return (
+        <div className={styles.specAttributeTip}>
+          当前商品规格结构无法映射到类目规格，请仅维护现有 SKU 信息。
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.specPanel}>
+        <div className={styles.specAttributeTip}>
+          编辑模式下不支持新增规格项，也不支持删除或修改已有规格值；仅可在现有规格项下补充新规格值。
+        </div>
+        <div className={styles.specList}>
+          {selectedCatalogSpecs.map((spec, rowIndex) => {
+            const selectedValues = uniqueStringArray(selectedCatalogSpecValueMap[spec.id] || []);
+            const existingValueSet = new Set(
+              sourceEditCatalogSpecDraft.existingValueMap[spec.id] || []
+            );
+            const newValues = selectedValues.filter((value) => !existingValueSet.has(value));
+            const selectableValues = spec.values.filter(
+              (value) => !selectedValues.includes(value)
+            );
+
+            return (
+              <div key={spec.id} className={styles.specItem}>
+                <div className={styles.specItemHeader}>
+                  <span className={styles.specItemTitle}>
+                    规格项 {rowIndex + 1} · {spec.name}
+                  </span>
+                </div>
+                <div className={styles.specValueList}>
+                  {(sourceEditCatalogSpecDraft.existingValueMap[spec.id] || []).map((value) => (
+                    <Tag key={`${spec.id}_${value}`} color="arcoblue">
+                      {value}
+                    </Tag>
+                  ))}
+                  {newValues.map((value) => (
+                    <Tag
+                      key={`${spec.id}_new_${value}`}
+                      closable
+                      color="green"
+                      onClose={() => handleEditCatalogSpecNewValueRemove(spec.id, value)}
+                    >
+                      {value}
+                    </Tag>
+                  ))}
+                </div>
+                <div className={styles.specActionRow}>
+                  <Select
+                    key={`${spec.id}_${selectedValues.length}`}
+                    allowClear
+                    className={styles.specValueSelect}
+                    disabled={!selectableValues.length}
+                    placeholder={
+                      selectableValues.length
+                        ? `新增${spec.name}规格值`
+                        : `${spec.name}规格值已全部添加`
+                    }
+                    onChange={(value) =>
+                      handleEditCatalogSpecValueAppend(
+                        spec.id,
+                        typeof value === 'string' ? value : undefined
+                      )
+                    }
+                  >
+                    {selectableValues.map((value) => (
+                      <Select.Option key={value} value={value}>
+                        {value}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const renderMultiSpecSelectorPanel = () => {
+    if (!productCatalogId) {
+      return (
+        <div className={styles.specAttributeTip}>
+          请先选择商品类目，再从该类目下已配置的规格项中选择规格值。
+        </div>
+      );
+    }
+
+    if (!currentCatalogSpecs.length) {
+      return (
+        <div className={styles.specAttributeTip}>
+          当前类目下暂无可用规格项，请先前往“商品配置 / 商品规格”完成配置。
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.specPanel}>
+        <div className={styles.specTemplateHeader}>
+          <div className={styles.specTemplateActions}>
+            <Select
+              allowClear
+              className={styles.specTemplateSelect}
+              disabled={!currentCatalogSpecTemplates.length}
+              placeholder={
+                currentCatalogSpecTemplates.length
+                  ? '选择规格模板（可选）'
+                  : '当前类目暂无规格模板'
+              }
+              value={selectedCatalogSpecTemplateId}
+              onChange={(value) =>
+                handleCatalogSpecTemplateChange(
+                  typeof value === 'string' ? value : undefined
+                )
+              }
+            >
+              {currentCatalogSpecTemplates.map((item) => (
+                <Select.Option key={item.id} value={item.id}>
+                  {item.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className={styles.specList}>
+          {selectedCatalogSpecIds.map((selectedSpecId, rowIndex) => {
+            const selectableSpecs = getSelectableProductSpecsForRow(
+              currentCatalogSpecs,
+              selectedCatalogSpecIds,
+              rowIndex
+            );
+            const matchedSpec = selectableSpecs.find((item) => item.id === selectedSpecId);
+            const draftValues = matchedSpec
+              ? getSelectedCatalogSpecDraftValues(matchedSpec.id)
+              : [];
+            const selectedValueSet = new Set(
+              draftValues.map((value) => value.trim()).filter(Boolean)
+            );
+
+            return (
+              <div key={`spec_row_${rowIndex}`} className={styles.specItem}>
+                <div className={styles.specItemHeader}>
+                  <span className={styles.specItemTitle}>规格项 {rowIndex + 1}</span>
+                  <Button
+                    className={styles.specValueRemove}
+                    icon={<IconDelete />}
+                    size="mini"
+                    type="text"
+                    onClick={() => handleCatalogSpecDraftRemove(rowIndex)}
+                  />
+                </div>
+                <div className={styles.specSelectorRow}>
+                  <span className={styles.specDragHandle}>
+                    <IconDragDotVertical />
+                  </span>
+                  <Select
+                    allowClear
+                    className={styles.specItemSelect}
+                    placeholder="请选择规格项"
+                    value={matchedSpec ? matchedSpec.id : undefined}
+                    onChange={(value) =>
+                      handleCatalogSpecDraftChange(
+                        rowIndex,
+                        typeof value === 'string' ? value : undefined
+                      )
+                    }
+                  >
+                    {selectableSpecs.map((item) => (
+                      <Select.Option key={item.id} value={item.id}>
+                        {item.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+
+                {matchedSpec ? (
+                  <div className={styles.specValueList}>
+                    {draftValues.map((draftValue, valueIndex) => (
+                      <div
+                        key={`${matchedSpec.id}_${valueIndex}`}
+                        className={styles.specValueRow}
+                      >
+                        <span className={styles.specDragHandle}>
+                          <IconDragDotVertical />
+                        </span>
+                        <Select
+                          allowClear
+                          className={styles.specValueSelect}
+                          placeholder={`请选择${matchedSpec.name}规格值`}
+                          value={draftValue || undefined}
+                          onChange={(value) =>
+                            handleCatalogSpecValueDraftChange(
+                              matchedSpec.id,
+                              valueIndex,
+                              typeof value === 'string' ? value : undefined
+                            )
+                          }
+                        >
+                          {matchedSpec.values.map((value) => {
+                            const disabled =
+                              value !== draftValue && selectedValueSet.has(value);
+
+                            return (
+                              <Select.Option
+                                key={value}
+                                value={value}
+                                disabled={disabled}
+                              >
+                                {value}
+                              </Select.Option>
+                            );
+                          })}
+                        </Select>
+                        <Button
+                          className={styles.specValueRemove}
+                          icon={<IconDelete />}
+                          size="mini"
+                          type="text"
+                          onClick={() =>
+                            handleCatalogSpecValueDraftRemove(matchedSpec.id, valueIndex)
+                          }
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      className={styles.specAddValueButton}
+                      size="mini"
+                      type="text"
+                      onClick={() => handleCatalogSpecValueDraftAdd(matchedSpec.id)}
+                    >
+                      添加规格值
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+
+          {!selectedCatalogSpecIds.length ? (
+            <div className={styles.specSelectionHint}>
+              请先添加规格项，再从当前类目下已配置的枚举值中选择规格值。
+            </div>
+          ) : null}
+
+          <div className={styles.specActionRow}>
+            <Button
+              className={styles.specAddItemButton}
+              size="mini"
+              type="text"
+              disabled={selectedCatalogSpecIds.length >= currentCatalogSpecs.length}
+              onClick={handleCatalogSpecDraftAdd}
+            >
+              添加规格项
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMultiSpecAttributeTable = () => {
+    const tableData: MultiSpecAttributeTableRow[] = [
+      {
+        rowType: 'batch',
+        key: 'batch',
+      },
+      ...multiSpecAttributeRows.map((item) => ({
+        rowType: 'sku' as const,
+        ...item,
+      })),
+    ];
+    const columns = [
+      ...multiSpecDimensions.map((dimension) => ({
+        title: dimension.label,
+        dataIndex: dimension.key,
+        width: 180,
+        render: (_: string, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <Select
+              allowClear
+              className={styles.multiSpecFilterSelect}
+              placeholder={`全部${dimension.label}`}
+              value={multiSpecBatchDraft.specFilters[dimension.key] || undefined}
+              onChange={(value) =>
+                handleMultiSpecBatchFilterChange(
+                  dimension.key,
+                  typeof value === 'string' ? value : undefined
+                )
+              }
+            >
+              {dimension.values.map((value) => (
+                <Select.Option key={value} value={value}>
+                  {value}
+                </Select.Option>
+              ))}
+            </Select>
+          ) : (
+            <Typography.Text>{record.specValueMap[dimension.key] || '--'}</Typography.Text>
+          ),
+      })),
+      {
+        title: (
+          <>
+            <span className={styles.requiredMark}>*</span>
+            图片
+          </>
+        ),
+        dataIndex: 'image',
+        width: 140,
+        render: (_: ProductCarouselImage | undefined, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <Upload
+              accept="image/*"
+              className={styles.multiSpecImageUpload}
+              fileList={
+                multiSpecBatchDraft.image
+                  ? buildUploadFileListFromCarouselImages([multiSpecBatchDraft.image])
+                  : []
+              }
+              imagePreview
+              limit={1}
+              listType="picture-card"
+              multiple={false}
+              customRequest={({ onSuccess }) => onSuccess({})}
+              onChange={handleMultiSpecBatchImageChange}
+              onRemove={handleMultiSpecBatchImageRemove}
+            />
+          ) : (
+            <Upload
+              accept="image/*"
+              className={styles.multiSpecImageUpload}
+              fileList={
+                record.image ? buildUploadFileListFromCarouselImages([record.image]) : []
+              }
+              imagePreview
+              limit={1}
+              listType="picture-card"
+              multiple={false}
+              customRequest={({ onSuccess }) => onSuccess({})}
+              onChange={(fileList) =>
+                isEditMode
+                  ? handleEditMultiSkuImageChange(record.key, fileList)
+                  : handleCreateMultiSkuImageChange(record.key, fileList)
+              }
+              onRemove={() =>
+                isEditMode
+                  ? handleEditMultiSkuImageRemove(record.key)
+                  : handleCreateMultiSkuImageRemove(record.key)
+              }
+            />
+          ),
+      },
+      {
+        title: (
+          <>
+            <span className={styles.requiredMark}>*</span>
+            售价
+          </>
+        ),
+        dataIndex: 'price',
+        width: 180,
+        render: (_: number | undefined, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <InputNumber
+              className={styles.multiSpecNumberInput}
+              min={0}
+              precision={2}
+              prefix="¥"
+              placeholder="售价"
+              value={multiSpecBatchDraft.price}
+              onChange={(value) =>
+                handleMultiSpecBatchFieldChange(
+                  'price',
+                  typeof value === 'number' ? value : undefined
+                )
+              }
+            />
+          ) : (
+            <InputNumber
+              className={styles.multiSpecNumberInput}
+              min={0}
+              precision={2}
+              prefix="¥"
+              placeholder="售价"
+              value={record.price}
+              onChange={(value) =>
+                isEditMode
+                  ? handleEditMultiSkuFieldChange(
+                      record.key,
+                      'price',
+                      typeof value === 'number' ? value : undefined
+                    )
+                  : handleCreateMultiSkuFieldChange(
+                      record.key,
+                      'price',
+                      typeof value === 'number' ? value : undefined
+                    )
+              }
+            />
+          ),
+      },
+      {
+        title: (
+          <>
+            <span className={styles.requiredMark}>*</span>
+            库存
+          </>
+        ),
+        dataIndex: 'stock',
+        width: 180,
+        render: (_: number | undefined, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <InputNumber
+              className={styles.multiSpecNumberInput}
+              min={0}
+              precision={0}
+              placeholder="库存"
+              value={multiSpecBatchDraft.stock}
+              onChange={(value) =>
+                handleMultiSpecBatchFieldChange(
+                  'stock',
+                  typeof value === 'number' ? value : undefined
+                )
+              }
+            />
+          ) : (
+            <InputNumber
+              className={styles.multiSpecNumberInput}
+              min={0}
+              precision={0}
+              placeholder="库存"
+              value={record.stock}
+              onChange={(value) =>
+                isEditMode
+                  ? handleEditMultiSkuFieldChange(
+                      record.key,
+                      'stock',
+                      typeof value === 'number' ? value : undefined
+                    )
+                  : handleCreateMultiSkuFieldChange(
+                      record.key,
+                      'stock',
+                      typeof value === 'number' ? value : undefined
+                    )
+              }
+            />
+          ),
+      },
+      {
+        title: '默认选中规格',
+        dataIndex: 'isDefaultSelected',
+        width: 180,
+        render: (_: boolean, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <Typography.Text type="secondary">--</Typography.Text>
+          ) : (
+            <Switch
+              checked={record.isDefaultSelected}
+              disabled={record.status === 'off'}
+              onChange={(checked) =>
+                isEditMode
+                  ? handleEditMultiSkuDefaultChange(record.key, checked)
+                  : handleCreateMultiSkuDefaultChange(record.key, checked)
+              }
+            />
+          ),
+      },
+      {
+        title: '操作',
+        dataIndex: 'operation',
+        width: 220,
+        render: (_: string, record: MultiSpecAttributeTableRow) =>
+          record.rowType === 'batch' ? (
+            <div className={styles.multiSpecBatchActions}>
+              <Button type="text" onClick={handleMultiSpecBatchApply}>
+                批量修改
+              </Button>
+              <Button type="text" onClick={handleMultiSpecBatchClear}>
+                清空
+              </Button>
+            </div>
+          ) : (
+            <div className={styles.multiSpecStatusCell}>
+              <span className={styles.multiSpecStatusText}>
+                {record.status === 'on' ? '显示' : '隐藏'}
+              </span>
+              <Switch
+                checked={record.status === 'on'}
+                onChange={(checked) =>
+                  isEditMode
+                    ? handleEditMultiSkuStatusChange(record.key, checked)
+                    : handleChannelSkuDisabledToggle(record.key)
+                }
+              />
+            </div>
+          ),
+      },
+    ];
+
+    return (
+      <div className={styles.storeChannelTablePanel}>
+        <Table
+          rowKey="key"
+          className={styles.multiSpecAttributeTable}
+          columns={columns}
+          data={tableData}
+          pagination={false}
+          scroll={{ x: 1160 }}
+          tableLayoutFixed
+        />
+        <Typography.Paragraph className={styles.storeChannelTableHint}>
+          系统会按已选规格值自动生成 SKU 组合；仅显示中的 SKU 需要补齐图片、售价和库存。
+        </Typography.Paragraph>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.page}>
@@ -2912,12 +5259,7 @@ function ProductCreatePage() {
                     ? getProductCatalogPathById(productCatalogId, catalogItems)
                     : undefined
                 }
-                onChange={(value) => {
-                  const nextPath = normalizePath(value);
-                  setProductCatalogId(
-                    getProductCatalogIdFromPath(nextPath, catalogItems)
-                  );
-                }}
+                onChange={handleProductCatalogChange}
               />
             </Form.Item>
 
@@ -3149,7 +5491,7 @@ function ProductCreatePage() {
             <Form.Item className={styles.fullWidth} label="商品规格" required>
               {isEditMode ? (
                 <Typography.Text className={styles.fieldHelp}>
-                  编辑模式仅允许修改已有 SKU 的售价与库存，不支持新增或删除规格。
+                  编辑模式不支持修改规格模式和规格项；已有规格值不可改删，但可补充新规格值。
                 </Typography.Text>
               ) : (
                 <Radio.Group value={specMode} onChange={setSpecMode}>
@@ -3161,14 +5503,21 @@ function ProductCreatePage() {
 
             <Form.Item className={styles.fullWidth} label="规格信息">
               {isEditMode ? (
-                <Table
-                  rowKey="id"
-                  columns={editSkuColumns}
-                  data={editSkuTableData}
-                  pagination={false}
-                  scroll={{ x: 760 }}
-                  tableLayoutFixed
-                />
+                sourceProduct?.specMode === 'multi' ? (
+                  <div className={styles.storeScopedSpecWrap}>
+                    {renderEditMultiSpecSelectorPanel()}
+                    {renderMultiSpecAttributeTable()}
+                  </div>
+                ) : (
+                  <Table
+                    rowKey="id"
+                    columns={editSkuColumns}
+                    data={editSkuTableData}
+                    pagination={false}
+                    scroll={{ x: 760 }}
+                    tableLayoutFixed
+                  />
+                )
               ) : isStoreScopedCreatePage ? (
                 <div className={styles.storeScopedSpecWrap}>
                   {specMode === 'single' ? (
@@ -3178,69 +5527,8 @@ function ProductCreatePage() {
                       </Typography.Paragraph>
                     </div>
                   ) : (
-                    <div className={styles.specPanel}>
-                      <Button type="outline" onClick={handleAddSpec}>
-                        添加新规格
-                      </Button>
-
-                      {specItems.length ? (
-                        <div className={styles.specList}>
-                          {specItems.map((item, index) => (
-                            <div key={item.id} className={styles.specItem}>
-                              <div className={styles.specItemHeader}>
-                                <span className={styles.specItemTitle}>规格 {index + 1}</span>
-                                <Button
-                                  size="mini"
-                                  type="text"
-                                  status="danger"
-                                  onClick={() => handleRemoveSpec(item.id)}
-                                >
-                                  删除
-                                </Button>
-                              </div>
-
-                              <div className={styles.specInputs}>
-                                <Input
-                                  value={item.name}
-                                  placeholder="请输入规格名称，例如：班级"
-                                  onChange={(value) =>
-                                    handleSpecChange(item.id, 'name', value)
-                                  }
-                                />
-                                <Input
-                                  value={item.value}
-                                  placeholder="请输入规格值，例如：1v1"
-                                  onChange={(value) =>
-                                    handleSpecChange(item.id, 'value', value)
-                                  }
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <Typography.Paragraph className={styles.specEmpty}>
-                          当前仅支持多规格，可点击"添加新规格"开始配置规格信息。
-                        </Typography.Paragraph>
-                      )}
-                    </div>
+                    renderMultiSpecSelectorPanel()
                   )}
-
-                  <div className={styles.storeChannelTablePanel}>
-                    <Table
-                      rowKey="key"
-                      className={styles.storeChannelTable}
-                      columns={storeChannelSourceTableColumns}
-                      data={storeChannelSourceTableData}
-                      noDataElement="请先添加规格信息"
-                      pagination={false}
-                      scroll={{ x: 760 }}
-                      tableLayoutFixed
-                    />
-                    <Typography.Paragraph className={styles.storeChannelTableHint}>
-                      请先维护每个 SKU 的源售价和源库存；开启规则后，规格明细会自动展示这里的值。
-                    </Typography.Paragraph>
-                  </div>
                 </div>
               ) : specMode === 'single' ? (
                 <div className={styles.specPanel}>
@@ -3304,47 +5592,8 @@ function ProductCreatePage() {
                   </div>
                 </div>
               ) : (
-                <div className={styles.specPanel}>
-                  <Button type="outline" onClick={handleAddSpec}>
-                    添加新规格
-                  </Button>
-
-                  {specItems.length ? (
-                    <div className={styles.specList}>
-                      {specItems.map((item, index) => (
-                        <div key={item.id} className={styles.specItem}>
-                          <div className={styles.specItemHeader}>
-                            <span className={styles.specItemTitle}>规格 {index + 1}</span>
-                            <Button
-                              size="mini"
-                              type="text"
-                              status="danger"
-                              onClick={() => handleRemoveSpec(item.id)}
-                            >
-                              删除
-                            </Button>
-                          </div>
-
-                          <div className={styles.specInputs}>
-                            <Input
-                              value={item.name}
-                              placeholder="请输入规格名称，例如：颜色"
-                              onChange={(value) => handleSpecChange(item.id, 'name', value)}
-                            />
-                            <Input
-                              value={item.value}
-                              placeholder="请输入规格值，例如：红色,蓝色"
-                              onChange={(value) => handleSpecChange(item.id, 'value', value)}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Typography.Paragraph className={styles.specEmpty}>
-                      当前仅支持多规格，可点击"添加新规格"开始配置规格信息。
-                    </Typography.Paragraph>
-                  )}
+                <div className={styles.storeScopedSpecWrap}>
+                  {renderMultiSpecSelectorPanel()}
                 </div>
               )}
             </Form.Item>
@@ -3352,18 +5601,10 @@ function ProductCreatePage() {
             {!isEditMode && specMode === 'multi' && (
               <Form.Item className={styles.fullWidth} label="商品属性配置项">
                 {specItems.length ? (
-                  <div className={styles.specAttributePanel}>
-                    <Typography.Paragraph className={styles.attributeHint}>
-                      已添加规格信息。商品属性配置区域已激活，后续可按规格联动展示具体属性项。
-                    </Typography.Paragraph>
-                    <div className={styles.placeholderRows}>
-                      <div className={styles.placeholderRow}>商品属性配置项预留区 01</div>
-                      <div className={styles.placeholderRow}>商品属性配置项预留区 02</div>
-                    </div>
-                  </div>
+                  renderMultiSpecAttributeTable()
                 ) : (
                   <div className={styles.specAttributeTip}>
-                    请先在规格模块中添加规格信息。添加规格信息后，商品属性才会展示。
+                    请先选择规格项并补齐规格值。生成 SKU 后，商品属性配置区域才会展示。
                   </div>
                 )}
               </Form.Item>
@@ -3600,7 +5841,7 @@ function ProductCreatePage() {
         </Form>
       </Card>
 
-      {isStoreScopedCreatePage && !isEditMode && (
+      {useStoreScopedChannelConfig && (
         <Card className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <Typography.Title className={styles.sectionTitle} heading={6}>
@@ -3623,214 +5864,63 @@ function ProductCreatePage() {
               </Form.Item>
 
               {storeChannelEnabled && (
-                <Form.Item className={styles.fullWidth} label="规则配置">
-                  <div className={styles.storeChannelRuleList}>
-                    {storeChannelRules.map((rule, index) => {
-                      const fieldLabels = getStoreChannelFieldLabels(rule.fieldKeys);
-                      const ruleTableData = getStoreChannelRuleTableData(rule);
-                      const matchedSkuKeys = getStoreChannelRuleMatchedSkuKeys(
-                        rule,
-                        storeChannelSourceTableData.map((item) => item.key)
-                      );
+                <>
+                  <Form.Item className={styles.fullWidth} label="生效商品池">
+                    <>
+                      <Radio.Group
+                        value={storeChannelConfigDraft.shareMode}
+                        onChange={(value) =>
+                          patchStoreChannelConfig({
+                            shareMode: value as StoreChannelConfigDraftItem['shareMode'],
+                            storeScope:
+                              value === 'product_pool' ? 'specificStores' : 'allStores',
+                            storeIds:
+                              value === 'product_pool'
+                                ? storeChannelConfigDraft.storeIds
+                                : [],
+                          })
+                        }
+                      >
+                        <Radio value="product_pool">商品库</Radio>
+                        <Radio value="shared_pool">商品共享池</Radio>
+                      </Radio.Group>
+                      <Typography.Paragraph className={styles.storeChannelTableHint}>
+                        商品库：直接进入对应门店商品库并可售；商品共享池：进入全部店铺共享池，由门店自行引用。
+                      </Typography.Paragraph>
+                    </>
+                  </Form.Item>
 
-                      return (
-                        <div key={rule.id} className={styles.storeChannelRuleCard}>
-                          <div className={styles.storeChannelRuleCardHeader}>
-                            <Typography.Text className={styles.storeChannelRuleTitle}>
-                              规则{index + 1}
-                            </Typography.Text>
-                            {canRemoveStoreChannelRule(index) && (
-                              <Button
-                                size="mini"
-                                type="text"
-                                status="danger"
-                                onClick={() =>
-                                  confirmRemoveStoreChannelRule(rule.id, index)
-                                }
-                              >
-                                删除
-                              </Button>
-                            )}
-                          </div>
-
-                          <div className={styles.storeChannelRuleBody}>
-                            <div className={styles.storeChannelRuleLine}>
-                              <div className={styles.storeChannelRuleLabel}>
-                                <span className={styles.channelRequiredMark}>*</span>
-                                选择店铺：
-                              </div>
-                              <div className={styles.storeChannelRuleContent}>
-                                <Radio.Group
-                                  value={rule.storeScope}
-                                  onChange={(value) =>
-                                    patchStoreChannelRule(rule.id, {
-                                      storeScope: value as StoreChannelRuleDraftItem['storeScope'],
-                                      storeIds:
-                                        value === 'specificStores' ? rule.storeIds : [],
-                                    })
-                                  }
-                                >
-                                  <Radio value="allStores">全部店铺</Radio>
-                                  <Radio value="specificStores">指定店铺</Radio>
-                                </Radio.Group>
-
-                                {rule.storeScope === 'specificStores' && (
-                                  <div className={styles.storeChannelSelectorRow}>
-                                    <Button
-                                      type="outline"
-                                      onClick={() => openStoreChannelStoreSelector(rule.id)}
-                                    >
-                                      选择店铺
-                                    </Button>
-                                    <Typography.Text type="secondary">
-                                      已选 {rule.storeIds.length} 家店铺
-                                    </Typography.Text>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className={styles.storeChannelRuleLine}>
-                              <div className={styles.storeChannelRuleLabel}>
-                                自定义字段：
-                              </div>
-                              <div className={styles.storeChannelRuleContent}>
-                                {fieldLabels.length ? (
-                                  <div className={styles.storeChannelSummaryRow}>
-                                    <Typography.Text>
-                                      {fieldLabels.join('、')}
-                                    </Typography.Text>
-                                    <Button
-                                      type="text"
-                                      size="mini"
-                                      className={styles.storeChannelInlineButton}
-                                      onClick={() => openStoreChannelFieldModal(rule.id)}
-                                    >
-                                      重新选择
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    type="text"
-                                    size="mini"
-                                    className={styles.storeChannelInlineButton}
-                                    onClick={() => openStoreChannelFieldModal(rule.id)}
-                                  >
-                                    选择自定义字段
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className={styles.storeChannelRuleLine}>
-                              <div className={styles.storeChannelRuleLabel}>
-                                选择SKU：
-                              </div>
-                              <div className={styles.storeChannelRuleContent}>
-                                <Radio.Group
-                                  value={rule.skuScope}
-                                  onChange={(value) =>
-                                    patchStoreChannelRule(rule.id, {
-                                      skuScope: value as StoreChannelRuleDraftItem['skuScope'],
-                                      skuKeys: value === 'specificSkus' ? rule.skuKeys : [],
-                                      skuConfigs:
-                                        value === 'specificSkus'
-                                          ? rule.skuConfigs.filter((item) =>
-                                              rule.skuKeys.includes(item.skuKey)
-                                            )
-                                          : rule.skuConfigs,
-                                    })
-                                  }
-                                >
-                                  <Radio value="allSkus">全部 SKU</Radio>
-                                  <Radio value="specificSkus">指定 SKU</Radio>
-                                </Radio.Group>
-
-                                {rule.skuScope === 'specificSkus' && (
-                                  <div className={styles.storeChannelSelectorRow}>
-                                    <Button
-                                      type="outline"
-                                      onClick={() => openStoreChannelSkuSelector(rule.id)}
-                                    >
-                                      选择SKU
-                                    </Button>
-                                    <Typography.Text type="secondary">
-                                      已选 {matchedSkuKeys.length} 个 SKU
-                                    </Typography.Text>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className={styles.storeChannelRuleLine}>
-                              <div className={styles.storeChannelRuleLabel}>规格明细：</div>
-                              <div className={styles.storeChannelRuleContent}>
-                                <div className={styles.storeChannelTablePanel}>
-                                  <Table
-                                    rowKey="key"
-                                    className={styles.storeChannelTable}
-                                    columns={buildStoreChannelRuleTableColumns(rule)}
-                                    data={ruleTableData}
-                                    noDataElement={getStoreChannelRuleTableEmptyText(rule)}
-                                    pagination={false}
-                                    scroll={{ x: 1220 }}
-                                    tableLayoutFixed
-                                  />
-                                  <div className={styles.storeChannelRuleHint}>
-                                    <IconInfoCircleFill
-                                      className={styles.storeChannelRuleHintIcon}
-                                    />
-                                    <Typography.Text
-                                      className={styles.storeChannelRuleHintText}
-                                    >
-                                      建议零售价区间、建议库存区间均为选填，
-                                      <span className={styles.storeChannelRuleHintEmphasis}>
-                                        不填写则不限
-                                      </span>
-                                      ；若填写区间，请确保最低值不高于最高值。
-                                    </Typography.Text>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className={styles.storeChannelRuleLine}>
-                              <div className={styles.storeChannelRuleLabel}>
-                                生效商品池：
-                              </div>
-                              <div className={styles.storeChannelRuleContent}>
-                                <Radio.Group
-                                  value={rule.shareMode}
-                                  onChange={(value) =>
-                                    patchStoreChannelRule(rule.id, {
-                                      shareMode: value as StoreChannelRuleDraftItem['shareMode'],
-                                    })
-                                  }
-                                >
-                                  <Radio value="product_pool">商品库</Radio>
-                                  <Radio value="shared_pool">商品共享池</Radio>
-                                </Radio.Group>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    <div className={styles.storeChannelAddRuleRow}>
-                      <Button type="text" onClick={addStoreChannelRule}>
-                        新增规则
-                      </Button>
-                    </div>
-                  </div>
-                </Form.Item>
+                  {storeChannelConfigDraft.shareMode === 'product_pool' && (
+                    <Form.Item className={styles.fullWidth} label="销售店铺">
+                      <div className={styles.storeChannelSelectorRow}>
+                        <Button
+                          type="outline"
+                          onClick={() => openStoreChannelProductPoolModal()}
+                        >
+                          选择销售门店
+                        </Button>
+                        <Typography.Text type="secondary">
+                          已选{' '}
+                          {
+                            storeChannelConfigDraft.productPoolStoreConfigs.filter(
+                              (item) =>
+                                item.sellStatus === 'sellable' &&
+                                item.sellableSkuKeys.length > 0
+                            ).length
+                          }{' '}
+                          家可售门店
+                        </Typography.Text>
+                      </div>
+                    </Form.Item>
+                  )}
+                </>
               )}
             </div>
           </Form>
         </Card>
       )}
 
-      {!isStoreScopedCreatePage && (
+      {!useStoreScopedChannelConfig && (
         <>
           <Card className={styles.sectionCard}>
             <div className={styles.sectionHeader}>
@@ -3886,7 +5976,7 @@ function ProductCreatePage() {
                         <div className={styles.storeSummaryLine}>
                           <span className={styles.storeSummaryValue}>
                             {isOwnStoresSellableButOff
-                              ? '自己的店铺可售但下架'
+                              ? '自己的店铺可售'
                               : `分享给 ${productStoreSummary.sellable} 个店铺`}
                           </span>
                           <Button
@@ -4035,7 +6125,7 @@ function ProductCreatePage() {
         </>
       )}
 
-      {isStoreScopedCreatePage && !isEditMode && (
+      {useStoreScopedChannelConfig && (
         <>
           <CouponStoreSelector
             visible={storeChannelStoreSelectorVisible}
@@ -4044,106 +6134,137 @@ function ProductCreatePage() {
             simple
             allowedStoreIds={storeChannelTargetStoreIds}
             allowedStoreTypes={['store']}
-            selectedStoreIds={activeStoreChannelRule?.storeIds || []}
-            onCancel={() => {
-              setStoreChannelStoreSelectorVisible(false);
-              setActiveStoreChannelRuleId('');
-            }}
+            selectedStoreIds={storeChannelConfigDraft.storeIds}
+            onCancel={() => setStoreChannelStoreSelectorVisible(false)}
             onConfirm={handleStoreChannelStoreSelectorConfirm}
           />
 
           <Modal
-            title="选择自定义字段"
-            visible={storeChannelFieldModalVisible}
-            onOk={handleStoreChannelFieldModalConfirm}
-            onCancel={() => {
-              setStoreChannelFieldModalVisible(false);
-              setActiveStoreChannelRuleId('');
-            }}
-          >
-            <div className={styles.storeChannelFieldModalContent}>
-              <div className={styles.storeChannelFieldModalTip}>
-                <IconInfoCircleFill className={styles.storeChannelFieldModalTipIcon} />
-                <div>
-                  勾选后，表示目标店铺可以按规则自定义以下信息；未勾选时，相关信息保持跟随源商品。
-                </div>
-              </div>
-
-              <div className={styles.storeChannelFieldOptionRow}>
-                <div className={styles.storeChannelRuleLabel}>自定义字段：</div>
-                <Checkbox.Group
-                  value={draftStoreChannelFieldKeys}
-                  onChange={(value) =>
-                    setDraftStoreChannelFieldKeys(
-                      value as ProductStoreChannelCustomFieldKey[]
-                    )
-                  }
-                >
-                  <Space wrap size={24}>
-                    {STORE_CHANNEL_CUSTOM_FIELD_OPTIONS.map((item) => (
-                      <Checkbox key={item.key} value={item.key}>
-                        {item.label}
-                      </Checkbox>
-                    ))}
-                  </Space>
-                </Checkbox.Group>
-              </div>
-            </div>
-          </Modal>
-
-          <Modal
-            title="选择SKU"
-            visible={storeChannelSkuSelectorVisible}
+            title="管理在售门店"
+            visible={storeChannelProductPoolModalVisible}
             autoFocus={false}
             focusLock
-            style={{ width: 920 }}
-            onOk={() => {
-              if (!draftStoreChannelSkuKeys.length) {
-                Message.warning('请至少选择 1 个 SKU');
-                return;
-              }
-
-              handleStoreChannelSkuSelectorConfirm();
-            }}
-            onCancel={() => {
-              setStoreChannelSkuSelectorVisible(false);
-              setActiveStoreChannelRuleId('');
-            }}
+            style={{ width: 1280 }}
+            onOk={handleStoreChannelProductPoolModalConfirm}
+            onCancel={closeStoreChannelProductPoolModal}
           >
-            <Table
-              rowKey="key"
-              className={styles.storeChannelTable}
-              columns={[
-                {
-                  title: 'SKU 名称',
-                  dataIndex: 'specLabel',
-                  width: 280,
-                },
-                {
-                  title: '源售价',
-                  dataIndex: 'sourcePrice',
-                  width: 180,
-                  render: (value: number | undefined) =>
-                    typeof value === 'number' ? `¥${value.toFixed(2)}` : '-',
-                },
-                {
-                  title: '源库存',
-                  dataIndex: 'sourceStock',
-                  width: 180,
-                  render: (value: number | undefined) =>
-                    typeof value === 'number' ? value : '-',
-                },
-              ]}
-              data={storeChannelSourceTableData}
-              noDataElement="请先添加规格信息"
-              pagination={false}
-              rowSelection={{
-                selectedRowKeys: draftStoreChannelSkuKeys,
-                onChange: (keys) => setDraftStoreChannelSkuKeys(keys.map(String)),
-              }}
-              scroll={{ y: 360 }}
-              tableLayoutFixed
-            />
+            <div className={styles.storeConfigModalContent}>
+              <div className={styles.storeConfigFilterRow}>
+                <Select
+                  className={styles.storeConfigFilter}
+                  value={storeChannelProductPoolStatusFilter}
+                  onChange={(value) => {
+                    setStoreChannelProductPoolStatusFilter(
+                      value as StoreChannelProductPoolFilterStatus
+                    );
+                    setStoreChannelProductPoolPage(1);
+                  }}
+                >
+                  <Select.Option value="all">全部状态</Select.Option>
+                  {Object.entries(
+                    PRODUCT_STORE_SELL_STATUS_LABEL_MAP
+                  ).map(([value, label]) => (
+                    <Select.Option key={value} value={value}>
+                      {label}
+                    </Select.Option>
+                  ))}
+                </Select>
+
+                <Input
+                  allowClear
+                  className={styles.storeConfigSearch}
+                  placeholder="搜索店铺名称"
+                  value={storeChannelProductPoolKeyword}
+                  onChange={(value) => {
+                    setStoreChannelProductPoolKeyword(value);
+                    setStoreChannelProductPoolPage(1);
+                  }}
+                />
+              </div>
+
+              <div className={styles.storeConfigToolbar}>
+                <Typography.Text className={styles.storeConfigToolbarText}>
+                  已勾选 {storeChannelProductPoolSelectedStoreKeys.length} 项
+                </Typography.Text>
+                <Typography.Text className={styles.storeConfigToolbarText}>
+                  勾选后可批量设置：
+                </Typography.Text>
+                <Select
+                  allowClear
+                  className={styles.storeConfigBatchSelect}
+                  placeholder="可售状态"
+                  value={storeChannelProductPoolBatchSellStatus}
+                  onChange={handleStoreChannelProductPoolBatchSellStatusChange}
+                >
+                  {Object.entries(
+                    PRODUCT_STORE_SELL_STATUS_LABEL_MAP
+                  ).map(([value, label]) => (
+                    <Select.Option key={value} value={value}>
+                      {label}
+                    </Select.Option>
+                  ))}
+                </Select>
+                <TreeSelect
+                  multiple
+                  treeCheckable
+                  treeCheckedStrategy={TreeSelect.SHOW_PARENT}
+                  allowClear
+                  maxTagCount={{
+                    count: 1,
+                    render: (invisibleTagCount) => `+${invisibleTagCount}`,
+                  }}
+                  className={styles.storeConfigBatchTreeSelect}
+                  placeholder="可售 SKU"
+                  treeData={storeChannelProductPoolSkuTreeData}
+                  value={buildTreeSelectDisplaySkuKeys(
+                    storeChannelProductPoolBatchSellableSkuKeys.length
+                      ? storeChannelProductPoolBatchSellableSkuKeys
+                      : storeChannelAvailableSkuKeys,
+                    storeChannelAvailableSkuKeys
+                  )}
+                  onChange={handleStoreChannelProductPoolBatchSellableSkuKeysChange}
+                />
+                <Select
+                  allowClear
+                  className={styles.storeConfigBatchSelect}
+                  placeholder="自主定价"
+                  value={storeChannelProductPoolBatchAllowSelfPrice}
+                  onChange={handleStoreChannelProductPoolBatchAllowSelfPriceChange}
+                >
+                  <Select.Option value="on">开启</Select.Option>
+                  <Select.Option value="off">关闭</Select.Option>
+                </Select>
+              </div>
+
+              <Table
+                rowKey="id"
+                className={styles.storeConfigTable}
+                columns={storeChannelProductPoolColumns}
+                data={storeChannelProductPoolTableData}
+                noDataElement="暂无店铺数据"
+                pagination={{
+                  current: storeChannelProductPoolPage,
+                  pageSize: storeChannelProductPoolPageSize,
+                  total: storeChannelProductPoolTableData.length,
+                  sizeCanChange: true,
+                  sizeOptions: STORE_CONFIG_PAGE_SIZE_OPTIONS,
+                  showTotal: true,
+                  showJumper: true,
+                  onChange: (pageNumber, pageSize) => {
+                    setStoreChannelProductPoolPage(pageNumber);
+                    setStoreChannelProductPoolPageSize(pageSize);
+                  },
+                }}
+                rowSelection={{
+                  selectedRowKeys: storeChannelProductPoolSelectedStoreKeys,
+                  columnWidth: 48,
+                  preserveSelectedRowKeys: true,
+                  onChange: handleStoreChannelProductPoolSelectionChange,
+                }}
+                scroll={{ x: 1280, y: 440 }}
+                tableLayoutFixed
+              />
+            </div>
           </Modal>
         </>
       )}

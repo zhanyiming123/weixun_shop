@@ -7,14 +7,18 @@ import {
   normalizeProductCarouselImages,
   normalizeProductIndependentPriceRule,
   normalizeProductIndependentStockRule,
-  normalizeProductStoreChannelRules,
+  normalizeProductStoreChannelConfig,
   normalizeProductStoreOverride,
 } from '@/lib/product';
+import { DEFAULT_PRODUCTS as REPOSITORY_DEFAULT_PRODUCTS } from '@/repositories/product/defaultProducts';
 import type {
   ProductCarouselImage,
+  ProductDetailContent,
   ProductShareTargetItem,
   ProductIndependentPriceRule,
   ProductIndependentStockRule,
+  ProductPurchaseLimit,
+  ProductStoreChannelConfigItem,
   ProductStoreChannelRuleItem,
   ProductStoreOverrideMap,
 } from '@/types/product';
@@ -42,6 +46,8 @@ export type ProductSkuItem = {
   price: number;
   stock: number;
   status: ProductStatus;
+  image?: ProductCarouselImage;
+  isDefaultSelected?: boolean;
 };
 
 export type ProductItem = {
@@ -52,6 +58,9 @@ export type ProductItem = {
   productOwnershipId: string;
   productType: ProductType;
   inventoryUnit: string;
+  isLimited?: boolean;
+  limitCount?: number;
+  detailHtml?: string;
   specMode: ProductSpecMode;
   skus: ProductSkuItem[];
   status: ProductStatus;
@@ -67,9 +76,15 @@ export type ProductItem = {
   }>;
   shareTargets?: ProductShareTargetItem[];
   carouselImages?: ProductCarouselImage[];
+  purchaseLimit?: ProductPurchaseLimit;
+  detailContent?: ProductDetailContent;
   storeOverrides?: ProductStoreOverrideMap;
   independentPriceRule?: ProductIndependentPriceRule;
   independentStockRule?: ProductIndependentStockRule;
+  storeChannelConfig?: ProductStoreChannelConfigItem;
+  /**
+   * @deprecated 仅用于兼容历史 `storeChannelRules` 数据读取。
+   */
   storeChannelRules?: ProductStoreChannelRuleItem[];
 };
 
@@ -138,6 +153,10 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     productOwnershipId: 'item_06_02_01',
     productType: 'virtual',
     inventoryUnit: '名额',
+    isLimited: true,
+    limitCount: 1,
+    detailHtml:
+      '<p>课程覆盖 2026 年 IG &amp; AS 春季大考核心题型，适合冲刺阶段集中提分。</p><p><img src="https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="课程详情主图" /></p>',
     specMode: 'multi',
     skus: [
       {
@@ -177,6 +196,29 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         channelStatus: 'off',
       },
     ],
+    storeChannelConfig: {
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['mall_online', 'mall_jiangsu'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'mall_online',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: [
+            'sku-G_1237036327413878784-1',
+            'sku-G_1237036327413878784-2',
+          ],
+          allowSelfPrice: true,
+        },
+        {
+          storeId: 'mall_jiangsu',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+          sellableSkuIds: ['sku-G_1237036327413878784-1'],
+        },
+      ],
+    },
   },
   {
     id: 'G_1231319097741021184',
@@ -676,13 +718,20 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     productOwnershipId: 'item_05_02_05',
     productType: 'course',
     inventoryUnit: '席位',
-    specMode: 'single',
+    specMode: 'multi',
     skus: [
       {
         id: 'sku-G_1260408000000000003-1',
-        specText: '',
+        specText: '基础答疑营',
         price: 219,
-        stock: 88,
+        stock: 52,
+        status: 'on',
+      },
+      {
+        id: 'sku-G_1260408000000000003-2',
+        specText: '督学加强营',
+        price: 299,
+        stock: 36,
         status: 'on',
       },
     ],
@@ -765,11 +814,13 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
 ];
 
 export const MOCK_PRODUCTS = DEFAULT_PRODUCTS;
+const SEED_PRODUCTS = REPOSITORY_DEFAULT_PRODUCTS as ProductItem[];
+const DEFAULT_PRODUCT_BY_ID = new Map(SEED_PRODUCTS.map((item) => [item.id, item]));
 
 const PRODUCT_STORE_ID_MIGRATION_MAP: Record<string, string> = {
-  store_shanghai: 'store_suzhou',
-  store_beijing: 'store_guangzhou',
-  store_hangzhou: 'store_shenzhen',
+  store_shanghai: 'store_shanghai',
+  store_beijing: 'store_beijing',
+  store_hangzhou: 'store_chengdu',
 };
 
 function migrateProductStoreId(storeId?: string) {
@@ -790,6 +841,20 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     : 'headquarter';
   const sourceStoreId =
     sourceType === 'store' ? migrateProductStoreId(product.sourceStoreId) : undefined;
+  const isLimited =
+    product.purchaseLimit?.enabled === true || product.isLimited === true;
+  const limitCount =
+    isLimited &&
+    typeof (product.purchaseLimit?.count ?? product.limitCount) === 'number' &&
+    Number.isFinite(product.purchaseLimit?.count ?? product.limitCount)
+      ? Math.max(1, Math.floor(Number(product.purchaseLimit?.count ?? product.limitCount)))
+      : undefined;
+  const detailHtml =
+    typeof product.detailContent?.html === 'string'
+      ? product.detailContent.html
+      : typeof product.detailHtml === 'string'
+        ? product.detailHtml
+        : '';
   const storeConfigMap = new Map<string, ProductStoreConfigItem>();
   const storeOverrides = Object.entries(
     product.storeOverrides && typeof product.storeOverrides === 'object'
@@ -823,6 +888,30 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     ...product,
     sourceType,
     sourceStoreId,
+    isLimited,
+    limitCount,
+    detailHtml,
+    purchaseLimit: isLimited
+      ? {
+          enabled: true,
+          count: limitCount,
+        }
+      : {
+          enabled: false,
+        },
+    detailContent: {
+      html: detailHtml,
+      fontSize:
+        typeof product.detailContent?.fontSize === 'string' &&
+        product.detailContent.fontSize
+          ? product.detailContent.fontSize
+          : '16',
+      lineHeight:
+        typeof product.detailContent?.lineHeight === 'string' &&
+        product.detailContent.lineHeight
+          ? product.detailContent.lineHeight
+          : '1.75',
+    },
     independentPriceRule: normalizeProductIndependentPriceRule(
       product.independentPriceRule,
       product.skus || []
@@ -831,10 +920,13 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
       product.independentStockRule,
       product.skus || []
     ),
-    storeChannelRules: normalizeProductStoreChannelRules(
+    storeChannelConfig: normalizeProductStoreChannelConfig(
+      product.storeChannelConfig,
       product.storeChannelRules,
+      product.shareTargets,
       product.skus || []
     ),
+    storeChannelRules: undefined,
     carouselImages: normalizeProductCarouselImages(product.carouselImages || []),
     storeConfigs: Array.from(storeConfigMap.values()),
     storeOverrides,
@@ -842,9 +934,41 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
 }
 
 export function normalizeProductItems(
-  products: ProductItem[] = DEFAULT_PRODUCTS
+  products: ProductItem[] = SEED_PRODUCTS
 ) {
   return products.map((item) => normalizeProductItem(item));
+}
+
+function hasItems(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function mergeSeedProductItem(product: ProductItem) {
+  const seedProduct = DEFAULT_PRODUCT_BY_ID.get(product.id);
+
+  if (!seedProduct) {
+    return product;
+  }
+
+  const sourceType = isProductSourceType(product.sourceType)
+    ? product.sourceType
+    : seedProduct.sourceType;
+
+  return {
+    ...seedProduct,
+    ...product,
+    sourceType,
+    sourceStoreId:
+      sourceType === 'store'
+        ? typeof product.sourceStoreId === 'string' && product.sourceStoreId
+          ? product.sourceStoreId
+          : seedProduct.sourceStoreId
+        : undefined,
+    skus: hasItems(product.skus) ? product.skus : seedProduct.skus,
+    storeConfigs: hasItems(product.storeConfigs)
+      ? product.storeConfigs
+      : seedProduct.storeConfigs,
+  };
 }
 
 function mergeProductSeedItems(products: ProductItem[] = []) {
@@ -856,16 +980,17 @@ function mergeProductSeedItems(products: ProductItem[] = []) {
       .map((item) => item.id)
       .filter((item): item is string => typeof item === 'string' && Boolean(item))
   );
+  const mergedSeedItems = normalizedRawItems.map((item) => mergeSeedProductItem(item));
 
   return [
-    ...normalizedRawItems,
-    ...DEFAULT_PRODUCTS.filter((item) => !existingIdSet.has(item.id)),
+    ...mergedSeedItems,
+    ...SEED_PRODUCTS.filter((item) => !existingIdSet.has(item.id)),
   ];
 }
 
 export function readProductItems() {
-  const stored = readPersistentValue(PRODUCT_STORAGE_KEY, DEFAULT_PRODUCTS);
-  const rawItems = Array.isArray(stored) ? stored : DEFAULT_PRODUCTS;
+  const stored = readPersistentValue(PRODUCT_STORAGE_KEY, SEED_PRODUCTS);
+  const rawItems = Array.isArray(stored) ? stored : SEED_PRODUCTS;
   const mergedItems = mergeProductSeedItems(rawItems);
   const normalizedItems = normalizeProductItems(mergedItems);
 

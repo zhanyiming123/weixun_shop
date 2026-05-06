@@ -84,6 +84,109 @@ type StoreExternalEmployeeItemLike = Partial<StoreExternalEmployeeItem> & {
 
 const STORAGE_KEY = 'store-employee-configs-v1';
 const EXTERNAL_EMPLOYEE_STORAGE_KEY = 'store-external-employee-items-v1';
+
+const DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS: StoreExternalEmployeeItem[] = [
+  {
+    id: 'store_external_suzhou_001',
+    storeId: 'org_store_suzhou_001',
+    name: '方晓彤',
+    account: 'fang.xiaotong',
+    contactPhone: '13812340001',
+    status: 'enabled',
+    createdAt: '2026-01-15 09:30:00',
+    updatedAt: '2026-01-15 09:30:00',
+  },
+  {
+    id: 'store_external_suzhou_002',
+    storeId: 'org_store_suzhou_001',
+    name: '叶浩然',
+    account: 'ye.haoran',
+    contactPhone: '13812340002',
+    status: 'enabled',
+    createdAt: '2026-01-20 10:00:00',
+    updatedAt: '2026-01-20 10:00:00',
+  },
+  {
+    id: 'store_external_suzhou_003',
+    storeId: 'org_store_suzhou_001',
+    name: '江思远',
+    account: 'jiang.siyuan',
+    contactPhone: '13812340003',
+    status: 'disabled',
+    createdAt: '2026-02-05 11:15:00',
+    updatedAt: '2026-03-10 14:20:00',
+  },
+  {
+    id: 'store_external_guangzhou_001',
+    storeId: 'org_store_guangzhou_001',
+    name: '蔡雨桐',
+    account: 'cai.yutong',
+    contactPhone: '13912340001',
+    status: 'enabled',
+    createdAt: '2026-01-18 09:00:00',
+    updatedAt: '2026-01-18 09:00:00',
+  },
+  {
+    id: 'store_external_guangzhou_002',
+    storeId: 'org_store_guangzhou_001',
+    name: '潘子衿',
+    account: 'pan.zijin',
+    contactPhone: '13912340002',
+    status: 'enabled',
+    createdAt: '2026-02-10 10:30:00',
+    updatedAt: '2026-02-10 10:30:00',
+  },
+  {
+    id: 'store_external_guangzhou_003',
+    storeId: 'org_store_guangzhou_001',
+    name: '贺明宇',
+    account: 'he.mingyu',
+    contactPhone: '13912340003',
+    status: 'enabled',
+    createdAt: '2026-02-20 15:00:00',
+    updatedAt: '2026-02-20 15:00:00',
+  },
+  {
+    id: 'store_external_guangzhou_004',
+    storeId: 'org_store_guangzhou_001',
+    name: '秦若溪',
+    account: 'qin.ruoxi',
+    contactPhone: '13912340004',
+    status: 'disabled',
+    createdAt: '2026-03-01 08:45:00',
+    updatedAt: '2026-04-01 09:00:00',
+  },
+  {
+    id: 'store_external_shenzhen_001',
+    storeId: 'org_store_shenzhen_001',
+    name: '魏晨阳',
+    account: 'wei.chenyang',
+    contactPhone: '13612340001',
+    status: 'enabled',
+    createdAt: '2026-01-22 09:00:00',
+    updatedAt: '2026-01-22 09:00:00',
+  },
+  {
+    id: 'store_external_shenzhen_002',
+    storeId: 'org_store_shenzhen_001',
+    name: '林舒宁',
+    account: 'lin.shuning',
+    contactPhone: '13612340002',
+    status: 'enabled',
+    createdAt: '2026-02-14 10:00:00',
+    updatedAt: '2026-02-14 10:00:00',
+  },
+  {
+    id: 'store_external_shenzhen_003',
+    storeId: 'org_store_shenzhen_001',
+    name: '陈逸飞',
+    account: 'chen.yifei',
+    contactPhone: '13612340003',
+    status: 'enabled',
+    createdAt: '2026-03-05 11:00:00',
+    updatedAt: '2026-03-05 11:00:00',
+  },
+];
 const STORE_ROLE_DATA_VIEW_SCOPE_PRIORITY: Record<
   EnterpriseRoleDataViewScope,
   number
@@ -177,10 +280,13 @@ function normalizeStoreExternalEmployeeItem(
 }
 
 export function readStoreExternalEmployeeItems(storeId?: string) {
-  const persistedItems = readPersistentValue<StoreExternalEmployeeItemLike[]>(
+  const raw = readPersistentValue<StoreExternalEmployeeItemLike[] | null>(
     EXTERNAL_EMPLOYEE_STORAGE_KEY,
-    []
+    null
   );
+  const persistedItems: StoreExternalEmployeeItemLike[] = Array.isArray(raw)
+    ? raw
+    : DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS;
   const normalizedItems = sortStoreExternalEmployeeItems(
     persistedItems
       .filter(
