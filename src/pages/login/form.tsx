@@ -52,6 +52,9 @@ export default function LoginForm() {
           setErrorMessage(msg || t['login.form.login.errMsg']);
         }
       })
+      .catch(() => {
+        setErrorMessage(t['login.form.login.errMsg']);
+      })
       .finally(() => {
         setLoading(false);
       });
