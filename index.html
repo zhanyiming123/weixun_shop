@@ -2,6 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function (location) {
+        if (location.search[1] !== '/') {
+          return;
+        }
+
+        const decoded = location.search
+          .slice(1)
+          .split('&')
+          .map(function (segment) {
+            return segment.replace(/~and~/g, '&');
+          })
+          .join('?');
+
+        window.history.replaceState(null, '', location.pathname.slice(0, -1) + decoded + location.hash);
+      })(window.location);
+    </script>
     <link
       rel="shortcut icon"
       type="image/x-icon"

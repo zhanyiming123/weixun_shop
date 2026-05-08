@@ -31,6 +31,7 @@ import Settings from '../Settings';
 import styles from './style/index.module.less';
 import defaultLocale from '@/locale';
 import useStorage from '@/utils/useStorage';
+import { buildAppPath } from '@/utils/appPath';
 import {
   buildDemoUserInfo,
   getAvailableDemoIdentityIds,
@@ -66,7 +67,7 @@ function Navbar({ show }: { show: boolean }) {
 
   function logout() {
     setUserStatus('logout');
-    window.location.href = '/login';
+    window.location.href = buildAppPath('/login');
   }
 
   function onMenuItemClick(key) {

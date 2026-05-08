@@ -12,6 +12,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import useStorage from '@/utils/useStorage';
 import useLocale from '@/utils/useLocale';
+import { buildAppPath } from '@/utils/appPath';
 import locale from './locale';
 import styles from './style/index.module.less';
 
@@ -36,7 +37,7 @@ export default function LoginForm() {
     // 记录登录状态
     localStorage.setItem('userStatus', 'login');
     // 跳转首页
-    window.location.href = '/';
+    window.location.href = buildAppPath('/');
   }
 
   function login(params) {

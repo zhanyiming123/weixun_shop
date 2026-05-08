@@ -14,6 +14,7 @@ import Login from './pages/login';
 import checkLogin from './utils/checkLogin';
 import changeTheme from './utils/changeTheme';
 import useStorage from './utils/useStorage';
+import { buildAppPath, getAppRoutePath } from './utils/appPath';
 import { buildDemoUserInfo, resolveDemoSelection } from './utils/demo';
 import './mock';
 
@@ -71,8 +72,8 @@ function Index() {
   useEffect(() => {
     if (checkLogin()) {
       fetchUserInfo();
-    } else if (window.location.pathname.replace(/\//g, '') !== 'login') {
-      window.location.pathname = '/login';
+    } else if (getAppRoutePath() !== '/login') {
+      window.location.pathname = buildAppPath('/login');
     }
   }, []);
 
@@ -88,7 +89,7 @@ function Index() {
   };
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ConfigProvider
         locale={getArcoLocale()}
         componentConfig={{

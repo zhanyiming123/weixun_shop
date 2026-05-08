@@ -6,6 +6,7 @@ import setting from './src/settings.json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === 'true' ? '/weixun_shop/' : '/',
   resolve: {
     alias: [{ find: '@', replacement: '/src' }],
   },
