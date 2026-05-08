@@ -17,8 +17,8 @@ import locale from './locale';
 import styles from './style/index.module.less';
 
 const DEMO_LOGIN_CREDENTIALS = {
-  userName: 'admin',
-  password: 'admin',
+  userName: 'demo',
+  password: '123456',
 };
 
 export default function LoginForm() {
@@ -78,7 +78,14 @@ export default function LoginForm() {
     setRememberPassword(rememberPassword);
     if (formRef.current && rememberPassword) {
       const parseParams = JSON.parse(loginParams);
-      formRef.current.setFieldsValue(parseParams);
+      const normalizedParams =
+        parseParams?.userName === 'admin' && parseParams?.password === 'admin'
+          ? DEMO_LOGIN_CREDENTIALS
+          : parseParams;
+      if (normalizedParams !== parseParams) {
+        setLoginParams(JSON.stringify(normalizedParams));
+      }
+      formRef.current.setFieldsValue(normalizedParams);
     }
   }, [loginParams]);
 

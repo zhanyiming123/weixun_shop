@@ -99,7 +99,7 @@ type DataScopeTreeNode = {
   children?: DataScopeTreeNode[];
 };
 
-const MERCHANT_COMPANY_NAME = '上海唯寻教育科技有限公司';
+const MERCHANT_COMPANY_NAME = 'DEMO演示公司';
 const ROOT_DEPARTMENT_ID = 'dept_root';
 const IMPORT_ROLE_OPTIONS = ['超级管理员', '普通用户', '部门管理员'];
 const IMPORT_DEFAULT_ROLE = '普通用户';

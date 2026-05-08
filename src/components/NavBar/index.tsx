@@ -273,7 +273,7 @@ function Navbar({ show }: { show: boolean }) {
       <div className={styles.left}>
         <div className={styles.logo}>
           <Logo />
-          <div className={styles['logo-name']}>上海唯寻教育科技有限公司</div>
+          <div className={styles['logo-name']}>DEMO演示公司</div>
         </div>
         <div className={styles.selectorGroup}>
           <div className={styles.selectorField}>
