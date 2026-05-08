@@ -4,6 +4,7 @@ import {
   isProductCatalogSpecNameDuplicated,
   normalizeProductCatalogSpecValues,
   normalizeProductCatalogSpecs,
+  resolveProductCatalogSpecIdentity,
   type ProductCatalogSpecItem,
 } from './data';
 
@@ -115,5 +116,35 @@ describe('product catalog spec data helpers', () => {
     expect(
       isProductCatalogSpecNameDuplicated(specs, 'thesis', '班型')
     ).toBe(false);
+  });
+
+  it('keeps catalog and spec name immutable while editing', () => {
+    expect(
+      resolveProductCatalogSpecIdentity(
+        {
+          catalogId: 'service',
+          name: '收费模式',
+        },
+        {
+          catalogId: 'international',
+          name: '班型',
+        }
+      )
+    ).toEqual({
+      catalogId: 'international',
+      name: '班型',
+    });
+  });
+
+  it('trims catalog and spec name while creating', () => {
+    expect(
+      resolveProductCatalogSpecIdentity({
+        catalogId: ' international ',
+        name: ' 班型 ',
+      })
+    ).toEqual({
+      catalogId: 'international',
+      name: '班型',
+    });
   });
 });

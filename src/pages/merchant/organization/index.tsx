@@ -17,7 +17,6 @@ import {
   writeOrganizationItems,
 } from '@/pages/enterprise/organization/data';
 import StoreDetailModal from '@/pages/enterprise/organization/store-detail-modal';
-import { getStoreCloseCheckResult } from '@/pages/enterprise/organization/store-close';
 import { GlobalState } from '@/store';
 import {
   buildDemoUserInfo,
@@ -136,45 +135,6 @@ function MerchantOrganizationPage() {
     });
 
     history.push(`/${nextSelection.demoContext.defaultHomeRoute}`);
-  }
-
-  function handleStoreDisable(item: OrganizationItem) {
-    const closeCheckResult = getStoreCloseCheckResult(item.id);
-
-    if (!closeCheckResult.canClose) {
-      Modal.warning({
-        title: '暂无法停用店铺',
-        content: '当前店铺已存在业务数据，暂无法停用。',
-      });
-      return;
-    }
-
-    Modal.confirm({
-      title: '确认停用店铺',
-      content: '停用后该店铺将变为停用状态，是否继续？',
-      onOk: () => {
-        const nextItems = organizationItems.map((record) =>
-          record.id === item.id
-            ? {
-                ...record,
-                status: 'disabled' as const,
-              }
-            : record
-        );
-
-        writeOrganizationItems(nextItems);
-        setOrganizationItems(nextItems);
-        setViewingOrganization((current) =>
-          current?.id === item.id
-            ? {
-                ...current,
-                status: 'disabled',
-              }
-            : current
-        );
-        Message.success('店铺已停用');
-      },
-    });
   }
 
   function handleStoreEnable(item: OrganizationItem) {
@@ -313,15 +273,6 @@ function MerchantOrganizationPage() {
               >
                 编辑
               </button>
-              {item.status === 'enabled' && (
-                <button
-                  type="button"
-                  className={styles.footerBtn}
-                  onClick={() => handleStoreDisable(item)}
-                >
-                  停用
-                </button>
-              )}
               {item.status === 'disabled' && (
                 <>
                   <button

@@ -78,11 +78,6 @@
 
   &:hover {
     background: var(--color-fill-1);
-
-    .departmentMoreButton {
-      opacity: 1;
-      pointer-events: auto;
-    }
   }
 }
 
@@ -92,11 +87,6 @@
 
   .departmentName {
     font-weight: 600;
-  }
-
-  .departmentMoreButton {
-    opacity: 1;
-    pointer-events: auto;
   }
 }
 
@@ -136,107 +126,10 @@
   white-space: nowrap;
 }
 
-.departmentSpacer {
-  flex: 1;
-  min-width: 12px;
-}
-
-.departmentActionWrap {
-  position: relative;
-  flex: none;
-}
-
-.departmentMoreButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  color: var(--color-text-3);
-  font-size: 18px;
-  background: rgb(247 249 252 / 88%);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
-
-  &:hover {
-    color: rgb(var(--arcoblue-6));
-    background: rgb(var(--arcoblue-1));
-  }
-}
-
-.departmentActionCard {
-  position: absolute;
-  top: 34px;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  width: 124px;
-  padding: 6px 0;
-  border-radius: 8px;
-  background: var(--color-bg-2);
-  box-shadow: 0 8px 24px rgb(29 33 41 / 12%);
-
-  button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: 36px;
-    padding: 0 16px;
-    border: 0;
-    color: var(--color-text-1);
-    font-size: 14px;
-    background: transparent;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--color-fill-1);
-    }
-  }
-
-  svg {
-    color: var(--color-text-2);
-    font-size: 15px;
-  }
-
-  .departmentDangerAction {
-    color: rgb(var(--red-6));
-
-    svg {
-      color: rgb(var(--red-6));
-    }
-  }
-}
-
 .departmentEmpty {
   padding: 40px 12px;
   color: var(--color-text-3);
   text-align: center;
-}
-
-.storeBadge {
-  flex: none;
-  margin-left: 4px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgb(var(--arcoblue-1));
-  color: rgb(var(--arcoblue-6));
-  font-size: 11px;
-  line-height: 16px;
-  white-space: nowrap;
-}
-
-.storeAssignDesc {
-  margin: 0 0 14px;
-  color: var(--color-text-3);
-  font-size: 13px;
-  line-height: 1.6;
 }
 
 .content {
@@ -270,59 +163,6 @@
   margin-top: 8px;
   color: var(--color-text-3);
   font-size: 13px;
-}
-
-.managedStoreRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 13px;
-}
-
-.managedStoreLabel {
-  color: var(--color-text-3);
-  white-space: nowrap;
-}
-
-.managedStoreTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.managedStoreTag {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 4px;
-  background: rgb(var(--arcoblue-1));
-  color: rgb(var(--arcoblue-6));
-  font-size: 12px;
-  line-height: 1;
-}
-
-.managedStoreNone {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-4);
-}
-
-.managedStoreSetBtn,
-.managedStoreEditBtn {
-  padding: 0;
-  border: 0;
-  color: rgb(var(--arcoblue-6));
-  font-size: 13px;
-  background: transparent;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.75;
-  }
 }
 
 .headerActions {

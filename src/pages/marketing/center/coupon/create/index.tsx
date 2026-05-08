@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Cascader,
-  Checkbox,
   DatePicker,
   Divider,
   Form,
@@ -29,7 +28,10 @@ import {
   CouponEditRuleSet,
   CouponFormValues,
   COUPON_STACKING_TYPE_OPTIONS,
+  getCreatePageDiscountOptions,
+  getCreatePageProductScopeOptions,
   getCouponEditRuleSet,
+  getCreatePageDefaultStackingCouponType,
   isCouponEditableStatus,
   isCouponEditFieldEditable,
   getCouponOwnershipType,
@@ -91,7 +93,6 @@ type CouponFormPageProps = {
 type CouponErrorKey =
   | 'discountConfig'
   | 'stackingType'
-  | 'stackingCount'
   | 'storeIds'
   | 'productScope'
   | 'conditionCategoryPaths'
@@ -149,6 +150,50 @@ function getCouponDateTimestamp(dateTime?: string) {
   }
 
   return new Date(dateTime.replace(/\//g, '-').replace(' ', 'T')).getTime();
+}
+
+export function normalizeCreateModeFormValues(
+  values: CouponFormValues,
+  isStoreSystem: boolean
+): CouponFormValues {
+  let nextValues =
+    values.discountType === 'discount'
+      ? {
+        ...values,
+        discountType: 'fullReduction' as CouponDiscountType,
+        fullReductionThreshold: undefined,
+        fullReductionAmount: undefined,
+        directReductionAmount: undefined,
+        discountRate: undefined,
+      }
+      : values;
+
+  if (nextValues.productScope === 'specific') {
+    nextValues = {
+      ...nextValues,
+      productScope: 'condition',
+      conditionCategoryPaths: [],
+      conditionOwnershipSelections: [],
+      selectedSkuIds: [],
+    };
+  }
+
+  if (!isStoreSystem) {
+    return {
+      ...nextValues,
+      allowStacking: false,
+      stackingCouponType: undefined,
+    };
+  }
+
+  if (!nextValues.allowStacking) {
+    return nextValues;
+  }
+
+  return {
+    ...nextValues,
+    stackingCouponType: getCreatePageDefaultStackingCouponType(isStoreSystem),
+  };
 }
 
 type CouponConditionSelection = CouponFormValues['conditionOwnershipSelections'][number];
@@ -336,6 +381,7 @@ export function CouponFormPage({
     isStoreSystem,
     mode
   );
+  const shouldShowStackingConfig = isStoreSystem;
 
   const closeCouponView = useCallback(() => {
     if (onClose) {
@@ -391,9 +437,13 @@ export function CouponFormPage({
         history.replace('/marketing/center/coupon/list');
         return;
       }
+      const nextFormValues = normalizeCreateModeFormValues(
+        sourceValues,
+        isStoreSystem
+      );
       setCouponRecord(undefined);
-      setFormValues(sourceValues);
-      setConditionCards(buildInitialConditionCards(sourceValues));
+      setFormValues(nextFormValues);
+      setConditionCards(buildInitialConditionCards(nextFormValues));
       setFormErrors({});
       return;
     }
@@ -495,6 +545,15 @@ export function CouponFormPage({
 
     return selectedStoreNames.join('、');
   }, [mode, selectedStoreIds, selectedStoreNames, storeItems]);
+  const createModeStackingLabel = isStoreSystem ? '是否叠加平台券' : '是否叠加店铺券';
+  const discountTypeOptions = useMemo(
+    () => (isCreateMode ? getCreatePageDiscountOptions() : COUPON_DISCOUNT_OPTIONS),
+    [isCreateMode]
+  );
+  const productScopeOptions = useMemo(
+    () => (isCreateMode ? getCreatePageProductScopeOptions() : PRODUCT_SCOPE_OPTIONS),
+    [isCreateMode]
+  );
   const stackingTypeOptions = useMemo(
     () =>
       isStoreSystem
@@ -837,13 +896,13 @@ export function CouponFormPage({
 
     patchFormValues({
       allowStacking: checked,
-      stackingUnlimited: checked ? formValues.stackingUnlimited : false,
-      stackingCount:
-        checked && !formValues.stackingUnlimited
-          ? formValues.stackingCount || 1
-          : formValues.stackingCount,
+      stackingCouponType: checked
+        ? isCreateMode
+          ? getCreatePageDefaultStackingCouponType(isStoreSystem)
+          : formValues.stackingCouponType
+        : undefined,
     });
-    clearErrors('stackingType', 'stackingCount');
+    clearErrors('stackingType');
   }
 
   function handleStackingTypeChange(value: string) {
@@ -855,18 +914,6 @@ export function CouponFormPage({
       stackingCouponType: value as CouponStackingType,
     });
     clearErrors('stackingType');
-  }
-
-  function handleStackingUnlimitedChange(checked: boolean) {
-    if (!canEditStacking) {
-      return;
-    }
-
-    patchFormValues({
-      stackingUnlimited: checked,
-      stackingCount: checked ? undefined : formValues.stackingCount || 1,
-    });
-    clearErrors('stackingCount');
   }
 
   function handleCustomUseTimeChange(dateString: string[]) {
@@ -891,8 +938,7 @@ export function CouponFormPage({
       | 'discountRate'
       | 'issueCount'
       | 'limitPerUser'
-      | 'validDays'
-      | 'stackingCount',
+      | 'validDays',
     value: number | undefined
   ) {
     const canEditFieldMap = {
@@ -903,7 +949,6 @@ export function CouponFormPage({
       issueCount: canEditIssueCount,
       limitPerUser: canEditLimitPerUser,
       validDays: canEditValidity,
-      stackingCount: canEditStacking,
     };
 
     if (!canEditFieldMap[field]) {
@@ -929,10 +974,6 @@ export function CouponFormPage({
 
     if (field === 'validDays') {
       clearErrors('validityConfig');
-    }
-
-    if (field === 'stackingCount') {
-      clearErrors('stackingCount');
     }
   }
 
@@ -1034,16 +1075,13 @@ export function CouponFormPage({
 
     const trimmedName = formValues.name.trim();
 
-    if (formValues.allowStacking && !formValues.stackingCouponType) {
-      errors.stackingType = '请选择叠加券类型';
-    }
-
     if (
+      shouldShowStackingConfig &&
+      !isCreateMode &&
       formValues.allowStacking &&
-      !formValues.stackingUnlimited &&
-      (!formValues.stackingCount || formValues.stackingCount <= 0)
+      !formValues.stackingCouponType
     ) {
-      errors.stackingCount = '请输入正确的叠加张数';
+      errors.stackingType = '请选择叠加券类型';
     }
 
     if (!trimmedName) {
@@ -1163,7 +1201,7 @@ export function CouponFormPage({
                   disabled={!canEditDiscountConfig}
                   onChange={handleDiscountTypeChange}
                 >
-                  {COUPON_DISCOUNT_OPTIONS.map((item) => (
+                  {discountTypeOptions.map((item) => (
                     <Option key={item.value} value={item.value}>
                       {item.label}
                     </Option>
@@ -1297,7 +1335,7 @@ export function CouponFormPage({
                   disabled={!canEditProductScope}
                   onChange={handleProductScopeChange}
                 >
-                  {PRODUCT_SCOPE_OPTIONS.map((item) => (
+                  {productScopeOptions.map((item) => (
                     <Radio key={item.value} value={item.value}>
                       {item.label}
                     </Radio>
@@ -1722,77 +1760,45 @@ export function CouponFormPage({
               )}
             </Form.Item>
 
-            <Form.Item label="是否叠加">
-              <div className={styles.inlineField}>
-                <Switch
-                  checked={formValues.allowStacking}
-                  disabled={!canEditStacking}
-                  onChange={handleAllowStackingChange}
-                />
-                <span className={styles.inlineText}>
-                  {formValues.allowStacking ? '开启' : '关闭'}
-                </span>
-              </div>
-            </Form.Item>
+            {shouldShowStackingConfig && (
+              <>
+                <Form.Item label={isCreateMode ? createModeStackingLabel : '是否叠加'}>
+                  <div className={styles.inlineField}>
+                    <Switch
+                      checked={formValues.allowStacking}
+                      disabled={!canEditStacking}
+                      onChange={handleAllowStackingChange}
+                    />
+                    <span className={styles.inlineText}>
+                      {formValues.allowStacking ? '开启' : '关闭'}
+                    </span>
+                  </div>
+                </Form.Item>
 
-            {formValues.allowStacking && (
-              <Form.Item required label="选择叠加券类型">
-                <Radio.Group
-                  value={formValues.stackingCouponType}
-                  disabled={!canEditStacking}
-                  onChange={handleStackingTypeChange}
-                >
-                  {stackingTypeOptions.map((item) => (
-                    <Radio key={item.value} value={item.value}>
-                      {item.label}
-                    </Radio>
-                  ))}
-                </Radio.Group>
-                {formErrors.stackingType && (
-                  <div className={styles.fieldError}>{formErrors.stackingType}</div>
+                {!isCreateMode && formValues.allowStacking && (
+                  <Form.Item required label="选择叠加券类型">
+                    <Radio.Group
+                      value={formValues.stackingCouponType}
+                      disabled={!canEditStacking}
+                      onChange={handleStackingTypeChange}
+                    >
+                      {stackingTypeOptions.map((item) => (
+                        <Radio key={item.value} value={item.value}>
+                          {item.label}
+                        </Radio>
+                      ))}
+                    </Radio.Group>
+                    {formErrors.stackingType && (
+                      <div className={styles.fieldError}>{formErrors.stackingType}</div>
+                    )}
+                  </Form.Item>
                 )}
-              </Form.Item>
-            )}
-
-            {formValues.allowStacking && (
-              <Form.Item required label="叠加的张数">
-                <div className={styles.inlineField}>
-                  <Checkbox
-                    checked={formValues.stackingUnlimited}
-                    disabled={!canEditStacking}
-                    onChange={handleStackingUnlimitedChange}
-                  >
-                    不限
-                  </Checkbox>
-
-                  {!formValues.stackingUnlimited && (
-                    <>
-                      <InputNumber
-                        className={styles.countInput}
-                        min={1}
-                        precision={0}
-                        disabled={!canEditStacking}
-                        value={formValues.stackingCount}
-                        onChange={(value) =>
-                          updateNumberField(
-                            'stackingCount',
-                            typeof value === 'number' ? value : undefined
-                          )
-                        }
-                      />
-                      <span className={styles.inlineUnit}>张</span>
-                    </>
-                  )}
-                </div>
-                {formErrors.stackingCount && (
-                  <div className={styles.fieldError}>{formErrors.stackingCount}</div>
+                {isActiveEditMode && !canEditStacking && (
+                  <div className={styles.fieldHint}>
+                    生效中的叠加/抵扣配置不可编辑。
+                  </div>
                 )}
-              </Form.Item>
-            )}
-            {isActiveEditMode && !canEditStacking && (
-              <div className={styles.fieldHint}>
-                生效中的叠加/抵扣配置不可编辑。
-              </div>
+              </>
             )}
           </div>
         </Form>

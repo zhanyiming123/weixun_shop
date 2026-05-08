@@ -36,6 +36,9 @@ import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail
 import ShareTargetSelector from '@/pages/product/components/share-target-selector';
 import { handleUnavailableProductEdit } from '@/pages/product/edit-action';
 import {
+  getPrimaryProductRowActionKeys,
+} from '@/pages/product/row-actions';
+import {
   buildProductCatalogCascaderOptions,
   getProductCatalogFullLabel,
   getProductCatalogIdFromPath,
@@ -53,9 +56,9 @@ import {
   createDefaultFilterValues,
   DEFAULT_INVENTORY_UNIT,
   getProductCurrentStoreId,
-  getProductStoreChannelConfig,
   getProductStoreOverride,
   resolveSourceStoreMetaById,
+  shouldShowSalesStoreAction,
 } from '@/lib/product';
 import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
@@ -131,16 +134,6 @@ const RangePicker = DatePicker.RangePicker;
 
 function getDateTimestamp(dateTime: string) {
   return new Date(dateTime.replace(' ', 'T')).getTime();
-}
-
-function getProductShareModeLabel(product: ProductListItem) {
-  const config = getProductStoreChannelConfig(product);
-
-  if (!config) {
-    return '-';
-  }
-
-  return config.shareMode === 'shared_pool' ? '商品共享池' : '商品库';
 }
 
 function normalizePath(value: (string | string[])[] | undefined): string[] {
@@ -1257,12 +1250,6 @@ function ProductListPage() {
         getDateTimestamp(a.createdAt) - getDateTimestamp(b.createdAt),
     },
     {
-      title: '共享形式',
-      dataIndex: 'shareMode',
-      width: 120,
-      render: (_: unknown, record: ProductListItem) => getProductShareModeLabel(record),
-    },
-    {
       title: '操作',
       dataIndex: 'operations',
       width: 240,
@@ -1304,8 +1291,7 @@ function ProductListPage() {
                   label: '复制',
                   onClick: () => goToProductCreate('copy', record),
                 },
-                ...(record.storeView.isSelfBuilt &&
-                getProductShareModeLabel(record) !== '商品共享池'
+                ...(shouldShowSalesStoreAction(record)
                   ? [
                       {
                         key: 'sales-store',
@@ -1315,7 +1301,7 @@ function ProductListPage() {
                     ]
                   : []),
               ]),
-          ...(currentStoreId
+          ...(currentStoreId && !record.storeView.isShared
             ? [
                 {
                   key: 'sell-status',
@@ -1361,8 +1347,24 @@ function ProductListPage() {
             onClick: () => openSharePoolModal(record),
           },
         ];
-        const primaryActions = rowActions.slice(0, 3);
-        const overflowActions = rowActions.slice(3);
+        const primaryActionKeys = getPrimaryProductRowActionKeys(
+          rowActions.map((action) => action.key),
+          {
+            currentStoreId,
+            isShared: record.storeView.isShared,
+            canManageStoreSettings: record.storeView.canManageStoreSettings,
+          }
+        );
+        const primaryActionKeySet = new Set(primaryActionKeys);
+        const rowActionMap = new Map(
+          rowActions.map((action) => [action.key, action])
+        );
+        const primaryActions = primaryActionKeys
+          .map((key) => rowActionMap.get(key))
+          .filter((action): action is ProductRowActionItem => Boolean(action));
+        const overflowActions = rowActions.filter(
+          (action) => !primaryActionKeySet.has(action.key)
+        );
         const overflowActionMap = new Map(
           overflowActions.map((action) => [action.key, action])
         );
@@ -1688,25 +1690,30 @@ function ProductListPage() {
           <Button type="primary" onClick={() => history.push('/product/combo/create')}>
             添加商品
           </Button>
-          <Button
-            disabled={!selectedRowKeys.length}
-            onClick={() =>
-              currentStoreId
-                ? handleBatchSellStatusChange('sellable')
-                : handleBatchStatusChange('on')
-            }
-          >
-            {currentStoreId ? '批量设为可售' : '批量上架'}
+          {currentStoreId ? (
+            <>
+              <Button
+                disabled={!selectedRowKeys.length}
+                onClick={() => handleBatchSellStatusChange('sellable')}
+              >
+                批量设为可售
+              </Button>
+              <Button
+                disabled={!selectedRowKeys.length}
+                onClick={() => handleBatchSellStatusChange('unsellable')}
+              >
+                批量设为不可售
+              </Button>
+            </>
+          ) : null}
+          <Button disabled={!selectedRowKeys.length} onClick={() => handleBatchStatusChange('on')}>
+            批量设为上架
           </Button>
           <Button
             disabled={!selectedRowKeys.length}
-            onClick={() =>
-              currentStoreId
-                ? handleBatchSellStatusChange('unsellable')
-                : handleBatchStatusChange('off')
-            }
+            onClick={() => handleBatchStatusChange('off')}
           >
-            {currentStoreId ? '批量设为不可售' : '批量下架'}
+            批量设为下架
           </Button>
         </div>
 

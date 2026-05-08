@@ -19,8 +19,6 @@ import {
   IconMoonFill,
   IconSettings,
   IconPoweroff,
-  IconExperiment,
-  IconDashboard,
 } from '@arco-design/web-react/icon';
 import { useSelector, useDispatch } from 'react-redux';
 import { GlobalState } from '@/store';
@@ -260,20 +258,6 @@ function Navbar({ show }: { show: boolean }) {
         <IconSettings className={styles['dropdown-icon']} />
         {t['menu.user.setting']}
       </Menu.Item>
-      <Menu.SubMenu
-        key="more"
-        title={
-          <div style={{ width: 88 }}>
-            <IconExperiment className={styles['dropdown-icon']} />
-            {t['message.seeMore']}
-          </div>
-        }
-      >
-        <Menu.Item key="workplace">
-          <IconDashboard className={styles['dropdown-icon']} />
-          {t['menu.home']}
-        </Menu.Item>
-      </Menu.SubMenu>
 
       <Divider style={{ margin: '4px 0' }} />
       <Menu.Item key="logout">

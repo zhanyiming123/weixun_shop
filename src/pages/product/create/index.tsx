@@ -142,6 +142,7 @@ import { ProductService } from '@/services/ProductService';
 import CouponStoreSelector from '@/pages/marketing/center/components/store-selector';
 import {
   applyProductSkuBatchPatch,
+  buildDefaultSelectedProductSpecIds,
   buildProductCreateSpecItems,
   buildProductSkuAttributeRowsFromSkus,
   buildProductSkuAttributeRowsFromSpecItems,
@@ -1067,6 +1068,7 @@ function ProductCreatePage() {
     useState<ProductStoreSellStatus>();
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
+  const autoFilledCatalogSpecIdRef = useRef<string>('');
   const currentCatalogSpecs = useMemo(
     () => getEnabledSpecsByCatalogId(catalogSpecs, productCatalogId),
     [catalogSpecs, productCatalogId]
@@ -1302,6 +1304,7 @@ function ProductCreatePage() {
       setDetailLineHeight('1.75');
       setStoreShareSettingMap({});
       setDraftStoreShareSettingMap({});
+      autoFilledCatalogSpecIdRef.current = '';
       setProductStoreConfigs(
         buildDefaultCreateStoreConfigs(scopedStoreItems, visibleStoreIds)
       );
@@ -1323,6 +1326,7 @@ function ProductCreatePage() {
     setInventoryUnit(sourceProduct.inventoryUnit || DEFAULT_INVENTORY_UNIT);
     setSpecMode(sourceProduct.specMode);
     setSelectedCatalogSpecTemplateId(undefined);
+    autoFilledCatalogSpecIdRef.current = '';
     setSelectedCatalogSpecIds(
       isEditMode && sourceProduct.specMode === 'multi'
         ? sourceEditCatalogSpecDraft.specIds
@@ -1437,8 +1441,6 @@ function ProductCreatePage() {
     isEditMode,
     pageMode,
     scopedStoreItems,
-    sourceEditCatalogSpecDraft.specIds,
-    sourceEditCatalogSpecDraft.valueMap,
     sourceProduct,
     visibleStoreIds,
   ]);
@@ -1466,6 +1468,36 @@ function ProductCreatePage() {
       syncStoreChannelSkuDraftMap(previous, specMode, specItems)
     );
   }, [isEditMode, isStoreScopedCreatePage, specItems, specMode]);
+
+  useEffect(() => {
+    if (
+      pageMode !== 'create' ||
+      isEditMode ||
+      specMode !== 'multi' ||
+      !productCatalogId ||
+      !currentCatalogSpecs.length ||
+      autoFilledCatalogSpecIdRef.current === productCatalogId ||
+      hasProductSpecSelectionDraft(
+        normalizedSelectedCatalogSpecIds,
+        selectedCatalogSpecValueMap
+      )
+    ) {
+      return;
+    }
+
+    setSelectedCatalogSpecIds(
+      buildDefaultSelectedProductSpecIds(currentCatalogSpecs)
+    );
+    autoFilledCatalogSpecIdRef.current = productCatalogId;
+  }, [
+    currentCatalogSpecs,
+    isEditMode,
+    normalizedSelectedCatalogSpecIds,
+    pageMode,
+    productCatalogId,
+    selectedCatalogSpecValueMap,
+    specMode,
+  ]);
 
   useEffect(() => {
     if (!useStoreScopedChannelConfig) {
@@ -1717,8 +1749,18 @@ function ProductCreatePage() {
   }
 
   function applyProductCatalogIdChange(nextCatalogId?: string) {
+    const nextSelectedSpecIds =
+      pageMode === 'create'
+        ? buildDefaultSelectedProductSpecIds(
+            getEnabledSpecsByCatalogId(catalogSpecs, nextCatalogId)
+          )
+        : [];
+
     setProductCatalogId(nextCatalogId);
     resetMultiSpecDraft();
+    setSelectedCatalogSpecIds(nextSelectedSpecIds);
+    autoFilledCatalogSpecIdRef.current =
+      nextCatalogId && nextSelectedSpecIds.length ? nextCatalogId : '';
   }
 
   function handleProductCatalogChange(value: (string | string[])[] | undefined) {

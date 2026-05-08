@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { getCouponActionKeys } from './list/actions';
 import {
   buildCouponFormValuesFromRecord,
+  getCreatePageDiscountOptions,
+  getCreatePageProductScopeOptions,
+  getCreatePageDefaultStackingCouponType,
   getCouponEditRuleSet,
   readCouponListItems,
   readCouponById,
@@ -13,12 +16,14 @@ describe('coupon data helpers', () => {
     const record = readCouponById('122661783991');
 
     expect(record).toBeTruthy();
-    expect(buildCouponFormValuesFromRecord(record!)).toMatchObject({
+    const formValues = buildCouponFormValuesFromRecord(record!);
+
+    expect(formValues).toMatchObject({
       allowStacking: false,
       stackingCouponType: undefined,
-      stackingUnlimited: false,
-      stackingCount: 1,
     });
+    expect(formValues).not.toHaveProperty('stackingUnlimited');
+    expect(formValues).not.toHaveProperty('stackingCount');
   });
 
   it('returns the expected edit rule set for not started and active coupons', () => {
@@ -55,7 +60,7 @@ describe('coupon data helpers', () => {
     });
   });
 
-  it('persists stacking config and clears it after stacking is disabled', () => {
+  it('stores stacking type only and clears deprecated stacking count config', () => {
     const originalRecord = readCouponById('122661783977');
 
     expect(originalRecord).toBeTruthy();
@@ -67,23 +72,19 @@ describe('coupon data helpers', () => {
         ...originalValues,
         allowStacking: true,
         stackingCouponType: 'platformOnly',
-        stackingUnlimited: false,
-        stackingCount: 3,
       });
 
       expect(enabled).toMatchObject({
         allowStacking: true,
         stackingCouponType: 'platformOnly',
         stackingUnlimited: false,
-        stackingCount: 3,
+        stackingCount: undefined,
       });
 
       const disabled = updateCouponById('122661783977', {
         ...originalValues,
         allowStacking: false,
         stackingCouponType: 'platformOnly',
-        stackingUnlimited: false,
-        stackingCount: 3,
       });
 
       expect(disabled).toMatchObject({
@@ -95,6 +96,25 @@ describe('coupon data helpers', () => {
     } finally {
       updateCouponById('122661783977', originalValues);
     }
+  });
+
+  it('returns the create-page stacking type implied by the current system', () => {
+    expect(getCreatePageDefaultStackingCouponType(true)).toBe('platformOnly');
+    expect(getCreatePageDefaultStackingCouponType(false)).toBe('shopOnly');
+  });
+
+  it('excludes discount from the create-page discount options', () => {
+    expect(getCreatePageDiscountOptions().map((item) => item.value)).toEqual([
+      'fullReduction',
+      'directReduction',
+    ]);
+  });
+
+  it('excludes specific products from the create-page scope options', () => {
+    expect(getCreatePageProductScopeOptions().map((item) => item.value)).toEqual([
+      'all',
+      'condition',
+    ]);
   });
 
   it('keeps locked active fields unchanged while still allowing supported edits', () => {
@@ -123,8 +143,6 @@ describe('coupon data helpers', () => {
         customUseTimeRange: ['2026/11/01 00:00:00', '2026/11/30 23:59:59'],
         allowStacking: true,
         stackingCouponType: 'platformOnly',
-        stackingUnlimited: false,
-        stackingCount: 2,
       });
 
       expect(updated).toMatchObject({

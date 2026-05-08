@@ -19,7 +19,7 @@ describe('ProductRepository seeded mock recovery', () => {
     persistentStateMocks.writePersistentValue.mockReset();
   });
 
-  it('keeps seeded shenzhen store products visible when persisted seed snapshot is stale', () => {
+  it('keeps seeded chengdu store products visible when persisted seed snapshot is stale', () => {
     persistentStateMocks.readPersistentValue.mockReturnValue(
       DEFAULT_PRODUCTS.map((item) => ({
         ...item,
@@ -40,7 +40,7 @@ describe('ProductRepository seeded mock recovery', () => {
         createdAtRange: [],
       },
       organizationScope: 'store',
-      visibleStoreIds: ['store_shenzhen'],
+      visibleStoreIds: ['store_chengdu'],
       page: 1,
       pageSize: 20,
     });
@@ -202,7 +202,13 @@ describe('ProductRepository seeded mock recovery', () => {
     persistentStateMocks.readPersistentValue.mockReturnValue(
       DEFAULT_PRODUCTS.filter(
         (item) =>
-          item.id !== 'G_1260601000000000010' && item.id !== 'C_1260601000000000010'
+          ![
+            'G_1260601000000000010',
+            'C_1260601000000000010',
+            'G_1260601000000000011',
+            'C_1260601000000000011',
+            'G_1260601000000000012',
+          ].includes(item.id)
       )
     );
 
@@ -210,7 +216,13 @@ describe('ProductRepository seeded mock recovery', () => {
     const snapshot = repository.readSnapshot();
 
     expect(snapshot.map((item) => item.id)).toEqual(
-      expect.arrayContaining(['G_1260601000000000010', 'C_1260601000000000010'])
+      expect.arrayContaining([
+        'G_1260601000000000010',
+        'C_1260601000000000010',
+        'G_1260601000000000011',
+        'C_1260601000000000011',
+        'G_1260601000000000012',
+      ])
     );
     expect(
       snapshot.find((item) => item.id === 'G_1260601000000000010')?.storeChannelConfig
@@ -218,6 +230,34 @@ describe('ProductRepository seeded mock recovery', () => {
       shareMode: 'shared_pool',
       storeIds: ['mall_online', 'mall_mini_program'],
     });
+    expect(
+      snapshot.find((item) => item.id === 'G_1260601000000000012')?.storeChannelConfig
+    ).toMatchObject({
+      shareMode: 'product_pool',
+      storeIds: ['store_beijing'],
+    });
+    expect(
+      snapshot.find((item) => item.id === 'G_1260601000000000011')?.storeChannelConfig
+    ).toMatchObject({
+      shareMode: 'shared_pool',
+      storeIds: ['store_beijing'],
+    });
     expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
+  });
+
+  it('ships enabled store-channel mock data for both product-pool and shared-pool modes', () => {
+    const standardModes = DEFAULT_PRODUCTS.filter(
+      (item) => item.productKind === 'standard' && item.storeChannelConfig
+    ).map((item) => item.storeChannelConfig?.shareMode);
+    const comboModes = DEFAULT_PRODUCTS.filter(
+      (item) => item.productKind === 'combo' && item.storeChannelConfig
+    ).map((item) => item.storeChannelConfig?.shareMode);
+
+    expect(standardModes).toEqual(
+      expect.arrayContaining(['product_pool', 'shared_pool'])
+    );
+    expect(comboModes).toEqual(
+      expect.arrayContaining(['product_pool', 'shared_pool'])
+    );
   });
 });

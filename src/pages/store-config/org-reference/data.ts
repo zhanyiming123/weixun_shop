@@ -36,6 +36,7 @@ export type StoreOrgReferenceConfig = {
   storeId: string;
   selectedDepartmentIds: string[];
   selectedEmployeeIds: string[];
+  excludedEmployeeIds: string[];
   subordinateRelations: StoreOrgReferenceSubordinateRelation[];
   updatedAt: string;
 };
@@ -390,6 +391,7 @@ function createDefaultStoreOrgReferenceConfig(storeId: string): StoreOrgReferenc
     storeId,
     selectedDepartmentIds: [],
     selectedEmployeeIds: [],
+    excludedEmployeeIds: [],
     subordinateRelations: [],
     updatedAt: createCurrentDateTime(),
   };
@@ -462,6 +464,10 @@ function normalizeStoreOrgReferenceConfig(
       item.selectedEmployeeIds || [],
       allEmployeeIds
     ),
+    excludedEmployeeIds: sanitizeEmployeeIds(
+      item.excludedEmployeeIds || [],
+      allEmployeeIds
+    ),
     subordinateRelations: normalizeSubordinateRelations(
       item.subordinateRelations || [],
       allEmployeeIds
@@ -481,6 +487,7 @@ function createDefaultStoreOrgReferenceConfigs(
       departmentItems
     ),
     selectedEmployeeIds: [],
+    excludedEmployeeIds: [],
     subordinateRelations: [],
     updatedAt: STORE_ORG_REFERENCE_DEFAULT_UPDATED_AT,
   }));
@@ -586,7 +593,7 @@ export function sanitizeStoreOrgReferenceConfig(
     config.selectedEmployeeIds,
     allEmployeeIds
   );
-  const referencedEmployeeIds = new Set(
+  const initiallyReferencedEmployeeIds = new Set(
     getReferencedHrEmployeesBySelection(
       selectedDepartmentIds,
       hrEmployees,
@@ -594,11 +601,22 @@ export function sanitizeStoreOrgReferenceConfig(
       selectedEmployeeIds
     ).map((item) => item.id)
   );
+  const excludedEmployeeIds = sanitizeEmployeeIds(
+    config.excludedEmployeeIds || [],
+    initiallyReferencedEmployeeIds
+  ).filter((employeeId) => !selectedEmployeeIds.includes(employeeId));
+  const excludedEmployeeIdSet = new Set(excludedEmployeeIds);
+  const referencedEmployeeIds = new Set(
+    Array.from(initiallyReferencedEmployeeIds).filter(
+      (employeeId) => !excludedEmployeeIdSet.has(employeeId)
+    )
+  );
 
   return {
     ...config,
     selectedDepartmentIds,
     selectedEmployeeIds,
+    excludedEmployeeIds,
     subordinateRelations: normalizeSubordinateRelations(
       config.subordinateRelations,
       referencedEmployeeIds
@@ -641,7 +659,7 @@ export function buildStoreReferencedEmployees(
     hrEmployees,
     treeNodes,
     effectiveConfig.selectedEmployeeIds
-  );
+  ).filter((item) => !effectiveConfig.excludedEmployeeIds.includes(item.id));
   const employeeNameMap = new Map(
     referencedEmployees.map((item) => [item.id, item.name] as const)
   );

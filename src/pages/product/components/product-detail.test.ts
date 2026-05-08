@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { buildProductListItem } from '@/lib/product';
 import type { ProductItem } from '@/types/product';
 import {
+  buildProductDetailContentState,
+  buildProductDetailSections,
   buildProductDetailChannelRows,
   formatProductLimitRule,
   getProductChannelModeLabel,
@@ -111,5 +114,34 @@ describe('product detail helpers', () => {
     expect(getProductSharedScopeText(product.storeChannelConfig)).toBe(
       '唯寻线上商城、唯寻小程序商城'
     );
+  });
+
+  it('prefers detailContent config and exposes the four detail sections in order', () => {
+    const product = buildProductListItem(
+      createProduct({
+        detailHtml: '<p>旧详情</p>',
+        detailContent: {
+          html: '<p>新详情</p>',
+          fontSize: '18',
+          lineHeight: '2',
+        },
+      }),
+      'store',
+      ['mall_online'],
+      {
+        sourceStoreName: '唯寻线上商城',
+      }
+    );
+
+    expect(buildProductDetailContentState(product)).toEqual({
+      html: '<p>新详情</p>',
+      fontSize: '18',
+      lineHeight: '2',
+    });
+    expect(
+      buildProductDetailSections(product, '国际课程', '自建商品').map(
+        (section) => section.key
+      )
+    ).toEqual(['basic', 'spec', 'detail-page', 'store-channel']);
   });
 });

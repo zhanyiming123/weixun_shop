@@ -90,8 +90,6 @@ export type CouponFormValues = {
   discountRate?: number;
   allowStacking: boolean;
   stackingCouponType?: CouponStackingType;
-  stackingUnlimited: boolean;
-  stackingCount?: number;
   storeIds: string[];
   productScope: CouponProductScope;
   conditionCategoryPaths: string[][];
@@ -198,17 +196,31 @@ export const COUPON_DISCOUNT_OPTIONS = [
   { label: '折扣', value: 'discount' as CouponDiscountType },
 ];
 
+export function getCreatePageDiscountOptions() {
+  return COUPON_DISCOUNT_OPTIONS.filter((item) => item.value !== 'discount');
+}
+
 export const COUPON_STACKING_TYPE_OPTIONS = [
   { label: '仅店铺券', value: 'shopOnly' as CouponStackingType },
   { label: '仅平台券', value: 'platformOnly' as CouponStackingType },
   { label: '店铺券和平台券', value: 'shopAndPlatform' as CouponStackingType },
 ];
 
+export function getCreatePageDefaultStackingCouponType(
+  isStoreSystem: boolean
+): CouponStackingType {
+  return isStoreSystem ? 'platformOnly' : 'shopOnly';
+}
+
 export const PRODUCT_SCOPE_OPTIONS = [
   { label: '全部商品', value: 'all' as CouponProductScope },
   { label: '按条件圈品', value: 'condition' as CouponProductScope },
   { label: '指定商品', value: 'specific' as CouponProductScope },
 ];
+
+export function getCreatePageProductScopeOptions() {
+  return PRODUCT_SCOPE_OPTIONS.filter((item) => item.value !== 'specific');
+}
 
 export const VALIDITY_TYPE_OPTIONS = [
   { label: '和领取时间一致', value: 'sameAsReceive' as CouponValidityType },
@@ -1431,11 +1443,8 @@ export function updateCouponById(
     target.stackingCouponType = values.allowStacking
       ? values.stackingCouponType
       : undefined;
-    target.stackingUnlimited = values.allowStacking ? values.stackingUnlimited : false;
-    target.stackingCount =
-      values.allowStacking && !values.stackingUnlimited
-        ? values.stackingCount || 1
-        : undefined;
+    target.stackingUnlimited = false;
+    target.stackingCount = undefined;
   }
   if (!options?.isStoreSystem && isCouponEditFieldEditable(editRuleSet.storeIds)) {
     if (getCouponOwnershipType(target) === 'platform') {
@@ -1496,7 +1505,6 @@ export function buildCouponFormValuesFromRecord(
   visibleStoreIds?: string[]
 ): CouponFormValues {
   const allowStacking = Boolean(record.allowStacking);
-  const stackingUnlimited = allowStacking ? Boolean(record.stackingUnlimited) : false;
 
   return {
     discountType: record.discountType,
@@ -1506,14 +1514,6 @@ export function buildCouponFormValuesFromRecord(
     discountRate: record.discountRate,
     allowStacking,
     stackingCouponType: allowStacking ? record.stackingCouponType : undefined,
-    stackingUnlimited,
-    stackingCount:
-      allowStacking &&
-      !stackingUnlimited &&
-      typeof record.stackingCount === 'number' &&
-      record.stackingCount > 0
-        ? record.stackingCount
-        : 1,
     storeIds: normalizeCouponStoreIds(
       record.storeIds,
       visibleStoreIds || ALL_COUPON_STORE_IDS
@@ -1557,8 +1557,6 @@ export const DEFAULT_COUPON_FORM_VALUES: CouponFormValues = {
   discountRate: undefined,
   allowStacking: false,
   stackingCouponType: undefined,
-  stackingUnlimited: false,
-  stackingCount: 1,
   storeIds: [],
   productScope: 'all',
   conditionCategoryPaths: [],

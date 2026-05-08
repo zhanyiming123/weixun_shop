@@ -386,6 +386,10 @@ function getCompatibleOrganizationIdForSelection(
   return compatibleOrganizations[0].id;
 }
 
+export function getDemoDefaultHomeRoute(currentDemoSystem: DemoSystemId) {
+  return currentDemoSystem === 'store' ? 'product/list' : 'merchant/organization';
+}
+
 export function buildDemoContext(
   currentDemoSystem: DemoSystemId,
   currentDemoIdentity: DemoIdentityId,
@@ -411,7 +415,7 @@ export function buildDemoContext(
     allowedSystemIds: getAllowedDemoSystemIds(currentDemoIdentity, currentOrganization),
     organizationLocked: currentDemoIdentity === 'store_staff',
     currentStaffDepartmentName: preset.currentStaffDepartmentName,
-    defaultHomeRoute: 'dashboard/workplace',
+    defaultHomeRoute: getDemoDefaultHomeRoute(currentDemoSystem),
   };
 }
 

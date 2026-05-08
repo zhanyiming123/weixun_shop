@@ -331,7 +331,7 @@ function StoreEmployeeEditPage() {
             <span className={styles.infoLabel}>状态</span>
             <span className={styles.infoValue}>
               <Tag color={currentEmployee.status === 'enabled' ? 'green' : 'orange'}>
-                {currentEmployee.status === 'enabled' ? '在职' : '停用'}
+                {currentEmployee.status === 'enabled' ? '在职' : '离职'}
               </Tag>
             </span>
           </div>

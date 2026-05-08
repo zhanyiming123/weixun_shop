@@ -8,6 +8,7 @@ import type {
   ProductKind,
   ProductItem,
   ProductListItem,
+  ProductShareModeLabel,
   ProductShareStatus,
   ProductShareTargetItem,
   ProductSkuIndependentPriceRule,
@@ -1367,6 +1368,23 @@ export function getProductShareTargetByStoreId(
 
   return normalizeProductShareTargets(product.shareTargets || []).find(
     (item) => item.storeId === storeId
+  );
+}
+
+export function getProductShareModeLabel(product: ProductItem): ProductShareModeLabel {
+  const config = getProductStoreChannelConfig(product);
+
+  if (!config) {
+    return '-';
+  }
+
+  return config.shareMode === 'shared_pool' ? '商品共享池' : '商品库';
+}
+
+export function shouldShowSalesStoreAction(product: ProductListItem) {
+  return (
+    product.storeView.isSelfBuilt &&
+    getProductShareModeLabel(product) !== '商品共享池'
   );
 }
 

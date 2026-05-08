@@ -84,6 +84,7 @@ export type ProductStoreChannelCustomFieldKey =
 export type ProductStoreChannelStoreScope = 'allStores' | 'specificStores';
 export type ProductStoreChannelSkuScope = 'allSkus' | 'specificSkus';
 export type ProductStoreChannelShareMode = 'product_pool' | 'shared_pool';
+export type ProductShareModeLabel = '-' | '商品库' | '商品共享池';
 
 export type ProductStoreChannelProductPoolStoreConfigItem = {
   storeId: string;

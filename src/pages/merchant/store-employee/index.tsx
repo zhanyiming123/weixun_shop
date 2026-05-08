@@ -140,6 +140,7 @@ function MerchantStoreEmployeePage() {
       storeId: selectedStoreId,
       selectedDepartmentIds,
       selectedEmployeeIds,
+      excludedEmployeeIds: savedConfig?.excludedEmployeeIds || [],
       subordinateRelations: savedConfig?.subordinateRelations || [],
       updatedAt: savedConfig?.updatedAt || '',
     };
@@ -260,6 +261,7 @@ function MerchantStoreEmployeePage() {
         storeId: selectedStoreId,
         selectedDepartmentIds,
         selectedEmployeeIds,
+        excludedEmployeeIds: savedConfig?.excludedEmployeeIds || [],
         subordinateRelations: savedConfig?.subordinateRelations || [],
         updatedAt: savedConfig?.updatedAt || '',
       },

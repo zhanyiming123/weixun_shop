@@ -19,9 +19,9 @@ describe('merchant department visibility rules', () => {
     expect(isMemberMoreActionVisible('离职处理')).toBe(false);
   });
 
-  it('hides department edit and delete actions only', () => {
+  it('hides department edit, delete, and store binding actions', () => {
     expect(isDepartmentNodeActionVisible('编辑')).toBe(false);
     expect(isDepartmentNodeActionVisible('删除')).toBe(false);
-    expect(isDepartmentNodeActionVisible('负责店铺')).toBe(true);
+    expect(isDepartmentNodeActionVisible('负责店铺')).toBe(false);
   });
 });

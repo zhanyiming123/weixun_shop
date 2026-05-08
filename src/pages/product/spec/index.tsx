@@ -30,6 +30,7 @@ import {
   getEnabledSpecsByCatalogId,
   isProductCatalogSpecNameDuplicated,
   normalizeProductCatalogSpecValues,
+  resolveProductCatalogSpecIdentity,
   type ProductCatalogSpecItem,
   useProductCatalogSpecs,
 } from './data';
@@ -160,7 +161,13 @@ function ProductSpecPage() {
         return;
       }
 
-      const name = values.name.trim();
+      const identity = resolveProductCatalogSpecIdentity(
+        {
+          catalogId,
+          name: values.name,
+        },
+        editingItem
+      );
       const specValues = normalizeProductCatalogSpecValues(values.values || []);
 
       if (!specValues.length) {
@@ -171,8 +178,8 @@ function ProductSpecPage() {
       if (
         isProductCatalogSpecNameDuplicated(
           specs,
-          catalogId,
-          name,
+          identity.catalogId,
+          identity.name,
           editingItem?.id
         )
       ) {
@@ -186,8 +193,8 @@ function ProductSpecPage() {
             item.id === editingItem.id
               ? {
                   ...item,
-                  catalogId,
-                  name,
+                  catalogId: identity.catalogId,
+                  name: identity.name,
                   values: specValues,
                   sort: values.sort,
                   enabled: values.enabled ?? true,
@@ -201,15 +208,15 @@ function ProductSpecPage() {
           ...previous,
           {
             id: generateId(),
-            catalogId,
-            name,
+            catalogId: identity.catalogId,
+            name: identity.name,
             values: specValues,
             sort: values.sort,
             enabled: values.enabled ?? true,
             createdAt: now(),
           },
         ]);
-        setSelectedCatalogId(catalogId);
+        setSelectedCatalogId(identity.catalogId);
         Message.success('添加成功');
       }
 
@@ -394,14 +401,24 @@ function ProductSpecPage() {
             rules={[{ required: true, message: '请选择类目' }]}
             extra="一个规格项只绑定一个叶子类目。"
           >
-            <Cascader allowClear options={catalogCascaderOptions} placeholder="请选择类目" />
+            <Cascader
+              allowClear={!editingItem}
+              disabled={Boolean(editingItem)}
+              options={catalogCascaderOptions}
+              placeholder="请选择类目"
+            />
           </Form.Item>
           <Form.Item
             field="name"
             label="规格项名称"
             rules={[{ required: true, message: '请输入规格项名称' }]}
           >
-            <Input placeholder="例如：班型、颜色、尺码" maxLength={20} showWordLimit />
+            <Input
+              disabled={Boolean(editingItem)}
+              placeholder="例如：班型、颜色、尺码"
+              maxLength={20}
+              showWordLimit
+            />
           </Form.Item>
           <Form.Item
             field="values"

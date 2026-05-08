@@ -159,7 +159,7 @@ describe('product create store channel helpers', () => {
         {
           storeId: 'store_shenzhen',
           sellStatus: 'unsellable',
-          channelStatus: 'on',
+          channelStatus: 'off',
         },
       ],
     });
@@ -356,6 +356,7 @@ describe('product create store channel helpers', () => {
       shareMode: 'product_pool',
       storeScope: 'specificStores',
       storeIds: ['store_guangzhou'],
+      sharedPoolSellableSkuKeys: [],
       productPoolStoreConfigs: [
         {
           storeId: 'store_guangzhou',
@@ -399,6 +400,7 @@ describe('product create store channel helpers', () => {
       shareMode: 'product_pool',
       storeScope: 'specificStores',
       storeIds: ['store_guangzhou'],
+      sharedPoolSellableSkuKeys: [],
       productPoolStoreConfigs: [
         {
           storeId: 'store_guangzhou',
@@ -443,6 +445,7 @@ describe('product create store channel helpers', () => {
       shareMode: 'product_pool',
       storeScope: 'specificStores',
       storeIds: ['store_guangzhou'],
+      sharedPoolSellableSkuKeys: [],
       productPoolStoreConfigs: [
         {
           storeId: 'store_guangzhou',

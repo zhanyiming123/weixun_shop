@@ -11,11 +11,17 @@ import {
   readEnterpriseRoleItems,
 } from '@/pages/enterprise/role/data';
 import {
+  buildStoreOrgReferenceTree,
   buildStoreReferencedEmployees,
+  getStoreOrgReferenceConfigByStoreId,
+  HrEmployeeItem,
+  readHrEmployeeItems,
   readStoreOrgReferenceConfigs,
   StoreOrgReferenceConfig,
   StoreOrgReferenceSubordinateRelation,
+  StoreOrgReferenceTreeNode,
   StoreReferencedEmployeeItem,
+  upsertStoreOrgReferenceConfig,
   writeStoreOrgReferenceConfigs,
 } from '@/pages/store-config/org-reference/data';
 import {
@@ -52,6 +58,7 @@ export type StoreExternalEmployeeItem = {
   status: 'enabled' | 'disabled';
   createdAt: string;
   updatedAt: string;
+  removedAt?: string;
 };
 
 export type CreateStoreExternalEmployeePayload = {
@@ -80,6 +87,17 @@ type StoreEmployeePermissionConfigLike = Partial<StoreEmployeePermissionConfigIt
 
 type StoreExternalEmployeeItemLike = Partial<StoreExternalEmployeeItem> & {
   status?: unknown;
+  removedAt?: unknown;
+};
+
+type ReadStoreExternalEmployeeOptions = {
+  includeRemoved?: boolean;
+};
+
+export type RemoveStoreEmployeeBindingResult = {
+  orgConfigItems: StoreOrgReferenceConfig[];
+  permissionConfigItems: StoreEmployeePermissionConfigItem[];
+  externalEmployeeItems: StoreExternalEmployeeItem[];
 };
 
 const STORAGE_KEY = 'store-employee-configs-v1';
@@ -157,6 +175,56 @@ const DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS: StoreExternalEmployeeItem[] = [
     updatedAt: '2026-04-01 09:00:00',
   },
   {
+    id: 'store_external_shanghai_001',
+    storeId: 'org_store_shanghai_001',
+    name: '沈知夏',
+    account: 'shen.zhixia',
+    contactPhone: '13712340001',
+    status: 'enabled',
+    createdAt: '2026-03-08 09:20:00',
+    updatedAt: '2026-03-08 09:20:00',
+  },
+  {
+    id: 'store_external_shanghai_002',
+    storeId: 'org_store_shanghai_001',
+    name: '顾言蹊',
+    account: 'gu.yanxi',
+    contactPhone: '13712340002',
+    status: 'enabled',
+    createdAt: '2026-03-12 10:00:00',
+    updatedAt: '2026-03-12 10:00:00',
+  },
+  {
+    id: 'store_external_shanghai_003',
+    storeId: 'org_store_shanghai_001',
+    name: '陆清禾',
+    account: 'lu.qinghe',
+    contactPhone: '13712340003',
+    status: 'enabled',
+    createdAt: '2026-03-18 11:30:00',
+    updatedAt: '2026-03-18 11:30:00',
+  },
+  {
+    id: 'store_external_shanghai_004',
+    storeId: 'org_store_shanghai_001',
+    name: '温书瑶',
+    account: 'wen.shuyao',
+    contactPhone: '13712340004',
+    status: 'enabled',
+    createdAt: '2026-03-26 14:10:00',
+    updatedAt: '2026-03-26 14:10:00',
+  },
+  {
+    id: 'store_external_shanghai_005',
+    storeId: 'org_store_shanghai_001',
+    name: '乔以宁',
+    account: 'qiao.yining',
+    contactPhone: '13712340005',
+    status: 'disabled',
+    createdAt: '2026-04-02 16:00:00',
+    updatedAt: '2026-04-18 09:40:00',
+  },
+  {
     id: 'store_external_shenzhen_001',
     storeId: 'org_store_shenzhen_001',
     name: '魏晨阳',
@@ -185,6 +253,49 @@ const DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS: StoreExternalEmployeeItem[] = [
     status: 'enabled',
     createdAt: '2026-03-05 11:00:00',
     updatedAt: '2026-03-05 11:00:00',
+  },
+];
+
+const DEFAULT_STORE_EMPLOYEE_PERMISSION_CONFIG_ITEMS: StoreEmployeePermissionConfigItem[] = [
+  {
+    storeId: 'org_store_shanghai_001',
+    employeeId: 'store_external_shanghai_001',
+    roleIds: ['role_store_manager'],
+    manualIncludedEmployeeIds: [],
+    manualExcludedEmployeeIds: [],
+    updatedAt: '2026-03-08 09:20:00',
+  },
+  {
+    storeId: 'org_store_shanghai_001',
+    employeeId: 'store_external_shanghai_002',
+    roleIds: ['role_store_cashier'],
+    manualIncludedEmployeeIds: [],
+    manualExcludedEmployeeIds: [],
+    updatedAt: '2026-03-12 10:00:00',
+  },
+  {
+    storeId: 'org_store_shanghai_001',
+    employeeId: 'store_external_shanghai_003',
+    roleIds: ['role_store_staff'],
+    manualIncludedEmployeeIds: [],
+    manualExcludedEmployeeIds: [],
+    updatedAt: '2026-03-18 11:30:00',
+  },
+  {
+    storeId: 'org_store_shanghai_001',
+    employeeId: 'store_external_shanghai_004',
+    roleIds: ['role_store_cashier', 'role_store_staff'],
+    manualIncludedEmployeeIds: [],
+    manualExcludedEmployeeIds: [],
+    updatedAt: '2026-03-26 14:10:00',
+  },
+  {
+    storeId: 'org_store_shanghai_001',
+    employeeId: 'store_external_shanghai_005',
+    roleIds: ['role_store_staff'],
+    manualIncludedEmployeeIds: [],
+    manualExcludedEmployeeIds: [],
+    updatedAt: '2026-04-18 09:40:00',
   },
 ];
 const STORE_ROLE_DATA_VIEW_SCOPE_PRIORITY: Record<
@@ -245,6 +356,20 @@ function sortStoreExternalEmployeeItems(items: StoreExternalEmployeeItem[]) {
   });
 }
 
+function mergeMissingDefaultStoreExternalEmployeeItems(
+  items: StoreExternalEmployeeItem[]
+) {
+  const itemMap = new Map(items.map((item) => [item.id, item] as const));
+
+  DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS.forEach((item) => {
+    if (!itemMap.has(item.id)) {
+      itemMap.set(item.id, item);
+    }
+  });
+
+  return sortStoreExternalEmployeeItems(Array.from(itemMap.values()));
+}
+
 function normalizeStoreExternalEmployeeItem(
   item: StoreExternalEmployeeItemLike
 ): StoreExternalEmployeeItem | null {
@@ -276,10 +401,17 @@ function normalizeStoreExternalEmployeeItem(
       typeof item.updatedAt === 'string' && item.updatedAt
         ? item.updatedAt
         : formatDateTime(),
+    removedAt:
+      typeof item.removedAt === 'string' && item.removedAt
+        ? item.removedAt
+        : undefined,
   };
 }
 
-export function readStoreExternalEmployeeItems(storeId?: string) {
+export function readStoreExternalEmployeeItems(
+  storeId?: string,
+  options?: ReadStoreExternalEmployeeOptions
+) {
   const raw = readPersistentValue<StoreExternalEmployeeItemLike[] | null>(
     EXTERNAL_EMPLOYEE_STORAGE_KEY,
     null
@@ -287,7 +419,7 @@ export function readStoreExternalEmployeeItems(storeId?: string) {
   const persistedItems: StoreExternalEmployeeItemLike[] = Array.isArray(raw)
     ? raw
     : DEFAULT_STORE_EXTERNAL_EMPLOYEE_ITEMS;
-  const normalizedItems = sortStoreExternalEmployeeItems(
+  const normalizedItems = mergeMissingDefaultStoreExternalEmployeeItems(
     persistedItems
       .filter(
         (item): item is StoreExternalEmployeeItemLike =>
@@ -301,11 +433,15 @@ export function readStoreExternalEmployeeItems(storeId?: string) {
     writePersistentValue(EXTERNAL_EMPLOYEE_STORAGE_KEY, normalizedItems);
   }
 
+  const visibleItems = options?.includeRemoved
+    ? normalizedItems
+    : normalizedItems.filter((item) => !item.removedAt);
+
   if (!storeId) {
-    return normalizedItems;
+    return visibleItems;
   }
 
-  return normalizedItems.filter((item) => item.storeId === storeId);
+  return visibleItems.filter((item) => item.storeId === storeId);
 }
 
 export function writeStoreExternalEmployeeItems(items: StoreExternalEmployeeItem[]) {
@@ -344,7 +480,7 @@ export function buildStoreExternalReferencedEmployees(
   externalEmployees: StoreExternalEmployeeItem[] = readStoreExternalEmployeeItems(storeId)
 ) {
   return externalEmployees
-    .filter((item) => item.storeId === storeId)
+    .filter((item) => item.storeId === storeId && !item.removedAt)
     .map<StoreReferencedEmployeeItem>((item) => ({
       id: item.id,
       name: item.name,
@@ -581,6 +717,30 @@ function sortStoreEmployeePermissionConfigs(items: StoreEmployeePermissionConfig
   });
 }
 
+function mergeMissingDefaultStoreEmployeePermissionConfigs(
+  items: StoreEmployeePermissionConfigItem[],
+  referencedEmployeesByStore: Map<string, StoreReferencedEmployeeItem[]>
+) {
+  const validConfigKeySet = new Set(
+    Array.from(referencedEmployeesByStore.entries()).flatMap(([storeId, employees]) =>
+      employees.map((employee) => `${storeId}:${employee.id}`)
+    )
+  );
+  const itemMap = new Map<string, StoreEmployeePermissionConfigItem>(
+    items.map((item) => [`${item.storeId}:${item.employeeId}`, item] as const)
+  );
+
+  DEFAULT_STORE_EMPLOYEE_PERMISSION_CONFIG_ITEMS.forEach((item) => {
+    const key = `${item.storeId}:${item.employeeId}`;
+
+    if (!itemMap.has(key) && validConfigKeySet.has(key)) {
+      itemMap.set(key, item);
+    }
+  });
+
+  return sortStoreEmployeePermissionConfigs(Array.from(itemMap.values()));
+}
+
 function readAndMigrateStoreEmployeePermissionConfigs() {
   const orgConfigs = readStoreOrgReferenceConfigs();
   const referencedEmployeesByStore = collectReferencedEmployeesByStore(orgConfigs);
@@ -649,8 +809,9 @@ function readAndMigrateStoreEmployeePermissionConfigs() {
     };
   });
 
-  const nextItems = sortStoreEmployeePermissionConfigs(
-    migratedItems.filter((item): item is StoreEmployeePermissionConfigItem => Boolean(item))
+  const nextItems = mergeMissingDefaultStoreEmployeePermissionConfigs(
+    migratedItems.filter((item): item is StoreEmployeePermissionConfigItem => Boolean(item)),
+    referencedEmployeesByStore
   );
 
   if (JSON.stringify(persistedItems) !== JSON.stringify(nextItems)) {
@@ -689,11 +850,13 @@ export function cleanupStoreEmployeePermissionConfigs(
   referencedEmployees: StoreReferencedEmployeeItem[],
   items: StoreEmployeePermissionConfigItem[] = readStoreEmployeePermissionConfigItems(),
   roleItems: EnterpriseRoleItem[] = readEnterpriseRoleItems(),
-  departmentItems: EnterpriseDepartmentItem[] = readEnterpriseDepartmentItems()
+  departmentItems: EnterpriseDepartmentItem[] = readEnterpriseDepartmentItems(),
+  externalEmployees: StoreExternalEmployeeItem[] = readStoreExternalEmployeeItems(storeId)
 ) {
   const mergedReferencedEmployees = buildStoreEmployeeSourceEmployees(
     storeId,
-    referencedEmployees
+    referencedEmployees,
+    externalEmployees
   );
   const validRoleIdSet = new Set(buildStoreRoleItems(roleItems).map((item) => item.id));
   const nextItems = sortStoreEmployeePermissionConfigs(
@@ -935,6 +1098,96 @@ export function resolveStoreEmployeeVisibleEmployeeIds(
   );
 
   return Array.from(visibleEmployeeIdSet);
+}
+
+export function removeStoreEmployeeBinding(
+  storeId: string,
+  employee: Pick<StoreManagedEmployeeItem, 'id' | 'sourceType'>,
+  orgConfigItems: StoreOrgReferenceConfig[] = readStoreOrgReferenceConfigs(),
+  permissionConfigItems: StoreEmployeePermissionConfigItem[] = readStoreEmployeePermissionConfigItems(),
+  externalEmployeeItems: StoreExternalEmployeeItem[] = readStoreExternalEmployeeItems(
+    undefined,
+    {
+      includeRemoved: true,
+    }
+  ),
+  hrEmployees: HrEmployeeItem[] = readHrEmployeeItems(),
+  roleItems: EnterpriseRoleItem[] = readEnterpriseRoleItems(),
+  departmentItems: EnterpriseDepartmentItem[] = readEnterpriseDepartmentItems(),
+  treeNodes: StoreOrgReferenceTreeNode[] = buildStoreOrgReferenceTree()
+): RemoveStoreEmployeeBindingResult {
+  const removedAt = formatDateTime();
+  const currentOrgConfig = getStoreOrgReferenceConfigByStoreId(storeId, orgConfigItems);
+  const nextExternalEmployeeItems =
+    employee.sourceType === 'external_import'
+      ? externalEmployeeItems.map((item) =>
+          item.storeId === storeId && item.id === employee.id && !item.removedAt
+            ? {
+                ...item,
+                removedAt,
+                updatedAt: removedAt,
+              }
+            : item
+        )
+      : externalEmployeeItems;
+
+  if (employee.sourceType === 'external_import') {
+    writeStoreExternalEmployeeItems(nextExternalEmployeeItems);
+  }
+
+  const nextOrgConfigItems =
+    employee.sourceType === 'hr_reference'
+      ? upsertStoreOrgReferenceConfig(
+          {
+            storeId,
+            selectedDepartmentIds: currentOrgConfig?.selectedDepartmentIds || [],
+            selectedEmployeeIds: (currentOrgConfig?.selectedEmployeeIds || []).filter(
+              (employeeId) => employeeId !== employee.id
+            ),
+            excludedEmployeeIds: Array.from(
+              new Set([...(currentOrgConfig?.excludedEmployeeIds || []), employee.id])
+            ),
+            subordinateRelations: (currentOrgConfig?.subordinateRelations || []).filter(
+              (item) =>
+                item.subjectEmployeeId !== employee.id &&
+                item.ownerEmployeeId !== employee.id
+            ),
+            updatedAt: currentOrgConfig?.updatedAt || '',
+          },
+          orgConfigItems,
+          hrEmployees,
+          treeNodes
+        )
+      : orgConfigItems;
+  const nextSavedConfig = getStoreOrgReferenceConfigByStoreId(storeId, nextOrgConfigItems);
+  const nextReferencedEmployees = buildStoreReferencedEmployees(
+    storeId,
+    nextSavedConfig,
+    hrEmployees,
+    treeNodes
+  );
+  const nextStoreExternalEmployees = nextExternalEmployeeItems.filter(
+    (item) => item.storeId === storeId && !item.removedAt
+  );
+  const nextSourceEmployees = buildStoreEmployeeSourceEmployees(
+    storeId,
+    nextReferencedEmployees,
+    nextStoreExternalEmployees
+  );
+  const nextPermissionConfigItems = cleanupStoreEmployeePermissionConfigs(
+    storeId,
+    nextSourceEmployees,
+    permissionConfigItems,
+    roleItems,
+    departmentItems,
+    nextStoreExternalEmployees
+  );
+
+  return {
+    orgConfigItems: nextOrgConfigItems,
+    permissionConfigItems: nextPermissionConfigItems,
+    externalEmployeeItems: nextExternalEmployeeItems,
+  };
 }
 
 export function getStoreRoleSelectionSummary(

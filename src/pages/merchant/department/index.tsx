@@ -17,16 +17,14 @@ import {
   Typography,
 } from '@arco-design/web-react';
 import {
-  IconApps,
   IconDown,
   IconDragDotVertical,
-  IconMoreVertical,
   IconRight,
   IconSearch,
 } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
 import { readProductStoreItems } from '@/pages/product/store-config/data';
-import { readDeptStoreAssignments, writeDeptStoreAssignments } from '@/utils/data-scope';
+import { readEnterpriseRoleItems } from '@/pages/enterprise/role/data';
 import {
   getMemberEffectiveRoleDisplay,
   getMemberStatusLabel,
@@ -36,9 +34,9 @@ import {
 } from './member-status';
 import {
   isDepartmentHeaderActionVisible,
-  isDepartmentNodeActionVisible,
   isMemberMoreActionVisible,
 } from './visibility';
+import { filterMerchantRoleItems } from '@/pages/merchant/role/tab-config';
 
 const RangePicker = DatePicker.RangePicker;
 const Option = Select.Option;
@@ -103,7 +101,7 @@ type DataScopeTreeNode = {
 
 const MERCHANT_COMPANY_NAME = '上海唯寻教育科技有限公司';
 const ROOT_DEPARTMENT_ID = 'dept_root';
-const MEMBER_ROLE_OPTIONS = ['超级管理员', '普通用户', '部门管理员'];
+const IMPORT_ROLE_OPTIONS = ['超级管理员', '普通用户', '部门管理员'];
 const IMPORT_DEFAULT_ROLE = '普通用户';
 const DATA_SCOPE_DEPARTMENT_KEY_PREFIX = 'data_scope_dept:';
 const DATA_SCOPE_MEMBER_KEY_PREFIX = 'data_scope_member:';
@@ -690,9 +688,6 @@ function MerchantDepartmentPage() {
   const [selectedDepartmentId, setSelectedDepartmentId] =
     useState(ROOT_DEPARTMENT_ID);
   const [departmentKeyword, setDepartmentKeyword] = useState('');
-  const [actionDepartmentId, setActionDepartmentId] = useState<string | null>(
-    null
-  );
   const [selectedRowKeys, setSelectedRowKeys] = useState<(string | number)[]>(
     []
   );
@@ -727,13 +722,12 @@ function MerchantDepartmentPage() {
     () => new Map(storeItems.map((item) => [item.id, item.name] as const)),
     [storeItems]
   );
-  const [storeAssignTarget, setStoreAssignTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [storeAssignSelectedIds, setStoreAssignSelectedIds] = useState<string[]>([]);
-  const [storeAssignments, setStoreAssignments] = useState<Record<string, string[]>>(
-    () => readDeptStoreAssignments()
+  const merchantRoleOptions = useMemo(
+    () =>
+      filterMerchantRoleItems(readEnterpriseRoleItems(), 'merchant').map(
+        (item) => item.name
+      ),
+    []
   );
 
   const filteredTree = useMemo(
@@ -932,18 +926,6 @@ function MerchantDepartmentPage() {
     };
   }, []);
 
-  useEffect(() => {
-    function closeActionCards() {
-      setActionDepartmentId(null);
-    }
-
-    document.addEventListener('click', closeActionCards);
-
-    return () => {
-      document.removeEventListener('click', closeActionCards);
-    };
-  }, []);
-
   function toggleExpand(id: string) {
     setExpandedDepartmentIds((prev) => {
       const next = new Set(prev);
@@ -992,12 +974,11 @@ function MerchantDepartmentPage() {
     try {
       const values = await importForm.validate();
       const role = String(values.role || IMPORT_DEFAULT_ROLE).trim();
-      const departmentStoreBinding = getDepartmentStoreBinding(selectedDepartmentId);
       const nextEmployeeCode = memberItems.length + 1;
       const importedMembers: MerchantDepartmentMember[] = [
-        { id: createMemberId(), name: '张华', status: 'active', phone: '13800001111', employeeCode: `WX${String(nextEmployeeCode).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
-        { id: createMemberId(), name: '李敏', status: 'active', phone: '13800002222', employeeCode: `WX${String(nextEmployeeCode + 1).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
-        { id: createMemberId(), name: '王磊', status: 'active', phone: '13800003333', employeeCode: `WX${String(nextEmployeeCode + 2).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: departmentStoreBinding.storeIds, role, position: '-' },
+        { id: createMemberId(), name: '张华', status: 'active', phone: '13800001111', employeeCode: `WX${String(nextEmployeeCode).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: [], role, position: '-' },
+        { id: createMemberId(), name: '李敏', status: 'active', phone: '13800002222', employeeCode: `WX${String(nextEmployeeCode + 1).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: [], role, position: '-' },
+        { id: createMemberId(), name: '王磊', status: 'active', phone: '13800003333', employeeCode: `WX${String(nextEmployeeCode + 2).padStart(4, '0')}`, departmentId: selectedDepartmentId, departmentName: selectedDepartment?.name || '', storeIds: [], role, position: '-' },
       ];
       setMemberItems((prev) => [...prev, ...importedMembers]);
       Message.success(`已导入 ${importedMembers.length} 名员工，默认角色：${role}`);
@@ -1005,16 +986,6 @@ function MerchantDepartmentPage() {
     } catch (_) {
       // validation error
     }
-  }
-
-  function openStoreAssignModal(
-    node: MerchantDepartmentNode,
-    event?: React.MouseEvent
-  ) {
-    event?.stopPropagation();
-    setActionDepartmentId(null);
-    setStoreAssignTarget({ id: node.id, name: node.name });
-    setStoreAssignSelectedIds(getDepartmentStoreBinding(node.id).storeIds);
   }
 
   function closeDataScopeDrawer() {
@@ -1061,41 +1032,6 @@ function MerchantDepartmentPage() {
     });
     Message.success(`员工「${dataScopeTargetMember.name}」数据从属已保存`);
     closeDataScopeDrawer();
-  }
-
-  function saveStoreAssignment() {
-    if (!storeAssignTarget) {
-      return;
-    }
-
-    const targetNode = findDepartmentNode(departmentTree, storeAssignTarget.id);
-    const targetDepartmentIds = targetNode
-      ? collectDepartmentIds(targetNode)
-      : [storeAssignTarget.id];
-    const targetDepartmentIdSet = new Set(targetDepartmentIds);
-    const normalizedStoreIds = normalizeMemberStoreIds(storeAssignSelectedIds);
-    const nextAssignments = { ...storeAssignments };
-
-    targetDepartmentIds.forEach((departmentId) => {
-      nextAssignments[departmentId] = normalizedStoreIds;
-    });
-
-    setStoreAssignments(nextAssignments);
-    writeDeptStoreAssignments(nextAssignments);
-    setMemberItems((prev) =>
-      prev.map((member) =>
-        getMemberDepartmentIds(member).some((departmentId) =>
-          targetDepartmentIdSet.has(departmentId)
-        )
-          ? {
-              ...member,
-              storeIds: normalizedStoreIds,
-            }
-          : member
-      )
-    );
-    setStoreAssignTarget(null);
-    Message.success('店铺分配已保存，部门成员店铺已同步');
   }
 
   async function handleDepartmentModalOk() {
@@ -1172,37 +1108,6 @@ function MerchantDepartmentPage() {
     );
   }
 
-  function getDepartmentStoreBinding(departmentId: string) {
-    const pathIds = departmentPathIdMap.get(departmentId) || [departmentId];
-
-    for (let index = pathIds.length - 1; index >= 0; index -= 1) {
-      const currentId = pathIds[index];
-
-      if (Object.prototype.hasOwnProperty.call(storeAssignments, currentId)) {
-        return {
-          hasBinding: true,
-          storeIds: normalizeMemberStoreIds(storeAssignments[currentId]),
-        };
-      }
-    }
-
-    return {
-      hasBinding: false,
-      storeIds: [] as string[],
-    };
-  }
-
-  function getMemberEffectiveStoreIds(member: MerchantDepartmentMember) {
-    const primaryDepartmentId = getMemberDepartmentIds(member)[0] || member.departmentId;
-    const departmentBinding = getDepartmentStoreBinding(primaryDepartmentId);
-
-    if (departmentBinding.hasBinding) {
-      return departmentBinding.storeIds;
-    }
-
-    return normalizeMemberStoreIds(member.storeIds);
-  }
-
   function getMemberStoreDisplayItems(storeIds: string[] = []) {
     return storeIds.flatMap((storeId) => {
       const storeName = storeIdNameMap.get(storeId);
@@ -1211,15 +1116,13 @@ function MerchantDepartmentPage() {
   }
 
   function openEditMemberModal(record: MerchantDepartmentMember) {
-    const memberStoreIds = getMemberEffectiveStoreIds(record);
-
     setEditingMember(record);
     memberForm.setFieldsValue({
       name: record.name,
       phone: record.phone,
       employeeCode: record.employeeCode,
       departmentIds: getMemberDepartmentIds(record),
-      storeIds: memberStoreIds,
+      storeIds: normalizeMemberStoreIds(record.storeIds),
       role: record.role,
     });
     setMemberModalVisible(true);
@@ -1245,11 +1148,6 @@ function MerchantDepartmentPage() {
         return option ? [option] : [];
       });
       const primaryDepartment = nextDepartments[0];
-      const departmentStoreBinding =
-        getDepartmentStoreBinding(primaryDepartment?.value || '');
-      const finalStoreIds = departmentStoreBinding.hasBinding
-        ? departmentStoreBinding.storeIds
-        : normalizedStoreIdsInput;
 
       if (!finalDepartmentIds.length || !primaryDepartment) {
         Message.error('请选择所在部门');
@@ -1275,7 +1173,7 @@ function MerchantDepartmentPage() {
                   departmentName: primaryDepartment.label,
                   departmentIds: nextDepartments.map((department) => department.value),
                   departmentNames: nextDepartments.map((department) => department.label),
-                  storeIds: finalStoreIds,
+                  storeIds: normalizedStoreIdsInput,
                   role: normalizedRole,
                 }
               : member
@@ -1295,7 +1193,7 @@ function MerchantDepartmentPage() {
             departmentName: primaryDepartment.label,
             departmentIds: nextDepartments.map((department) => department.value),
             departmentNames: nextDepartments.map((department) => department.label),
-            storeIds: finalStoreIds,
+            storeIds: normalizedStoreIdsInput,
             role: normalizedRole,
             position: '-',
           },
@@ -1320,7 +1218,6 @@ function MerchantDepartmentPage() {
     ]
       .filter(Boolean)
       .join(' ');
-    const departmentStoreBinding = getDepartmentStoreBinding(node.id);
 
     return (
       <div key={node.id} className={styles.departmentNode}>
@@ -1353,43 +1250,6 @@ function MerchantDepartmentPage() {
             )}
           </button>
           <span className={styles.departmentName}>{node.name}</span>
-          {Boolean(departmentStoreBinding.storeIds.length) && (
-            <span className={styles.storeBadge}>
-              {departmentStoreBinding.storeIds.length}店
-            </span>
-          )}
-          <span className={styles.departmentSpacer} />
-          <span
-            className={styles.departmentActionWrap}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className={styles.departmentMoreButton}
-              onClick={(event) => {
-                event.stopPropagation();
-                setActionDepartmentId((currentId) =>
-                  currentId === node.id ? null : node.id
-                );
-              }}
-            >
-              <IconMoreVertical />
-            </button>
-
-            {actionDepartmentId === node.id && (
-              <span className={styles.departmentActionCard}>
-                {isDepartmentNodeActionVisible('负责店铺') && (
-                  <button
-                    type="button"
-                    onClick={(event) => openStoreAssignModal(node, event)}
-                  >
-                    <IconApps />
-                    <span>负责店铺</span>
-                  </button>
-                )}
-              </span>
-            )}
-          </span>
         </div>
 
         {hasChildren && expanded && (
@@ -1425,7 +1285,7 @@ function MerchantDepartmentPage() {
       width: 260,
       render: (_: string[], record: MerchantDepartmentMember) => {
         const storeDisplayItems = getMemberStoreDisplayItems(
-          getMemberEffectiveStoreIds(record)
+          normalizeMemberStoreIds(record.storeIds)
         );
 
         if (!storeDisplayItems.length) {
@@ -1496,8 +1356,6 @@ function MerchantDepartmentPage() {
       onClick: openImportModal,
     },
   ].filter((action) => isDepartmentHeaderActionVisible(action.label));
-  const selectedDepartmentStoreIds =
-    getDepartmentStoreBinding(selectedDepartmentId).storeIds;
 
   return (
     <>
@@ -1542,53 +1400,6 @@ function MerchantDepartmentPage() {
                 当前部门：{selectedDepartment?.name || MERCHANT_COMPANY_NAME}，
                 共 {tableData.length} 名成员
               </div>
-              {selectedDepartmentId !== ROOT_DEPARTMENT_ID && (
-                <div className={styles.managedStoreRow}>
-                  <span className={styles.managedStoreLabel}>负责店铺：</span>
-                  {selectedDepartmentStoreIds.length ? (
-                    <span className={styles.managedStoreTags}>
-                      {selectedDepartmentStoreIds.map((storeId) => {
-                        const storeName = storeIdNameMap.get(storeId);
-                        return storeName ? (
-                          <span key={storeId} className={styles.managedStoreTag}>
-                            {storeName}
-                          </span>
-                        ) : null;
-                      })}
-                    </span>
-                  ) : (
-                    <span className={styles.managedStoreNone}>
-                      未配置（不限制）
-                      <button
-                        type="button"
-                        className={styles.managedStoreSetBtn}
-                        onClick={() =>
-                          openStoreAssignModal({
-                            id: selectedDepartmentId,
-                            name: selectedDepartment?.name || '',
-                          })
-                        }
-                      >
-                        立即配置
-                      </button>
-                    </span>
-                  )}
-                  {selectedDepartmentStoreIds.length > 0 && (
-                    <button
-                      type="button"
-                      className={styles.managedStoreEditBtn}
-                      onClick={() =>
-                        openStoreAssignModal({
-                          id: selectedDepartmentId,
-                          name: selectedDepartment?.name || '',
-                        })
-                      }
-                    >
-                      修改
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className={styles.headerActions}>
@@ -1882,9 +1693,9 @@ function MerchantDepartmentPage() {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item field="role" label="员工角色">
-            <Select allowClear placeholder="请选择员工角色">
-              {MEMBER_ROLE_OPTIONS.map((role) => (
+          <Form.Item field="role" label="商户角色">
+            <Select allowClear placeholder="请选择商户角色">
+              {merchantRoleOptions.map((role) => (
                 <Option key={role} value={role}>
                   {role}
                 </Option>
@@ -1923,7 +1734,7 @@ function MerchantDepartmentPage() {
             extra="导入时未指定角色的员工将自动应用此角色。"
           >
             <Select placeholder="请选择默认角色">
-              {MEMBER_ROLE_OPTIONS.map((role) => (
+              {IMPORT_ROLE_OPTIONS.map((role) => (
                 <Option key={role} value={role}>
                   {role}
                 </Option>
@@ -1933,35 +1744,6 @@ function MerchantDepartmentPage() {
         </Form>
       </Modal>
 
-      <Modal
-        title={`负责店铺 · ${storeAssignTarget?.name || ''}`}
-        visible={Boolean(storeAssignTarget)}
-        onOk={saveStoreAssignment}
-        onCancel={() => setStoreAssignTarget(null)}
-        okText="保存"
-        cancelText="取消"
-        style={{ width: 480 }}
-        focusLock
-        autoFocus={false}
-      >
-        <p className={styles.storeAssignDesc}>
-          选择该部门负责管理的店铺。部门成员进入店铺系统后，将只能看到所分配店铺的数据。
-        </p>
-        <Select
-          mode="multiple"
-          placeholder="请选择负责店铺（不选则不限制）"
-          value={storeAssignSelectedIds}
-          onChange={(value) => setStoreAssignSelectedIds(value as string[])}
-          style={{ width: '100%' }}
-          showSearch
-        >
-          {storeItems.map((store) => (
-            <Option key={store.id} value={store.id}>
-              {store.name}
-            </Option>
-          ))}
-        </Select>
-      </Modal>
     </>
   );
 }

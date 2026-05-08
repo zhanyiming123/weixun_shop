@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getAvailableDemoIdentityIds,
   getAvailableOrganizationsForSelection,
+  getDemoDefaultHomeRoute,
   getDemoCurrentPresetTitle,
   getDemoOrganizationSelectionLabel,
 } from './demo';
@@ -110,5 +111,10 @@ describe('demo selection helpers', () => {
         guangzhouOrganization
       )
     ).toBe('广州天河校区店（店铺）');
+  });
+
+  it('uses business pages instead of dashboard as the default home route', () => {
+    expect(getDemoDefaultHomeRoute('merchant')).toBe('merchant/organization');
+    expect(getDemoDefaultHomeRoute('store')).toBe('product/list');
   });
 });

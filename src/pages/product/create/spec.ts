@@ -104,6 +104,23 @@ export function normalizeSelectedProductSpecIds(
   }, []);
 }
 
+export function buildDefaultSelectedProductSpecIds(
+  specs: Pick<ProductCatalogSpecItem, 'id'>[] = []
+) {
+  const seenSpecIds = new Set<string>();
+
+  return specs.reduce<string[]>((result, item) => {
+    const specId = item.id.trim();
+
+    if (!specId || seenSpecIds.has(specId)) {
+      return result;
+    }
+
+    seenSpecIds.add(specId);
+    return [...result, specId];
+  }, []);
+}
+
 export function getSelectableProductSpecsForRow(
   specs: ProductCatalogSpecItem[] = [],
   selectedSpecIds: string[] = [],

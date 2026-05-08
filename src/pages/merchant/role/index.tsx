@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import qs from 'query-string';
 import {
   Button,
   Card,
@@ -7,6 +8,7 @@ import {
   Pagination,
   Popconfirm,
   Table,
+  Tabs,
   Tag,
   Typography,
 } from '@arco-design/web-react';
@@ -17,7 +19,6 @@ import {
   ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP,
   ENTERPRISE_ROLE_SCOPE_LABEL_MAP,
   EnterpriseRoleItem,
-  EnterpriseRoleScope,
   getEnterpriseRolePermissionTitles,
   getMerchantRoleSystemNames,
   useEnterpriseRoleItems,
@@ -25,12 +26,21 @@ import {
 import {
   DEFAULT_EMPLOYEE_ITEMS,
   EmployeeItem,
+  EMPLOYEE_STATUS_TABLE_LABEL_MAP,
 } from '@/pages/enterprise/employee/data';
 import { getRoleCreatePath, getRoleEditPath } from '@/utils/demo-route';
 import usePersistentState from '@/utils/usePersistentState';
+import { buildMerchantRoleEmployeePreviewRows } from './role-employees';
+import {
+  filterMerchantRoleItems,
+  getMerchantRoleCreateScope,
+  getMerchantRoleListTabPath,
+  MERCHANT_ROLE_TAB_LABEL_MAP,
+  MerchantRoleTab,
+  normalizeMerchantRoleTab,
+} from './tab-config';
 
-const MERCHANT_ROLE_SCOPES: EnterpriseRoleScope[] = ['headquarter', 'region'];
-const MERCHANT_ROLE_CREATE_SCOPE: EnterpriseRoleScope = 'headquarter';
+const TabPane = Tabs.TabPane;
 const PAGE_SIZE = 8;
 
 function MerchantRolePage() {
@@ -48,16 +58,35 @@ function MerchantRolePage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
-  const currentRoles = useMemo(() => {
-    return roleItems
-      .filter((item) => MERCHANT_ROLE_SCOPES.includes(item.scope))
-      .sort((left, right) => {
-        if (left.isDefault !== right.isDefault) {
-          return Number(right.isDefault) - Number(left.isDefault);
-        }
-        return right.updatedAt.localeCompare(left.updatedAt);
-      });
-  }, [roleItems]);
+  const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
+  const activeTab = useMemo<MerchantRoleTab>(
+    () => normalizeMerchantRoleTab(locationQuery.tab),
+    [locationQuery.tab]
+  );
+
+  useEffect(() => {
+    const currentTab = typeof locationQuery.tab === 'string' ? locationQuery.tab : undefined;
+    if (currentTab !== activeTab) {
+      history.replace(getMerchantRoleListTabPath(location.pathname, activeTab));
+    }
+  }, [activeTab, history, location.pathname, locationQuery.tab]);
+
+  const currentRoles = useMemo(
+    () => filterMerchantRoleItems(roleItems, activeTab),
+    [activeTab, roleItems]
+  );
+
+  useEffect(() => {
+    setSelectedRowKeys([]);
+    setPage(1);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const pageCount = Math.max(1, Math.ceil(currentRoles.length / PAGE_SIZE));
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [currentRoles.length, page]);
 
   const pagedRoles = useMemo(
     () => currentRoles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -83,22 +112,34 @@ function MerchantRolePage() {
     setEmployeeListVisible(true);
   }
 
-  function handleBatchDelete() {
-    const toDelete = selectedRowKeys.filter((id) => {
-      const role = currentRoles.find((r) => r.id === id);
-      return role && !role.isDefault;
-    });
-    setRoleItems((prev) => prev.filter((item) => !toDelete.includes(item.id)));
-    if (viewingRole && toDelete.includes(viewingRole.id)) {
+  function resetRelatedModalState(removedRoleIds: string[]) {
+    if (viewingRole && removedRoleIds.includes(viewingRole.id)) {
       setDetailVisible(false);
       setViewingRole(null);
     }
-    if (employeeListRole && toDelete.includes(employeeListRole.id)) {
+
+    if (employeeListRole && removedRoleIds.includes(employeeListRole.id)) {
       setEmployeeListVisible(false);
       setEmployeeListRole(null);
     }
+  }
+
+  function handleBatchDelete() {
+    const toDelete = selectedRowKeys.filter((id) =>
+      currentRoles.some((item) => item.id === id)
+    );
+
+    setRoleItems((prev) => prev.filter((item) => !toDelete.includes(item.id)));
+    resetRelatedModalState(toDelete);
     setSelectedRowKeys([]);
     Message.success(`已删除 ${toDelete.length} 个角色`);
+  }
+
+  function handleDelete(record: EnterpriseRoleItem) {
+    setRoleItems((prev) => prev.filter((item) => item.id !== record.id));
+    resetRelatedModalState([record.id]);
+    setSelectedRowKeys((prev) => prev.filter((id) => id !== record.id));
+    Message.success('角色删除成功');
   }
 
   const roleEmployees = useMemo(() => {
@@ -106,23 +147,69 @@ function MerchantRolePage() {
       return [];
     }
 
-    return employeeItems.filter((item) => item.roleId === employeeListRole.id);
+    return buildMerchantRoleEmployeePreviewRows(employeeListRole, employeeItems);
   }, [employeeItems, employeeListRole]);
 
-  const missingRoleEmployeeCount = useMemo(() => {
-    if (!employeeListRole) {
-      return 0;
-    }
-
-    return Math.max(0, employeeListRole.employeeCount - roleEmployees.length);
-  }, [employeeListRole, roleEmployees.length]);
+  const roleEmployeeColumns = [
+    {
+      title: '员工姓名',
+      dataIndex: 'name',
+      width: 150,
+      render: (_: string, record: (typeof roleEmployees)[number]) => (
+        <div className={styles.roleEmployeeNameCell}>
+          <Typography.Text className={styles.roleEmployeeName}>
+            {record.name}
+          </Typography.Text>
+          {record.isCurrentAccount && (
+            <Tag size="small" color="arcoblue">
+              当前账号
+            </Tag>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: '登录账号',
+      dataIndex: 'account',
+      width: 150,
+    },
+    {
+      title: '手机号',
+      dataIndex: 'contactPhone',
+      width: 140,
+    },
+    {
+      title: '归属组织',
+      dataIndex: 'organization',
+      render: (value: string) => (
+        <Typography.Text className={styles.roleEmployeeOrganization}>
+          {value}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 100,
+      render: (value: EmployeeItem['status']) => (
+        <Tag color={value === 'enabled' ? 'green' : 'orangered'}>
+          {EMPLOYEE_STATUS_TABLE_LABEL_MAP[value]}
+        </Tag>
+      ),
+    },
+    {
+      title: '最近操作时间',
+      dataIndex: 'operatedAt',
+      width: 170,
+    },
+  ];
 
   const columns = [
     {
       title: '角色名称',
       dataIndex: 'name',
       width: 200,
-      render: (value: string, record: EnterpriseRoleItem) => (
+      render: (value: string) => (
         <div className={styles.roleNameCell}>
           <Typography.Text className={styles.roleName}>{value}</Typography.Text>
         </div>
@@ -146,6 +233,7 @@ function MerchantRolePage() {
         if (!systems.length) {
           return <Typography.Text className={styles.roleDescription}>-</Typography.Text>;
         }
+
         return (
           <span>
             {systems.map((name) => (
@@ -183,7 +271,7 @@ function MerchantRolePage() {
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 120,
+      width: 180,
       fixed: 'right' as const,
       render: (_: unknown, record: EnterpriseRoleItem) => (
         <span className={styles.actionLinks}>
@@ -202,6 +290,15 @@ function MerchantRolePage() {
           >
             编辑
           </Typography.Text>
+          <span className={styles.actionDivider}>|</span>
+          <Popconfirm
+            title={`确定删除角色「${record.name}」吗？`}
+            onOk={() => handleDelete(record)}
+          >
+            <Typography.Text className={styles.actionLinkDanger}>
+              删除
+            </Typography.Text>
+          </Popconfirm>
         </span>
       ),
     },
@@ -218,6 +315,23 @@ function MerchantRolePage() {
   return (
     <div className={styles.page}>
       <Card className={styles.panelCard}>
+        <Tabs
+          activeTab={activeTab}
+          className={styles.tabs}
+          onChange={(value) =>
+            history.replace(
+              getMerchantRoleListTabPath(
+                location.pathname,
+                normalizeMerchantRoleTab(value)
+              )
+            )
+          }
+        >
+          {(['merchant', 'store'] as MerchantRoleTab[]).map((tab) => (
+            <TabPane key={tab} title={MERCHANT_ROLE_TAB_LABEL_MAP[tab]} />
+          ))}
+        </Tabs>
+
         <div className={`${styles.toolbar} ${styles.toolbarActionsOnly}`}>
           <Button
             icon={<IconPlus />}
@@ -226,7 +340,7 @@ function MerchantRolePage() {
               history.push(
                 getRoleCreatePath(
                   location.pathname,
-                  MERCHANT_ROLE_CREATE_SCOPE
+                  getMerchantRoleCreateScope(activeTab)
                 )
               )
             }
@@ -247,9 +361,6 @@ function MerchantRolePage() {
             type: 'checkbox',
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys as string[]),
-            checkboxProps: (record: EnterpriseRoleItem) => ({
-              disabled: record.isDefault,
-            }),
           }}
         />
 
@@ -271,8 +382,8 @@ function MerchantRolePage() {
             total={currentRoles.length}
             pageSize={PAGE_SIZE}
             showTotal
-            onChange={(p) => {
-              setPage(p);
+            onChange={(nextPage) => {
+              setPage(nextPage);
               setSelectedRowKeys([]);
             }}
           />
@@ -359,41 +470,27 @@ function MerchantRolePage() {
         visible={employeeListVisible}
         footer={null}
         onCancel={() => setEmployeeListVisible(false)}
-        style={{ width: 560 }}
+        style={{ width: 880 }}
       >
         {employeeListRole && (
           <div className={styles.roleEmployeeModal}>
-            <Typography.Text className={styles.roleEmployeeSummary}>
-              员工数量：{employeeListRole.employeeCount} 人
-            </Typography.Text>
-
-            {roleEmployees.length ? (
-              <div className={styles.roleEmployeeList}>
-                {roleEmployees.map((item, index) => (
-                  <div key={item.id} className={styles.roleEmployeeItem}>
-                    <span className={styles.roleEmployeeOrder}>{index + 1}</span>
-                    <div className={styles.roleEmployeeContent}>
-                      <Typography.Text className={styles.roleEmployeeName}>
-                        {item.name}
-                      </Typography.Text>
-                      <Typography.Text className={styles.roleEmployeeAccount}>
-                        {item.account}
-                      </Typography.Text>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Typography.Text className={styles.roleEmployeeEmpty}>
-                当前角色暂无已录入员工
+            <div className={styles.roleEmployeeSummaryRow}>
+              <Typography.Text className={styles.roleEmployeeSummary}>
+                员工数量：{employeeListRole.employeeCount} 人
               </Typography.Text>
-            )}
-
-            {missingRoleEmployeeCount > 0 && (
               <Typography.Text className={styles.roleEmployeeHint}>
-                其中 {missingRoleEmployeeCount} 人尚未录入员工档案。
+                当前弹窗使用 mock 员工档案展示该角色的成员明细
               </Typography.Text>
-            )}
+            </div>
+
+            <Table
+              rowKey="id"
+              columns={roleEmployeeColumns}
+              data={roleEmployees}
+              pagination={false}
+              scroll={{ y: 360 }}
+              className={styles.roleEmployeeTable}
+            />
           </div>
         )}
       </Modal>

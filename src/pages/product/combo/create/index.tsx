@@ -501,6 +501,38 @@ function normalizeStringArray(value: unknown): string[] {
   );
 }
 
+function normalizeTreeSelectSkuKeys(value: unknown, availableSkuKeys: string[]) {
+  const normalizedAvailableSkuKeys = uniqueStringArray(availableSkuKeys);
+  const normalizedValue = normalizeStringArray(value);
+
+  if (normalizedValue.includes(SKU_TREE_ROOT_KEY)) {
+    return normalizedAvailableSkuKeys;
+  }
+
+  const availableSkuKeySet = new Set(normalizedAvailableSkuKeys);
+  return normalizedValue.filter((skuKey) => availableSkuKeySet.has(skuKey));
+}
+
+function buildTreeSelectDisplaySkuKeys(
+  selectedSkuKeys: string[],
+  availableSkuKeys: string[]
+) {
+  const normalizedAvailableSkuKeys = uniqueStringArray(availableSkuKeys);
+  const availableSkuKeySet = new Set(normalizedAvailableSkuKeys);
+  const normalizedSelectedSkuKeys = uniqueStringArray(
+    selectedSkuKeys.filter((skuKey) => availableSkuKeySet.has(skuKey))
+  );
+
+  if (
+    normalizedAvailableSkuKeys.length > 0 &&
+    normalizedSelectedSkuKeys.length === normalizedAvailableSkuKeys.length
+  ) {
+    return [SKU_TREE_ROOT_KEY];
+  }
+
+  return normalizedSelectedSkuKeys;
+}
+
 function buildDefaultStoreShareSetting(enabledSkuKeys: string[]): StoreShareSettingItem {
   return {
     shareMode: 'product_pool',
@@ -4106,6 +4138,52 @@ function ProductCreatePage() {
                         </Typography.Text>
                       </div>
                     </Form.Item>
+                  )}
+
+                  {storeChannelConfigDraft.shareMode === 'shared_pool' && (
+                    <>
+                      <Form.Item className={styles.fullWidth} label="可售 SKU">
+                        <TreeSelect
+                          multiple
+                          treeCheckable
+                          allowClear
+                          placeholder="请选择可售 SKU（默认全部）"
+                          treeData={storeChannelProductPoolSkuTreeData}
+                          value={buildTreeSelectDisplaySkuKeys(
+                            storeChannelConfigDraft.sharedPoolSellableSkuKeys || [],
+                            storeChannelAvailableSkuKeys
+                          )}
+                          onChange={(value) => {
+                            const nextKeys = normalizeTreeSelectSkuKeys(
+                              value,
+                              storeChannelAvailableSkuKeys
+                            );
+                            patchStoreChannelConfig({
+                              sharedPoolSellableSkuKeys: nextKeys,
+                            });
+                          }}
+                        />
+                      </Form.Item>
+                      <Form.Item className={styles.fullWidth} label="自主定价">
+                        <div className={styles.storeChannelSwitchRow}>
+                          <Switch
+                            checked={
+                              storeChannelConfigDraft.sharedPoolAllowSelfPrice === true
+                            }
+                            onChange={(checked) =>
+                              patchStoreChannelConfig({
+                                sharedPoolAllowSelfPrice: checked,
+                              })
+                            }
+                          />
+                        </div>
+                        <Typography.Paragraph
+                          className={styles.storeChannelTableHint}
+                        >
+                          开启后，引用该商品的店铺可以自主定价。
+                        </Typography.Paragraph>
+                      </Form.Item>
+                    </>
                   )}
                 </>
               )}

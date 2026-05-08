@@ -4,6 +4,7 @@ import {
   applyBundleRuntime,
   getProductCurrentSkus,
   getProductIndependentStockRule,
+  getProductShareModeLabel,
   getProductStoreChannelConfig,
   markShareTargetReferenced,
   normalizeProductKind,
@@ -12,6 +13,7 @@ import {
   normalizeProductStoreLocalSkuItems,
   normalizeProductStoreChannelConfig,
   resolveBundleAvailability,
+  shouldShowSalesStoreAction,
   syncReferencedStoreConfigsBySourceSellStatus,
   upsertPendingShareTargets,
 } from '@/lib/product';
@@ -486,6 +488,46 @@ describe('product domain rules', () => {
     expect(listItem.storeView.canManageIndependentPrice).toBe(false);
     expect(listItem.storeView.priceMode).toBe('follow');
     expect(listItem.storeView.currentPrice).toBe(100);
+  });
+
+  it('builds share mode label for list items and hides sales-store action for shared-pool self-built products', () => {
+    const product = createBaseProduct({
+      storeChannelConfig: {
+        shareMode: 'shared_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_target'],
+        productPoolStoreConfigs: [],
+      },
+    });
+
+    const listItem = buildProductListItem(product, 'store', ['store_source'], {
+      resolvedSourceStoreId: 'store_source',
+      sourceStoreName: '源店铺',
+      sourceRegionName: '华东',
+    });
+
+    expect(getProductShareModeLabel(product)).toBe('商品共享池');
+    expect(listItem.storeView.isSelfBuilt).toBe(true);
+    expect(shouldShowSalesStoreAction(listItem)).toBe(false);
+  });
+
+  it('keeps sales-store action for self-built product-pool products', () => {
+    const product = createBaseProduct({
+      storeChannelConfig: {
+        shareMode: 'product_pool',
+        storeScope: 'specificStores',
+        storeIds: ['store_target'],
+        productPoolStoreConfigs: [],
+      },
+    });
+
+    const listItem = buildProductListItem(product, 'store', ['store_source'], {
+      resolvedSourceStoreId: 'store_source',
+      sourceStoreName: '源店铺',
+      sourceRegionName: '华东',
+    });
+
+    expect(shouldShowSalesStoreAction(listItem)).toBe(true);
   });
 
   it('exposes product independent stock rule through helper', () => {

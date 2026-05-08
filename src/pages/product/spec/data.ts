@@ -151,3 +151,20 @@ export function isProductCatalogSpecNameDuplicated(
       item.id !== excludeId
   );
 }
+
+export function resolveProductCatalogSpecIdentity(
+  nextIdentity: Pick<ProductCatalogSpecItem, 'catalogId' | 'name'>,
+  editingItem?: Pick<ProductCatalogSpecItem, 'catalogId' | 'name'> | null
+) {
+  if (editingItem) {
+    return {
+      catalogId: editingItem.catalogId,
+      name: editingItem.name,
+    };
+  }
+
+  return {
+    catalogId: nextIdentity.catalogId.trim(),
+    name: nextIdentity.name.trim(),
+  };
+}

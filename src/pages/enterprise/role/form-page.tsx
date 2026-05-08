@@ -118,7 +118,7 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
     }
 
     if (location.pathname.startsWith('/merchant/role')) {
-      return ['headquarter', 'region'];
+      return ['headquarter', 'region', 'store'];
     }
 
     return ['headquarter', 'region', 'store'];
@@ -157,6 +157,17 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
     () => getMerchantRolePermissionRootKeys(activeMerchantPermissionSystem),
     [activeMerchantPermissionSystem]
   );
+  const availableMerchantPermissionSystems = useMemo<MerchantRolePermissionSystem[]>(
+    () => (pageScope === 'store' ? ['store'] : ['merchant']),
+    [pageScope]
+  );
+  const availableMerchantPermissionSystemOptions = useMemo(
+    () =>
+      MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS.filter((option) =>
+        availableMerchantPermissionSystems.includes(option.value)
+      ),
+    [availableMerchantPermissionSystems]
+  );
   const activeMerchantPermissionKeys = useMemo(() => {
     const systemKeySet = new Set(
       getMerchantRolePermissionSystemKeys(activeMerchantPermissionSystem)
@@ -193,6 +204,21 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
   useEffect(() => {
     redirectHandledRef.current = false;
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!isMerchantRolePage) {
+      return;
+    }
+
+    const nextSystem = availableMerchantPermissionSystems[0];
+    if (activeMerchantPermissionSystem !== nextSystem) {
+      setActiveMerchantPermissionSystem(nextSystem);
+    }
+  }, [
+    activeMerchantPermissionSystem,
+    availableMerchantPermissionSystems,
+    isMerchantRolePage,
+  ]);
 
   useEffect(() => {
     if (isCreateMode) {
@@ -387,9 +413,13 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
       let nextItems = roleItems;
 
       if (isCreateMode) {
+        const nextId =
+          isMerchantRolePage && pageScope !== 'store'
+            ? `role_merchant_${pageScope}_${Date.now()}`
+            : createEnterpriseRoleId(pageScope);
         nextItems = [
           {
-            id: createEnterpriseRoleId(pageScope),
+            id: nextId,
             scope: pageScope,
             name,
             description,
@@ -592,12 +622,14 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
             </div>
 
             <Typography.Text type="secondary" className={styles.permissionHelp}>
-              用于配置员工角色在不同系统里的页面查看、编辑和业务功能使用范围。
+              {pageScope === 'store'
+                ? '店铺角色只配置店铺管理后台的页面查看、编辑和业务功能使用范围。'
+                : '商户角色只配置商户管理后台的页面查看、编辑和业务功能使用范围。'}
             </Typography.Text>
 
             <div className={styles.merchantPermissionLayout}>
               <div className={styles.permissionSystemList}>
-                {MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS.map((option) => {
+                {availableMerchantPermissionSystemOptions.map((option) => {
                   const active = activeMerchantPermissionSystem === option.value;
                   const buttonClassName = [
                     styles.permissionSystemButton,

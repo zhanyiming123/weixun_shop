@@ -87,6 +87,7 @@ function StoreOrgReferencePage() {
       storeId: currentStoreId,
       selectedDepartmentIds,
       selectedEmployeeIds,
+      excludedEmployeeIds: savedConfig?.excludedEmployeeIds || [],
       subordinateRelations: savedConfig?.subordinateRelations || [],
       updatedAt: savedConfig?.updatedAt || '',
     };
@@ -160,6 +161,7 @@ function StoreOrgReferencePage() {
         storeId: currentStoreId,
         selectedDepartmentIds,
         selectedEmployeeIds,
+        excludedEmployeeIds: savedConfig?.excludedEmployeeIds || [],
         subordinateRelations: savedConfig?.subordinateRelations || [],
         updatedAt: savedConfig?.updatedAt || '',
       },

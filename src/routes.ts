@@ -18,6 +18,7 @@ export const routes: IRoute[] = [
   {
     name: 'menu.home',
     key: 'dashboard/workplace',
+    ignore: true,
     visibleScopes: ['headquarter', 'region', 'store'],
     visibleSystems: ['merchant', 'store'],
     visibleDemoIdentities: ['merchant_admin', 'region_admin', 'store_staff'],
@@ -246,6 +247,7 @@ export const routes: IRoute[] = [
       {
         name: 'menu.product.bundle',
         key: 'product/bundle',
+        ignore: true,
         visibleScopes: ['store'],
         visibleSystems: ['store'],
         visibleDemoIdentities: ['region_admin', 'store_staff'],
@@ -289,6 +291,7 @@ export const routes: IRoute[] = [
   {
     name: 'menu.order',
     key: 'order',
+    ignore: true,
     visibleScopes: ['store'],
     visibleSystems: ['store'],
     visibleDemoIdentities: ['region_admin', 'store_staff'],
@@ -305,6 +308,7 @@ export const routes: IRoute[] = [
   {
     name: 'menu.afterSales',
     key: 'after-sales',
+    ignore: true,
     visibleScopes: ['store'],
     visibleSystems: ['store'],
     visibleDemoIdentities: ['region_admin', 'store_staff'],
@@ -486,6 +490,24 @@ function collectRouteKeys(routeItems: IRoute[], keys: string[] = []) {
   return keys;
 }
 
+export function findFirstNavigableRouteKey(routeItems: IRoute[]): string {
+  for (const route of routeItems) {
+    if (route.children?.length) {
+      const childRouteKey = findFirstNavigableRouteKey(route.children);
+
+      if (childRouteKey) {
+        return childRouteKey;
+      }
+    }
+
+    if (!route.ignore) {
+      return route.key;
+    }
+  }
+
+  return '';
+}
+
 export const ALL_ROUTE_KEYS = collectRouteKeys(routes);
 
 const useRoute = (
@@ -557,12 +579,7 @@ const useRoute = (
   }, [filterRoute, permissionSignature]);
 
   const defaultRoute = useMemo(() => {
-    const firstRoute = permissionRoute[0];
-    if (!firstRoute) {
-      return '';
-    }
-
-    return firstRoute.children?.[0]?.key || firstRoute.key;
+    return findFirstNavigableRouteKey(permissionRoute);
   }, [permissionRoute]);
 
   return [permissionRoute, defaultRoute];

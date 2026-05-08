@@ -54,6 +54,8 @@ export type MerchantRolePermissionSystemOption = {
 };
 
 const STORAGE_KEY = 'enterprise-role-items-v1';
+const STORAGE_VERSION_KEY = 'enterprise-role-items-version';
+const STORAGE_VERSION = 2;
 
 const ROLE_SCOPE_VALUES: EnterpriseRoleScope[] = ['headquarter', 'store', 'region'];
 
@@ -264,20 +266,48 @@ export const MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS: MerchantRolePermissionSyst
 
 const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
   {
-    key: 'store-system.dashboard',
-    title: '首页',
-  },
-  {
     key: 'store-system.product',
     title: '商品管理',
     children: [
       {
         key: 'product/list',
-        title: '商品列表',
+        title: '商品库',
+        children: [
+          {
+            key: 'product/list/view',
+            title: '查看商品',
+          },
+          {
+            key: 'product/list/create',
+            title: '新增商品',
+          },
+          {
+            key: 'product/list/edit',
+            title: '编辑商品',
+          },
+        ],
       },
       {
-        key: 'product/create',
-        title: '添加商品',
+        key: 'product/combo',
+        title: '组合商品',
+        children: [
+          {
+            key: 'product/combo/view',
+            title: '查看组合商品',
+          },
+          {
+            key: 'product/combo/create',
+            title: '新增组合商品',
+          },
+          {
+            key: 'product/combo/edit',
+            title: '编辑组合商品',
+          },
+        ],
+      },
+      {
+        key: 'product/share-pool',
+        title: '商品共享池',
       },
     ],
   },
@@ -308,14 +338,24 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       {
         key: 'marketing/center',
         title: '营销中心',
-      },
-      {
-        key: 'marketing/center/coupon/list',
-        title: '优惠券列表',
-      },
-      {
-        key: 'marketing/center/coupon/create',
-        title: '创建优惠券',
+        children: [
+          {
+            key: 'marketing/center/coupon/view',
+            title: '查看优惠券',
+          },
+          {
+            key: 'marketing/center/coupon/create',
+            title: '新增优惠券',
+          },
+          {
+            key: 'marketing/center/coupon/edit',
+            title: '修改优惠券',
+          },
+          {
+            key: 'marketing/center/coupon/void',
+            title: '作废优惠券',
+          },
+        ],
       },
     ],
   },
@@ -324,34 +364,24 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
     title: '店铺配置',
     children: [
       {
-        key: 'store-config/department',
-        title: '店铺组织',
-      },
-      {
-        key: 'store-config/org-reference',
-        title: '组织架构引用',
-      },
-      {
         key: 'store-config/employee',
         title: '店铺员工',
-      },
-      {
-        key: 'store-config/role',
-        title: '店铺角色',
-      },
-      {
-        key: 'store-config/basic',
-        title: '店铺基础配置',
+        children: [
+          {
+            key: 'store-config/employee/edit',
+            title: '编辑员工',
+          },
+          {
+            key: 'store-config/employee/remove',
+            title: '移除员工',
+          },
+        ],
       },
     ],
   },
 ];
 
 const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
-  {
-    key: 'merchant-system.dashboard',
-    title: '首页',
-  },
   {
     key: 'merchant/organization',
     title: '店铺管理',
@@ -372,20 +402,26 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
         key: 'product-config/attribute',
         title: '类目属性',
       },
+      {
+        key: 'product-config/spec',
+        title: '商品规格',
+      },
+    ],
+  },
+  {
+    key: 'merchant-system.marketing',
+    title: '营销管理',
+    children: [
+      {
+        key: 'merchant/marketing/center',
+        title: '营销中心',
+      },
     ],
   },
   {
     key: 'merchant-system.permission',
     title: '权限管理',
     children: [
-      {
-        key: 'merchant/employee',
-        title: '员工管理',
-      },
-      {
-        key: 'merchant/store-employee',
-        title: '店铺员工',
-      },
       {
         key: 'merchant/role',
         title: '员工角色',
@@ -605,9 +641,19 @@ const LEGACY_PERMISSION_KEY_TO_MERCHANT_KEYS: Record<string, string[]> = {
   'product/category': ['product-config/category'],
   'product/catalog': ['product-config/catalog'],
   'product/attribute': ['product-config/attribute'],
+  'product/spec': ['product-config/spec'],
   'permission.order-management': ['store-system.order'],
+  'merchant-system.order': ['store-system.order'],
+  'order/list': ['order/list'],
+  'merchant/order/list': ['order/list'],
   'permission.after-sales-management': ['store-system.after-sales'],
-  'permission.marketing-management': ['store-system.marketing'],
+  'merchant-system.after-sales': ['store-system.after-sales'],
+  'after-sales/list': ['after-sales/list'],
+  'merchant/after-sales/list': ['after-sales/list'],
+  'permission.marketing-management': [
+    'store-system.marketing',
+    'merchant-system.marketing',
+  ],
   'permission.enterprise-management': ['merchant-system.permission'],
   'enterprise/organization': ['merchant/organization'],
   'enterprise/department': ['merchant/department'],
@@ -975,6 +1021,51 @@ const HEADQUARTER_ALL_PERMISSION_KEYS = [
 const REGION_ALL_PERMISSION_KEYS = [
   ...ENTERPRISE_ROLE_PERMISSION_ALL_KEYS_BY_SCOPE.region,
 ];
+const MERCHANT_ROLE_ALL_PERMISSION_KEYS = [
+  'merchant-system.dashboard',
+  'merchant/organization',
+  'merchant-system.product-config',
+  'product-config/category',
+  'product-config/catalog',
+  'product-config/attribute',
+  'product-config/spec',
+  'merchant-system.marketing',
+  'merchant/marketing/center',
+  'merchant-system.permission',
+  'merchant/employee',
+  'merchant/store-employee',
+  'merchant/role',
+  'merchant/department',
+];
+const MERCHANT_ROLE_PERMISSION_ADMIN_KEYS = [
+  'merchant-system.dashboard',
+  'merchant-system.permission',
+  'merchant/employee',
+  'merchant/store-employee',
+  'merchant/role',
+  'merchant/department',
+];
+const MERCHANT_ROLE_PRODUCT_KEYS = [
+  'merchant-system.dashboard',
+  'merchant-system.product-config',
+  'product-config/category',
+  'product-config/catalog',
+  'product-config/attribute',
+  'product-config/spec',
+];
+const MERCHANT_ROLE_MARKETING_KEYS = [
+  'merchant-system.dashboard',
+  'merchant-system.marketing',
+  'merchant/marketing/center',
+];
+const MERCHANT_ROLE_ORGANIZATION_KEYS = [
+  'merchant-system.dashboard',
+  'merchant/organization',
+  'merchant-system.permission',
+  'merchant/employee',
+  'merchant/store-employee',
+  'merchant/department',
+];
 
 const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   normalizeEnterpriseRoleItem(
@@ -1257,41 +1348,11 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
       id: 'role_merchant_super_admin',
       scope: 'headquarter',
       name: '商户超级管理员',
-      description: '拥有店铺管理系统和商户管理系统全量权限，负责商户级别最终决策与兜底。',
+      description: '负责商户后台全局权限、组织配置和关键经营设置的最终决策与兜底。',
       employeeCount: 1,
       isDefault: true,
       dataPermissions: { viewScope: 'all' },
-      functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.product',
-        'product/list',
-        'product/create',
-        'store-system.order',
-        'order/list',
-        'store-system.after-sales',
-        'after-sales/list',
-        'store-system.marketing',
-        'marketing/center',
-        'marketing/center/coupon/list',
-        'marketing/center/coupon/create',
-        'store-system.config',
-        'store-config/department',
-        'store-config/org-reference',
-        'store-config/employee',
-        'store-config/role',
-        'store-config/basic',
-        'merchant-system.dashboard',
-        'merchant/organization',
-        'merchant-system.product-config',
-        'product-config/category',
-        'product-config/catalog',
-        'product-config/attribute',
-        'merchant-system.permission',
-        'merchant/employee',
-        'merchant/store-employee',
-        'merchant/role',
-        'merchant/department',
-      ],
+      functionPermissionKeys: MERCHANT_ROLE_ALL_PERMISSION_KEYS,
       createdAt: '2026-04-08 09:00:00',
       updatedAt: '2026-04-08 09:00:00',
     },
@@ -1299,34 +1360,14 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   ),
   normalizeEnterpriseRoleItem(
     {
-      id: 'role_merchant_branch_gm',
+      id: 'role_merchant_permission_admin',
       scope: 'headquarter',
-      name: '商户分总',
-      description: '负责所辖区域内店铺整体经营管理，兼顾商户系统权限配置与店铺运营监控。',
+      name: '权限管理员',
+      description: '负责商户后台角色、员工和部门权限编排，保障账号体系与授权边界清晰。',
       employeeCount: 3,
       isDefault: true,
-      dataPermissions: { viewScope: 'all' },
-      functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.product',
-        'product/list',
-        'product/create',
-        'store-system.order',
-        'order/list',
-        'store-system.after-sales',
-        'after-sales/list',
-        'store-system.marketing',
-        'marketing/center',
-        'marketing/center/coupon/list',
-        'marketing/center/coupon/create',
-        'merchant-system.dashboard',
-        'merchant/organization',
-        'merchant-system.permission',
-        'merchant/employee',
-        'merchant/store-employee',
-        'merchant/role',
-        'merchant/department',
-      ],
+      dataPermissions: { viewScope: 'department' },
+      functionPermissionKeys: MERCHANT_ROLE_PERMISSION_ADMIN_KEYS,
       createdAt: '2026-04-08 09:10:00',
       updatedAt: '2026-04-08 09:10:00',
     },
@@ -1334,22 +1375,14 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   ),
   normalizeEnterpriseRoleItem(
     {
-      id: 'role_merchant_product_ops',
+      id: 'role_merchant_product_config',
       scope: 'headquarter',
-      name: '店铺商品运营',
-      description: '负责店铺商品上架维护、库存调整及优惠券关联配置，保障商品供给质量。',
+      name: '商品配置管理员',
+      description: '负责商户后台商品分类、类目、属性和规格配置，维护商品基础规则。',
       employeeCount: 5,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
-      functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.product',
-        'product/list',
-        'product/create',
-        'store-system.marketing',
-        'marketing/center',
-        'marketing/center/coupon/list',
-      ],
+      functionPermissionKeys: MERCHANT_ROLE_PRODUCT_KEYS,
       createdAt: '2026-04-08 09:20:00',
       updatedAt: '2026-04-08 09:20:00',
     },
@@ -1357,24 +1390,14 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   ),
   normalizeEnterpriseRoleItem(
     {
-      id: 'role_merchant_marketing_ops',
+      id: 'role_merchant_marketing_admin',
       scope: 'headquarter',
-      name: '店铺营销运营',
-      description: '负责店铺活动策划与执行、优惠券发放及订单数据跟踪，驱动店铺增长。',
+      name: '营销管理员',
+      description: '负责商户后台营销活动配置、资源位运营和活动规则维护。',
       employeeCount: 4,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
-      functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.product',
-        'product/list',
-        'store-system.order',
-        'order/list',
-        'store-system.marketing',
-        'marketing/center',
-        'marketing/center/coupon/list',
-        'marketing/center/coupon/create',
-      ],
+      functionPermissionKeys: MERCHANT_ROLE_MARKETING_KEYS,
       createdAt: '2026-04-08 09:30:00',
       updatedAt: '2026-04-08 09:30:00',
     },
@@ -1382,26 +1405,14 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   ),
   normalizeEnterpriseRoleItem(
     {
-      id: 'role_merchant_store_admin',
-      scope: 'region',
-      name: '店铺管理员',
-      description: '负责店铺日常运营管理，覆盖商品、订单、售后和营销等核心业务模块。',
-      employeeCount: 12,
+      id: 'role_merchant_org_admin',
+      scope: 'headquarter',
+      name: '组织人事管理员',
+      description: '负责商户组织架构、员工档案和部门关系维护，支持总部协同与任职变更。',
+      employeeCount: 2,
       isDefault: true,
       dataPermissions: { viewScope: 'department' },
-      functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.product',
-        'product/list',
-        'product/create',
-        'store-system.order',
-        'order/list',
-        'store-system.after-sales',
-        'after-sales/list',
-        'store-system.marketing',
-        'marketing/center',
-        'marketing/center/coupon/list',
-      ],
+      functionPermissionKeys: MERCHANT_ROLE_ORGANIZATION_KEYS,
       createdAt: '2026-04-08 09:40:00',
       updatedAt: '2026-04-08 09:40:00',
     },
@@ -1409,52 +1420,64 @@ const DEFAULT_ENTERPRISE_ROLE_ITEMS: EnterpriseRoleItem[] = [
   ),
   normalizeEnterpriseRoleItem(
     {
-      id: 'role_merchant_customer_service',
+      id: 'role_merchant_region_director',
       scope: 'region',
-      name: '店铺客服',
-      description: '负责订单跟进、退换货处理及客户投诉受理，保障店铺服务体验达标。',
-      employeeCount: 18,
+      name: '区域经营总监',
+      description: '负责区域下属门店的经营巡检与组织协同，并在商户后台跟进区域权限与门店配置。',
+      employeeCount: 6,
       isDefault: true,
-      dataPermissions: { viewScope: 'self' },
+      dataPermissions: { viewScope: 'all' },
       functionPermissionKeys: [
-        'store-system.dashboard',
-        'store-system.order',
-        'order/list',
-        'store-system.after-sales',
-        'after-sales/list',
+        'merchant-system.dashboard',
+        'merchant/organization',
+        'merchant-system.permission',
+        'merchant/store-employee',
+        'merchant/role',
+        'merchant/department',
       ],
       createdAt: '2026-04-08 09:50:00',
       updatedAt: '2026-04-08 09:50:00',
     },
     18
   ),
+  normalizeEnterpriseRoleItem(
+    {
+      id: 'role_merchant_region_supervisor',
+      scope: 'region',
+      name: '区域督导',
+      description: '负责区域门店巡检标准、整改任务和人员协同配置，在商户后台跟进门店侧执行情况。',
+      employeeCount: 8,
+      isDefault: true,
+      dataPermissions: { viewScope: 'department' },
+      functionPermissionKeys: [
+        'merchant-system.dashboard',
+        'merchant/organization',
+        'merchant/store-employee',
+      ],
+      createdAt: '2026-04-08 10:00:00',
+      updatedAt: '2026-04-08 10:00:00',
+    },
+    19
+  ),
 ];
 
-function mergeMissingDefaultRoleItems(items: EnterpriseRoleItem[]) {
-  const existingIdSet = new Set(items.map((item) => item.id));
-  const missingDefaults = DEFAULT_ENTERPRISE_ROLE_ITEMS.filter(
-    (item) => !existingIdSet.has(item.id)
-  );
-
-  return missingDefaults.length ? [...items, ...missingDefaults] : items;
-}
-
 export function readEnterpriseRoleItems() {
-  const stored = readPersistentValue(STORAGE_KEY, DEFAULT_ENTERPRISE_ROLE_ITEMS);
-  const rawItems = Array.isArray(stored) ? stored : DEFAULT_ENTERPRISE_ROLE_ITEMS;
-  const normalized = rawItems.map((item, index) =>
-    normalizeEnterpriseRoleItem(item, index)
-  );
-  const merged = mergeMissingDefaultRoleItems(normalized);
-
-  if (JSON.stringify(rawItems) !== JSON.stringify(merged)) {
-    writePersistentValue(STORAGE_KEY, merged);
+  const storedVersion = readPersistentValue<number>(STORAGE_VERSION_KEY, 0);
+  if (storedVersion !== STORAGE_VERSION) {
+    writeEnterpriseRoleItems(DEFAULT_ENTERPRISE_ROLE_ITEMS);
+    return DEFAULT_ENTERPRISE_ROLE_ITEMS.map((item, index) =>
+      normalizeEnterpriseRoleItem(item, index)
+    );
   }
 
-  return merged;
+  const stored = readPersistentValue(STORAGE_KEY, DEFAULT_ENTERPRISE_ROLE_ITEMS);
+  const rawItems = Array.isArray(stored) ? stored : DEFAULT_ENTERPRISE_ROLE_ITEMS;
+
+  return rawItems.map((item, index) => normalizeEnterpriseRoleItem(item, index));
 }
 
 export function writeEnterpriseRoleItems(items: EnterpriseRoleItem[]) {
+  writePersistentValue(STORAGE_VERSION_KEY, STORAGE_VERSION);
   writePersistentValue(
     STORAGE_KEY,
     items.map((item, index) => normalizeEnterpriseRoleItem(item, index))

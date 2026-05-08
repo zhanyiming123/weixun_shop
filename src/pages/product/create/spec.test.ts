@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyProductSkuBatchPatch,
+  buildDefaultSelectedProductSpecIds,
   buildProductCreateSpecItems,
   buildProductSkuAttributeRowsFromSkus,
   buildProductSkuAttributeRowsFromSpecItems,
@@ -29,6 +30,17 @@ describe('product create spec helpers', () => {
           { id: 'spec_system' },
         ]
       )
+    ).toEqual(['spec_grade', 'spec_system']);
+  });
+
+  it('prefills all bound catalog specs in order for create page selection', () => {
+    expect(
+      buildDefaultSelectedProductSpecIds([
+        { id: ' spec_grade ' },
+        { id: 'spec_system' },
+        { id: 'spec_grade' },
+        { id: ' ' },
+      ])
     ).toEqual(['spec_grade', 'spec_system']);
   });
 

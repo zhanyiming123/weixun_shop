@@ -40,6 +40,7 @@ import {
   buildStoreManagedEmployees,
   createStoreExternalEmployee,
   getDefaultStoreEmployeeRoleIds,
+  removeStoreEmployeeBinding,
   readStoreEmployeePermissionConfigItems,
   readStoreExternalEmployeeItems,
   StoreManagedEmployeeItem,
@@ -51,6 +52,7 @@ import styles from './index.module.less';
 const Option = Select.Option;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
+const STORE_EMPLOYEE_DEPARTMENT_LABEL = '唯寻广州';
 
 type OrganizationAddMode = 'department' | 'person';
 type AddSource = 'organization' | 'external';
@@ -127,7 +129,7 @@ function applyEmployeeFilters(
         employee.name,
         employee.account,
         employee.contactPhone,
-        employee.sourceDepartmentPath.join(' '),
+        STORE_EMPLOYEE_DEPARTMENT_LABEL,
       ]
         .join(' ')
         .toLowerCase()
@@ -198,7 +200,9 @@ function StoreEmployeePage() {
     readStoreEmployeePermissionConfigItems()
   );
   const [externalEmployeeItems, setExternalEmployeeItems] = useState(() =>
-    readStoreExternalEmployeeItems()
+    readStoreExternalEmployeeItems(undefined, {
+      includeRemoved: true,
+    })
   );
   const [draftFilters, setDraftFilters] = useState({
     keyword: '',
@@ -255,7 +259,9 @@ function StoreEmployeePage() {
   const currentStoreExternalEmployees = useMemo(
     () =>
       currentStoreId
-        ? externalEmployeeItems.filter((item) => item.storeId === currentStoreId)
+        ? externalEmployeeItems.filter(
+            (item) => item.storeId === currentStoreId && !item.removedAt
+          )
         : [],
     [currentStoreId, externalEmployeeItems]
   );
@@ -479,6 +485,39 @@ function StoreEmployeePage() {
     closeEditModal();
   }
 
+  function handleRemove(record: StoreManagedEmployeeItem) {
+    if (!currentStoreId) {
+      return;
+    }
+
+    Modal.confirm({
+      title: '移除员工',
+      content: '是否移除该员工？',
+      onOk: () => {
+        const nextState = removeStoreEmployeeBinding(
+          currentStoreId,
+          {
+            id: record.id,
+            sourceType: record.sourceType,
+          },
+          orgConfigItems,
+          permissionConfigItems,
+          externalEmployeeItems,
+          hrEmployees,
+          roleItems,
+          departmentItems,
+          orgTreeData
+        );
+
+        setOrgConfigItems(nextState.orgConfigItems);
+        setPermissionConfigItems(nextState.permissionConfigItems);
+        setExternalEmployeeItems(nextState.externalEmployeeItems);
+        setCurrentPage(1);
+        Message.success('员工已移除');
+      },
+    });
+  }
+
   function openAddModal() {
     setAddSource('organization');
     setOrganizationAddMode('department');
@@ -573,6 +612,7 @@ function StoreEmployeePage() {
         storeId: currentStoreId,
         selectedDepartmentIds: nextDepartmentIds,
         selectedEmployeeIds: nextEmployeeIds,
+        excludedEmployeeIds: latestConfig?.excludedEmployeeIds || [],
         subordinateRelations: latestConfig?.subordinateRelations || [],
         updatedAt: latestConfig?.updatedAt || '',
       },
@@ -686,7 +726,8 @@ function StoreEmployeePage() {
       externalEmployeeItems
     );
     const nextStoreExternalEmployees = nextExternalItems.filter(
-      (externalEmployee) => externalEmployee.storeId === currentStoreId
+      (externalEmployee) =>
+        externalEmployee.storeId === currentStoreId && !externalEmployee.removedAt
     );
     const nextSourceEmployees = buildStoreEmployeeSourceEmployees(
       currentStoreId,
@@ -776,10 +817,10 @@ function StoreEmployeePage() {
       width: 150,
     },
     {
-      title: '来源部门',
+      title: '所属部门',
       dataIndex: 'sourceDepartmentPath',
       width: 240,
-      render: (value: string[]) => value.join(' / ') || '-',
+      render: () => STORE_EMPLOYEE_DEPARTMENT_LABEL,
     },
     {
       title: '店铺角色',
@@ -798,17 +839,20 @@ function StoreEmployeePage() {
       width: 100,
       render: (value: 'enabled' | 'disabled') => (
         <Tag color={value === 'enabled' ? 'green' : 'orange'}>
-          {value === 'enabled' ? '在职' : '停用'}
+          {value === 'enabled' ? '在职' : '离职'}
         </Tag>
       ),
     },
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 100,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: StoreManagedEmployeeItem) => (
-        <Link onClick={() => openEditModal(record)}>编辑</Link>
+        <Space size={12}>
+          <Link onClick={() => openEditModal(record)}>编辑</Link>
+          <Link onClick={() => handleRemove(record)}>移除</Link>
+        </Space>
       ),
     },
   ];
@@ -844,7 +888,7 @@ function StoreEmployeePage() {
       width: 90,
       render: (value: 'enabled' | 'disabled') => (
         <Tag color={value === 'enabled' ? 'green' : 'orange'}>
-          {value === 'enabled' ? '在职' : '停用'}
+          {value === 'enabled' ? '在职' : '离职'}
         </Tag>
       ),
     },
@@ -920,7 +964,7 @@ function StoreEmployeePage() {
       width: 90,
       render: (value: 'enabled' | 'disabled') => (
         <Tag color={value === 'enabled' ? 'green' : 'orange'}>
-          {value === 'enabled' ? '在职' : '停用'}
+          {value === 'enabled' ? '在职' : '离职'}
         </Tag>
       ),
     },
@@ -943,7 +987,7 @@ function StoreEmployeePage() {
             <Input
               allowClear
               className={styles.filterInput}
-              placeholder="姓名/工号/手机号/来源部门"
+              placeholder="姓名/工号/手机号/所属部门"
               prefix={<IconSearch />}
               value={draftFilters.keyword}
               onChange={(value) => updateDraftFilter('keyword', value)}
@@ -961,7 +1005,7 @@ function StoreEmployeePage() {
             >
               <Option value="all">全部状态</Option>
               <Option value="enabled">在职</Option>
-              <Option value="disabled">停用</Option>
+              <Option value="disabled">离职</Option>
             </Select>
           </div>
           <div className={styles.filterItem}>
@@ -996,12 +1040,9 @@ function StoreEmployeePage() {
               共 {filteredEmployees.length} 名员工
             </Typography.Text>
           </div>
-
-          <Space wrap>
-            <Button type="primary" icon={<IconUserAdd />} onClick={openAddModal}>
-              新增员工
-            </Button>
-          </Space>
+          <Button type="primary" icon={<IconUserAdd />} onClick={openAddModal}>
+            新增员工
+          </Button>
         </div>
 
         <Table
@@ -1038,24 +1079,38 @@ function StoreEmployeePage() {
       >
         {editingEmployee && (
           <div className={styles.modalContent}>
-            <div className={styles.infoGrid}>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>员工姓名</span>
-                <span className={styles.infoValue}>{editingEmployee.name}</span>
+            <div className={styles.formBlock}>
+              <div className={styles.formRow}>
+                <span className={styles.formRowLabel}>员工姓名</span>
+                <div className={styles.formRowControl}>
+                  <Typography.Text className={styles.readonlyText}>
+                    {editingEmployee.name}
+                  </Typography.Text>
+                </div>
               </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>工号/账号</span>
-                <span className={styles.infoValue}>{editingEmployee.account}</span>
+              <div className={styles.formRow}>
+                <span className={styles.formRowLabel}>工号/账号</span>
+                <div className={styles.formRowControl}>
+                  <Typography.Text className={styles.readonlyText}>
+                    {editingEmployee.account}
+                  </Typography.Text>
+                </div>
               </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>联系方式</span>
-                <span className={styles.infoValue}>{editingEmployee.contactPhone}</span>
+              <div className={styles.formRow}>
+                <span className={styles.formRowLabel}>联系方式</span>
+                <div className={styles.formRowControl}>
+                  <Typography.Text className={styles.readonlyText}>
+                    {editingEmployee.contactPhone}
+                  </Typography.Text>
+                </div>
               </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>来源部门</span>
-                <span className={styles.infoValue}>
-                  {editingEmployee.sourceDepartmentPath.join(' / ')}
-                </span>
+              <div className={styles.formRow}>
+                <span className={styles.formRowLabel}>所属部门</span>
+                <div className={styles.formRowControl}>
+                  <Typography.Text className={styles.readonlyText}>
+                    {STORE_EMPLOYEE_DEPARTMENT_LABEL}
+                  </Typography.Text>
+                </div>
               </div>
             </div>
 
@@ -1360,7 +1415,7 @@ function StoreEmployeePage() {
                         }
                       >
                         <Option value="enabled">在职</Option>
-                        <Option value="disabled">停用</Option>
+                        <Option value="disabled">离职</Option>
                       </Select>
                     </div>
                   </div>

@@ -9,7 +9,11 @@ const HIDDEN_MEMBER_MORE_ACTION_LABELS = [
   '离职处理',
 ] as const;
 
-const HIDDEN_DEPARTMENT_NODE_ACTION_LABELS = ['编辑', '删除'] as const;
+const HIDDEN_DEPARTMENT_NODE_ACTION_LABELS = [
+  '编辑',
+  '删除',
+  '负责店铺',
+] as const;
 
 export function isDepartmentHeaderActionVisible(actionLabel: string) {
   return !HIDDEN_DEPARTMENT_HEADER_ACTION_LABELS.includes(
