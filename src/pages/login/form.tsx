@@ -16,6 +16,11 @@ import { buildAppPath } from '@/utils/appPath';
 import locale from './locale';
 import styles from './style/index.module.less';
 
+const DEMO_LOGIN_CREDENTIALS = {
+  userName: 'admin',
+  password: 'admin',
+};
+
 export default function LoginForm() {
   const formRef = useRef<FormInstance>();
   const [errorMessage, setErrorMessage] = useState('');
@@ -83,13 +88,12 @@ export default function LoginForm() {
       <div className={styles['login-form-sub-title']}>
         {t['login.form.title']}
       </div>
+      <div className={styles['login-form-demo-tip']}>
+        {t['login.form.demoTip']}
+        {DEMO_LOGIN_CREDENTIALS.userName} / {DEMO_LOGIN_CREDENTIALS.password}
+      </div>
       <div className={styles['login-form-error-msg']}>{errorMessage}</div>
-      <Form
-        className={styles['login-form']}
-        layout="vertical"
-        ref={formRef}
-        initialValues={{ userName: 'admin', password: 'admin' }}
-      >
+      <Form className={styles['login-form']} layout="vertical" ref={formRef}>
         <Form.Item
           field="userName"
           rules={[{ required: true, message: t['login.form.userName.errMsg'] }]}
