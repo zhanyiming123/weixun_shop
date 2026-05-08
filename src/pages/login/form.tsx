@@ -95,10 +95,6 @@ export default function LoginForm() {
       <div className={styles['login-form-sub-title']}>
         {t['login.form.title']}
       </div>
-      <div className={styles['login-form-demo-tip']}>
-        {t['login.form.demoTip']}
-        {DEMO_LOGIN_CREDENTIALS.userName} / {DEMO_LOGIN_CREDENTIALS.password}
-      </div>
       <div className={styles['login-form-error-msg']}>{errorMessage}</div>
       <Form className={styles['login-form']} layout="vertical" ref={formRef}>
         <Form.Item
