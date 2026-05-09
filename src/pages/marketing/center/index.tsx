@@ -36,7 +36,7 @@ function MarketingCenterPage() {
               </div>
               <div className={styles.moduleContent}>
                 <div className={styles.moduleTitle}>优惠券</div>
-                <div className={styles.moduleDesc}>通用券（满减、直减、折扣）</div>
+                <div className={styles.moduleDesc}>设置满减优惠券，提升客单价</div>
               </div>
             </div>
           </Card>
