@@ -306,6 +306,16 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
         ],
       },
       {
+        key: 'product/bundle',
+        title: '商品套餐',
+        children: [
+          {
+            key: 'product/bundle/create',
+            title: '新建套餐',
+          },
+        ],
+      },
+      {
         key: 'product/share-pool',
         title: '商品共享池',
       },
@@ -368,6 +378,10 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
         title: '店铺员工',
         children: [
           {
+            key: 'store-config/employee/create',
+            title: '新建员工',
+          },
+          {
             key: 'store-config/employee/edit',
             title: '编辑员工',
           },
@@ -376,6 +390,32 @@ const MERCHANT_ROLE_STORE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
             title: '移除员工',
           },
         ],
+      },
+      {
+        key: 'store-config/role',
+        title: '店铺角色',
+        children: [
+          {
+            key: 'store-config/role/create',
+            title: '新增角色',
+          },
+          {
+            key: 'store-config/role/edit',
+            title: '编辑角色',
+          },
+        ],
+      },
+      {
+        key: 'store-config/department',
+        title: '店铺组织',
+      },
+      {
+        key: 'store-config/org-reference',
+        title: '组织架构引用',
+      },
+      {
+        key: 'store-config/basic',
+        title: '店铺基础配置',
       },
     ],
   },
@@ -422,6 +462,14 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
     key: 'merchant-system.permission',
     title: '权限管理',
     children: [
+      {
+        key: 'merchant/employee',
+        title: '员工管理',
+      },
+      {
+        key: 'merchant/store-employee',
+        title: '店铺员工',
+      },
       {
         key: 'merchant/role',
         title: '员工角色',

@@ -30,6 +30,11 @@ describe('merchant role permission tree', () => {
               { key: 'product/combo/edit', title: '编辑组合商品' },
             ],
           },
+          {
+            key: 'product/bundle',
+            title: '商品套餐',
+            children: [{ key: 'product/bundle/create', title: '新建套餐' }],
+          },
           { key: 'product/share-pool', title: '商品共享池' },
         ],
       },
@@ -67,10 +72,22 @@ describe('merchant role permission tree', () => {
             key: 'store-config/employee',
             title: '店铺员工',
             children: [
+              { key: 'store-config/employee/create', title: '新建员工' },
               { key: 'store-config/employee/edit', title: '编辑员工' },
               { key: 'store-config/employee/remove', title: '移除员工' },
             ],
           },
+          {
+            key: 'store-config/role',
+            title: '店铺角色',
+            children: [
+              { key: 'store-config/role/create', title: '新增角色' },
+              { key: 'store-config/role/edit', title: '编辑角色' },
+            ],
+          },
+          { key: 'store-config/department', title: '店铺组织' },
+          { key: 'store-config/org-reference', title: '组织架构引用' },
+          { key: 'store-config/basic', title: '店铺基础配置' },
         ],
       },
     ]);
@@ -98,6 +115,8 @@ describe('merchant role permission tree', () => {
         key: 'merchant-system.permission',
         title: '权限管理',
         children: [
+          { key: 'merchant/employee', title: '员工管理' },
+          { key: 'merchant/store-employee', title: '店铺员工' },
           { key: 'merchant/role', title: '员工角色' },
           { key: 'merchant/department', title: '部门管理' },
         ],

@@ -291,7 +291,6 @@ export const routes: IRoute[] = [
   {
     name: 'menu.order',
     key: 'order',
-    ignore: true,
     visibleScopes: ['store'],
     visibleSystems: ['store'],
     visibleDemoIdentities: ['region_admin', 'store_staff'],
@@ -303,16 +302,6 @@ export const routes: IRoute[] = [
         visibleSystems: ['store'],
         visibleDemoIdentities: ['region_admin', 'store_staff'],
       },
-    ],
-  },
-  {
-    name: 'menu.afterSales',
-    key: 'after-sales',
-    ignore: true,
-    visibleScopes: ['store'],
-    visibleSystems: ['store'],
-    visibleDemoIdentities: ['region_admin', 'store_staff'],
-    children: [
       {
         name: 'menu.afterSales.list',
         key: 'after-sales/list',
