@@ -103,17 +103,24 @@ describe('coupon data helpers', () => {
     expect(getCreatePageDefaultStackingCouponType(false)).toBe('shopOnly');
   });
 
-  it('excludes discount from the create-page discount options', () => {
+  it('keeps only full reduction on the create page discount options', () => {
     expect(getCreatePageDiscountOptions().map((item) => item.value)).toEqual([
       'fullReduction',
-      'directReduction',
     ]);
   });
 
-  it('excludes specific products from the create-page scope options', () => {
-    expect(getCreatePageProductScopeOptions().map((item) => item.value)).toEqual([
+  it('hides specific products from the merchant create-page scope options', () => {
+    expect(getCreatePageProductScopeOptions(false).map((item) => item.value)).toEqual([
       'all',
       'condition',
+    ]);
+  });
+
+  it('keeps specific products in the store create-page scope options', () => {
+    expect(getCreatePageProductScopeOptions(true).map((item) => item.value)).toEqual([
+      'all',
+      'condition',
+      'specific',
     ]);
   });
 
@@ -173,6 +180,19 @@ describe('coupon data helpers', () => {
     expect(platformStatuses).toEqual(
       new Set(['notStarted', 'active', 'expired', 'voided'])
     );
+  });
+
+  it('normalizes every demo coupon to full reduction data before list rendering', () => {
+    const listItems = readCouponListItems(undefined, { isStoreSystem: true });
+
+    expect(listItems.every((item) => item.discountType === 'fullReduction')).toBe(true);
+    expect(listItems.every((item) => item.discountSummary.startsWith('满'))).toBe(true);
+    expect(
+      listItems.every(
+        (item) =>
+          !item.discountSummary.includes('直减') && !item.discountSummary.includes('打')
+      )
+    ).toBe(true);
   });
 
   it('does not expose cross-store shared shop coupons in the store system', () => {

@@ -15,8 +15,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import styles from './index.module.less';
 import {
-  COUPON_DISCOUNT_LABEL_MAP,
-  COUPON_DISCOUNT_OPTIONS,
   COUPON_LIST_STATUS_LABEL_MAP,
   COUPON_LIST_STATUS_OPTIONS,
   COUPON_OWNERSHIP_TYPE_LABEL_MAP,
@@ -46,17 +44,29 @@ type CouponListPageProps = {
   detailCouponId?: string;
 };
 
+export function getCouponListDiscountLabel(_discountType: CouponDiscountType) {
+  return '满减';
+}
+
 export function getReceiveIssueDescriptions(
   record: Pick<CouponListItem, 'ownershipType' | 'localReceivedCount' | 'receiveRate'>,
   isStoreSystem: boolean
 ) {
-  const descriptions = [`领取率 ${record.receiveRate}%`];
+  const descriptions = [`使用率 ${record.receiveRate}%`];
 
   if (isStoreSystem && record.ownershipType === 'platform') {
-    descriptions.push(`本店已领 ${record.localReceivedCount} 张`);
+    descriptions.push(`本店已使用 ${record.localReceivedCount} 张`);
   }
 
   return descriptions;
+}
+
+export function formatCouponListDateTime(dateTime: string) {
+  return dateTime.slice(0, 16);
+}
+
+export function formatCouponListTimeRange(startAt: string, endAt: string) {
+  return `${formatCouponListDateTime(startAt)} - ${formatCouponListDateTime(endAt)}`;
 }
 
 function getDefaultFilterValues(): CouponListFilterValues {
@@ -71,7 +81,11 @@ function applyFilters(
   const keyword = filters.keyword.trim().toLowerCase();
 
   return coupons.filter((item) => {
-    if (filters.discountType && item.discountType !== filters.discountType) {
+    if (
+      filters.discountType &&
+      getCouponListDiscountLabel(item.discountType) !==
+        getCouponListDiscountLabel(filters.discountType)
+    ) {
       return false;
     }
 
@@ -139,17 +153,6 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
     () => new Map(storeItems.map((item) => [item.id, item])),
     [storeItems]
   );
-  const ownershipStoreOptions = useMemo(() => {
-    const optionMap = new Map<string, string>();
-    coupons.forEach((item) => {
-      optionMap.set(item.ownershipStoreId, item.ownershipLabel);
-    });
-
-    return Array.from(optionMap.entries()).map(([value, label]) => ({
-      label,
-      value,
-    }));
-  }, [coupons]);
   const applicableStores = useMemo(() => {
     if (!applicableStoresCoupon) {
       return [];
@@ -274,7 +277,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
           </Typography.Text>
           <div className={styles.metaRow}>
             <Typography.Text className={styles.secondaryText}>
-              {COUPON_DISCOUNT_LABEL_MAP[record.discountType]}
+              {getCouponListDiscountLabel(record.discountType)}
             </Typography.Text>
             <span className={styles.metaDivider}>|</span>
             <Typography.Text className={styles.secondaryText}>
@@ -307,20 +310,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
             ),
           },
         ]
-      : [
-          {
-            title: '活动归属',
-            dataIndex: 'ownershipLabel',
-            width: 180,
-            render: (_: string, record: CouponListItem) => (
-              <div className={styles.infoCell}>
-                <Typography.Text className={styles.primaryText}>
-                  {record.ownershipLabel}
-                </Typography.Text>
-              </div>
-            ),
-          },
-        ]),
+      : []),
     ...(!isStoreSystem
       ? [
           {
@@ -339,7 +329,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
         ]
       : []),
     {
-      title: '领取/发放',
+      title: '使用/发放',
       dataIndex: 'receivedCount',
       width: 170,
       render: (_: number, record: CouponListItem) => (
@@ -356,16 +346,13 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
       ),
     },
     {
-      title: '领取/使用时间',
+      title: '使用时间',
       dataIndex: 'receiveStartAt',
-      width: 380,
+      width: 300,
       render: (_: string, record: CouponListItem) => (
         <div className={styles.infoCell}>
           <Typography.Text className={styles.timeText}>
-            领：{record.receiveStartAt} - {record.receiveEndAt}
-          </Typography.Text>
-          <Typography.Text className={styles.timeText}>
-            用：{record.useStartAt} - {record.useEndAt}
+            {formatCouponListTimeRange(record.useStartAt, record.useEndAt)}
           </Typography.Text>
         </div>
       ),
@@ -390,28 +377,6 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
       <Card className={styles.filterCard}>
         <Form className={styles.filterForm}>
           <div className={styles.filterGrid}>
-            <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>优惠方式</div>
-              <Select
-                allowClear
-                className={styles.filterSelect}
-                placeholder="请选择优惠方式"
-                value={formValues.discountType}
-                onChange={(value) =>
-                  updateFormValue(
-                    'discountType',
-                    (value || undefined) as CouponDiscountType | undefined
-                  )
-                }
-              >
-                {COUPON_DISCOUNT_OPTIONS.map((item) => (
-                  <Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
             {isStoreSystem ? (
               <div className={styles.filterItem}>
                 <div className={styles.filterLabel}>券归属类型</div>
@@ -434,30 +399,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
                   ))}
                 </Select>
               </div>
-            ) : (
-              <div className={styles.filterItem}>
-                <div className={styles.filterLabel}>活动归属</div>
-                <Select
-                  allowClear
-                  mode="multiple"
-                  className={styles.filterSelect}
-                  placeholder="请选择活动归属"
-                  value={formValues.ownershipStoreIds}
-                  onChange={(value) => {
-                    updateFormValue(
-                      'ownershipStoreIds',
-                      Array.isArray(value) ? value.map(String) : []
-                    );
-                  }}
-                >
-                  {ownershipStoreOptions.map((item) => (
-                    <Option key={item.value} value={item.value}>
-                      {item.label}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-            )}
+            ) : null}
 
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>券状态</div>
@@ -531,7 +473,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
                 setPageSize(nextPageSize);
               },
             }}
-            scroll={{ x: isStoreSystem ? 1530 : 1710 }}
+            scroll={{ x: isStoreSystem ? 1450 : 1450 }}
             tableLayoutFixed
           />
         </div>

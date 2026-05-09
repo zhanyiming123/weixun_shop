@@ -28,7 +28,6 @@ import {
   CouponEditRuleSet,
   CouponFormValues,
   COUPON_STACKING_TYPE_OPTIONS,
-  getCreatePageDiscountOptions,
   getCreatePageProductScopeOptions,
   getCouponEditRuleSet,
   getCreatePageDefaultStackingCouponType,
@@ -112,6 +111,7 @@ function createDefaultFormValues(): CouponFormValues {
     conditionOwnershipSelections: [],
     selectedSkuIds: [],
     receiveTimeRange: [],
+    validityType: 'custom',
     customUseTimeRange: [],
   };
 }
@@ -156,8 +156,14 @@ export function normalizeCreateModeFormValues(
   values: CouponFormValues,
   isStoreSystem: boolean
 ): CouponFormValues {
+  const createModeUseTimeRange =
+    values.customUseTimeRange.length === 2
+      ? [...values.customUseTimeRange]
+      : values.receiveTimeRange.length === 2
+        ? [...values.receiveTimeRange]
+        : [];
   let nextValues =
-    values.discountType === 'discount'
+    values.discountType !== 'fullReduction'
       ? {
         ...values,
         discountType: 'fullReduction' as CouponDiscountType,
@@ -165,10 +171,20 @@ export function normalizeCreateModeFormValues(
         fullReductionAmount: undefined,
         directReductionAmount: undefined,
         discountRate: undefined,
+        receiveTimeRange: createModeUseTimeRange,
+        validityType: 'custom' as CouponValidityType,
+        validDays: undefined,
+        customUseTimeRange: createModeUseTimeRange,
       }
-      : values;
+      : {
+        ...values,
+        receiveTimeRange: createModeUseTimeRange,
+        validityType: 'custom' as CouponValidityType,
+        validDays: undefined,
+        customUseTimeRange: createModeUseTimeRange,
+      };
 
-  if (nextValues.productScope === 'specific') {
+  if (!isStoreSystem && nextValues.productScope === 'specific') {
     nextValues = {
       ...nextValues,
       productScope: 'condition',
@@ -546,13 +562,12 @@ export function CouponFormPage({
     return selectedStoreNames.join('、');
   }, [mode, selectedStoreIds, selectedStoreNames, storeItems]);
   const createModeStackingLabel = isStoreSystem ? '是否叠加平台券' : '是否叠加店铺券';
-  const discountTypeOptions = useMemo(
-    () => (isCreateMode ? getCreatePageDiscountOptions() : COUPON_DISCOUNT_OPTIONS),
-    [isCreateMode]
-  );
   const productScopeOptions = useMemo(
-    () => (isCreateMode ? getCreatePageProductScopeOptions() : PRODUCT_SCOPE_OPTIONS),
-    [isCreateMode]
+    () =>
+      isCreateMode
+        ? getCreatePageProductScopeOptions(isStoreSystem)
+        : PRODUCT_SCOPE_OPTIONS,
+    [isCreateMode, isStoreSystem]
   );
   const stackingTypeOptions = useMemo(
     () =>
@@ -921,11 +936,14 @@ export function CouponFormPage({
       return;
     }
 
+    const nextTimeRange =
+      Array.isArray(dateString) && dateString[0] && dateString[1]
+        ? [dateString[0], dateString[1]]
+        : [];
+
     patchFormValues({
-      customUseTimeRange:
-        Array.isArray(dateString) && dateString[0] && dateString[1]
-          ? [dateString[0], dateString[1]]
-          : [],
+      customUseTimeRange: nextTimeRange,
+      receiveTimeRange: isCreateMode ? nextTimeRange : formValues.receiveTimeRange,
     });
     clearErrors('validityConfig');
   }
@@ -1099,7 +1117,7 @@ export function CouponFormPage({
       errors.couponQuantity = '请填写正确的发放张数和每人限领数量';
     }
 
-    if (formValues.receiveTimeRange.length !== 2) {
+    if (!isCreateMode && formValues.receiveTimeRange.length !== 2) {
       errors.receiveTimeRange = '请选择领取时间';
     }
 
@@ -1195,18 +1213,22 @@ export function CouponFormPage({
 
             <Form.Item required label="优惠方式">
               <div className={styles.inlineField}>
-                <Select
-                  className={styles.discountTypeSelect}
-                  value={formValues.discountType}
-                  disabled={!canEditDiscountConfig}
-                  onChange={handleDiscountTypeChange}
-                >
-                  {discountTypeOptions.map((item) => (
-                    <Option key={item.value} value={item.value}>
-                      {item.label}
-                    </Option>
-                  ))}
-                </Select>
+                {isCreateMode ? (
+                  <div className={styles.fixedDiscountTypeValue}>满减</div>
+                ) : (
+                  <Select
+                    className={styles.discountTypeSelect}
+                    value={formValues.discountType}
+                    disabled={!canEditDiscountConfig}
+                    onChange={handleDiscountTypeChange}
+                  >
+                    {COUPON_DISCOUNT_OPTIONS.map((item) => (
+                      <Option key={item.value} value={item.value}>
+                        {item.label}
+                      </Option>
+                    ))}
+                  </Select>
+                )}
 
                 {formValues.discountType === 'fullReduction' && (
                   <>
@@ -1642,112 +1664,132 @@ export function CouponFormPage({
                 )}
             </Form.Item>
 
-            <Form.Item required label="领取时间">
-              {!isActiveEditMode && (
-                <RangePicker
-                  className={styles.rangePicker}
-                  placeholder={['开始日期', '结束日期']}
-                  disabled={!canEditCoupon}
-                  value={
-                    formValues.receiveTimeRange.length
-                      ? formValues.receiveTimeRange
-                      : undefined
-                  }
-                  onChange={handleReceiveTimeChange}
-                />
-              )}
-
-              {isActiveEditMode && (
-                <div className={styles.inlineField}>
-                  <DatePicker
-                    className={styles.datePicker}
-                    format="YYYY/MM/DD HH:mm:ss"
-                    showTime
-                    disabled
-                    value={formValues.receiveTimeRange[0] || undefined}
-                    onChange={(value) =>
-                      handleReceiveStartAtChange(
-                        typeof value === 'string' ? value : undefined
-                      )
+            {!isCreateMode && (
+              <Form.Item required label="领取时间">
+                {!isActiveEditMode && (
+                  <RangePicker
+                    className={styles.rangePicker}
+                    placeholder={['开始日期', '结束日期']}
+                    disabled={!canEditCoupon}
+                    value={
+                      formValues.receiveTimeRange.length
+                        ? formValues.receiveTimeRange
+                        : undefined
                     }
+                    onChange={handleReceiveTimeChange}
                   />
-                  <span className={styles.inlineUnit}>至</span>
-                  <DatePicker
-                    className={styles.datePicker}
-                    format="YYYY/MM/DD HH:mm:ss"
-                    showTime
-                    disabled={!canEditReceiveEndAt}
-                    value={formValues.receiveTimeRange[1] || undefined}
-                    onChange={(value) =>
-                      handleReceiveEndAtChange(
-                        typeof value === 'string' ? value : undefined
-                      )
-                    }
-                  />
-                </div>
-              )}
-              {formErrors.receiveTimeRange && (
-                <div className={styles.fieldError}>{formErrors.receiveTimeRange}</div>
-              )}
-              {isActiveEditMode && (
-                <div className={styles.fieldHint}>
-                  领取开始时间已锁定；领取结束时间可调整，但不能早于当前时间（{currentDateTimeText}）。
-                </div>
-              )}
-            </Form.Item>
+                )}
 
-            <Form.Item required label="使用时间">
-              <div className={styles.validityBlock}>
-                <Radio.Group
-                  value={formValues.validityType}
-                  disabled={!canEditValidity}
-                  onChange={handleValidityTypeChange}
-                >
-                  {VALIDITY_TYPE_OPTIONS.map((item) => (
-                    <Radio key={item.value} value={item.value}>
-                      {item.label}
-                    </Radio>
-                  ))}
-                </Radio.Group>
-
-                {formValues.validityType === 'afterReceiveDays' && (
-                  <div
-                    className={styles.validityActionRow}
-                    style={FORM_CONFIG_ITEM_OFFSET_STYLE}
-                  >
-                    <InputNumber
-                      className={styles.validDaysInput}
-                      min={1}
-                      precision={0}
-                      disabled={!canEditValidity}
-                      value={formValues.validDays}
+                {isActiveEditMode && (
+                  <div className={styles.inlineField}>
+                    <DatePicker
+                      className={styles.datePicker}
+                      format="YYYY/MM/DD HH:mm:ss"
+                      showTime
+                      disabled
+                      value={formValues.receiveTimeRange[0] || undefined}
                       onChange={(value) =>
-                        updateNumberField(
-                          'validDays',
-                          typeof value === 'number' ? value : undefined
+                        handleReceiveStartAtChange(
+                          typeof value === 'string' ? value : undefined
                         )
                       }
                     />
-                    <span className={styles.inlineText}>天内有效</span>
-                  </div>
-                )}
-
-                {formValues.validityType === 'custom' && (
-                  <div style={FORM_CONFIG_ITEM_OFFSET_STYLE}>
-                    <RangePicker
-                      className={styles.rangePicker}
-                      format="YYYY-MM-DD HH:mm:ss"
-                      placeholder={['开始时间', '结束时间']}
+                    <span className={styles.inlineUnit}>至</span>
+                    <DatePicker
+                      className={styles.datePicker}
+                      format="YYYY/MM/DD HH:mm:ss"
                       showTime
-                      disabled={!canEditValidity}
-                      value={
-                        formValues.customUseTimeRange.length
-                          ? formValues.customUseTimeRange
-                          : undefined
+                      disabled={!canEditReceiveEndAt}
+                      value={formValues.receiveTimeRange[1] || undefined}
+                      onChange={(value) =>
+                        handleReceiveEndAtChange(
+                          typeof value === 'string' ? value : undefined
+                        )
                       }
-                      onChange={handleCustomUseTimeChange}
                     />
                   </div>
+                )}
+                {formErrors.receiveTimeRange && (
+                  <div className={styles.fieldError}>{formErrors.receiveTimeRange}</div>
+                )}
+                {isActiveEditMode && (
+                  <div className={styles.fieldHint}>
+                    领取开始时间已锁定；领取结束时间可调整，但不能早于当前时间（{currentDateTimeText}）。
+                  </div>
+                )}
+              </Form.Item>
+            )}
+
+            <Form.Item required label="使用时间">
+              <div className={styles.validityBlock}>
+                {isCreateMode ? (
+                  <RangePicker
+                    className={styles.rangePicker}
+                    format="YYYY-MM-DD HH:mm"
+                    placeholder={['开始时间', '结束时间']}
+                    showTime
+                    disabled={!canEditValidity}
+                    value={
+                      formValues.customUseTimeRange.length
+                        ? formValues.customUseTimeRange
+                        : undefined
+                    }
+                    onChange={handleCustomUseTimeChange}
+                  />
+                ) : (
+                  <>
+                    <Radio.Group
+                      value={formValues.validityType}
+                      disabled={!canEditValidity}
+                      onChange={handleValidityTypeChange}
+                    >
+                      {VALIDITY_TYPE_OPTIONS.map((item) => (
+                        <Radio key={item.value} value={item.value}>
+                          {item.label}
+                        </Radio>
+                      ))}
+                    </Radio.Group>
+
+                    {formValues.validityType === 'afterReceiveDays' && (
+                      <div
+                        className={styles.validityActionRow}
+                        style={FORM_CONFIG_ITEM_OFFSET_STYLE}
+                      >
+                        <InputNumber
+                          className={styles.validDaysInput}
+                          min={1}
+                          precision={0}
+                          disabled={!canEditValidity}
+                          value={formValues.validDays}
+                          onChange={(value) =>
+                            updateNumberField(
+                              'validDays',
+                              typeof value === 'number' ? value : undefined
+                            )
+                          }
+                        />
+                        <span className={styles.inlineText}>天内有效</span>
+                      </div>
+                    )}
+
+                    {formValues.validityType === 'custom' && (
+                      <div style={FORM_CONFIG_ITEM_OFFSET_STYLE}>
+                        <RangePicker
+                          className={styles.rangePicker}
+                          format="YYYY-MM-DD HH:mm:ss"
+                          placeholder={['开始时间', '结束时间']}
+                          showTime
+                          disabled={!canEditValidity}
+                          value={
+                            formValues.customUseTimeRange.length
+                              ? formValues.customUseTimeRange
+                              : undefined
+                          }
+                          onChange={handleCustomUseTimeChange}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               {formErrors.validityConfig && (

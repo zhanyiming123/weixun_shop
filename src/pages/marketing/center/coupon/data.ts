@@ -197,7 +197,7 @@ export const COUPON_DISCOUNT_OPTIONS = [
 ];
 
 export function getCreatePageDiscountOptions() {
-  return COUPON_DISCOUNT_OPTIONS.filter((item) => item.value !== 'discount');
+  return COUPON_DISCOUNT_OPTIONS.filter((item) => item.value === 'fullReduction');
 }
 
 export const COUPON_STACKING_TYPE_OPTIONS = [
@@ -215,11 +215,13 @@ export function getCreatePageDefaultStackingCouponType(
 export const PRODUCT_SCOPE_OPTIONS = [
   { label: '全部商品', value: 'all' as CouponProductScope },
   { label: '按条件圈品', value: 'condition' as CouponProductScope },
-  { label: '指定商品', value: 'specific' as CouponProductScope },
+  { label: '部分商品', value: 'specific' as CouponProductScope },
 ];
 
-export function getCreatePageProductScopeOptions() {
-  return PRODUCT_SCOPE_OPTIONS.filter((item) => item.value !== 'specific');
+export function getCreatePageProductScopeOptions(isStoreSystem: boolean) {
+  return isStoreSystem
+    ? PRODUCT_SCOPE_OPTIONS
+    : PRODUCT_SCOPE_OPTIONS.filter((item) => item.value !== 'specific');
 }
 
 export const VALIDITY_TYPE_OPTIONS = [
@@ -278,7 +280,7 @@ const READONLY_COUPON_EDIT_RULES: CouponEditRuleSet = {
 export const COUPON_SCOPE_SUMMARY_LABEL_MAP: Record<CouponProductScope, string> = {
   all: '全部商品',
   condition: '按条件圈品',
-  specific: '指定商品',
+  specific: '部分商品',
 };
 
 export type CouponConditionOwnershipSelection = {
@@ -1264,9 +1266,13 @@ export function formatCouponDiscountSummary(
     )}`;
   }
   if (record.discountType === 'directReduction') {
-    return `直减${formatNumberText(record.directReductionAmount)}`;
+    return `满${formatNumberText(record.directReductionAmount)}减${formatNumberText(
+      record.directReductionAmount
+    )}`;
   }
-  return `打${formatNumberText(record.discountRate, 1)}折`;
+  return `满100减${formatNumberText(
+    typeof record.discountRate === 'number' ? (10 - record.discountRate) * 10 : undefined
+  )}`;
 }
 
 function toCouponListItem(
@@ -1300,7 +1306,36 @@ function toCouponListItem(
   };
 }
 
-let couponDetailStore = COUPON_RECORD_SEEDS.map(cloneCouponDetailRecord);
+function normalizeCouponSeedRecord(record: CouponDetailRecord) {
+  if (record.discountType === 'fullReduction') {
+    return cloneCouponDetailRecord(record);
+  }
+
+  if (record.discountType === 'directReduction') {
+    return cloneCouponDetailRecord({
+      ...record,
+      discountType: 'fullReduction',
+      fullReductionThreshold: record.directReductionAmount,
+      fullReductionAmount: record.directReductionAmount,
+      directReductionAmount: undefined,
+      discountRate: undefined,
+    });
+  }
+
+  return cloneCouponDetailRecord({
+    ...record,
+    discountType: 'fullReduction',
+    fullReductionThreshold: 100,
+    fullReductionAmount:
+      typeof record.discountRate === 'number'
+        ? Number(((10 - record.discountRate) * 10).toFixed(2))
+        : undefined,
+    directReductionAmount: undefined,
+    discountRate: undefined,
+  });
+}
+
+let couponDetailStore = COUPON_RECORD_SEEDS.map(normalizeCouponSeedRecord);
 
 function getVisibleCouponRecords(
   visibleStoreIds?: string[],
