@@ -46,6 +46,10 @@ import {
   StoreManagedEmployeeItem,
   upsertStoreEmployeePermissionConfig,
 } from './data';
+import {
+  isStoreEmployeeCreateActionVisible,
+  isStoreEmployeeRowActionVisible,
+} from './visibility';
 import { GlobalState } from '@/store';
 import styles from './index.module.less';
 
@@ -166,7 +170,9 @@ function createDefaultExternalSingleForm(defaultRoleIds: string[]): ExternalSing
 }
 
 function StoreEmployeePage() {
-  const { currentOrganization } = useSelector((state: GlobalState) => state);
+  const { currentDemoSystem, currentOrganization } = useSelector(
+    (state: GlobalState) => state
+  );
   const [roleItems] = useEnterpriseRoleItems();
   const departmentItems = useMemo(() => readEnterpriseDepartmentItems(), []);
   const orgTreeData = useMemo(() => buildStoreOrgReferenceTree(), []);
@@ -186,6 +192,7 @@ function StoreEmployeePage() {
 
   const currentStoreId =
     currentOrganization?.scope === 'store' ? currentOrganization.id : undefined;
+  const isCreateActionVisible = isStoreEmployeeCreateActionVisible(currentDemoSystem);
 
   const [orgConfigItems, setOrgConfigItems] = useState(() =>
     readStoreOrgReferenceConfigs()
@@ -478,6 +485,10 @@ function StoreEmployeePage() {
   }
 
   function handleRemove(record: StoreManagedEmployeeItem) {
+    if (!isStoreEmployeeRowActionVisible('移除', currentDemoSystem)) {
+      return;
+    }
+
     if (!currentStoreId) {
       return;
     }
@@ -511,6 +522,10 @@ function StoreEmployeePage() {
   }
 
   function openAddModal() {
+    if (!isCreateActionVisible) {
+      return;
+    }
+
     setAddSource('organization');
     setOrganizationAddMode('department');
     setAddDepartmentIds([]);
@@ -832,8 +847,12 @@ function StoreEmployeePage() {
       fixed: 'right' as const,
       render: (_: unknown, record: StoreManagedEmployeeItem) => (
         <Space size={12}>
-          <Link onClick={() => openEditModal(record)}>编辑</Link>
-          <Link onClick={() => handleRemove(record)}>移除</Link>
+          {isStoreEmployeeRowActionVisible('编辑', currentDemoSystem) && (
+            <Link onClick={() => openEditModal(record)}>编辑</Link>
+          )}
+          {isStoreEmployeeRowActionVisible('移除', currentDemoSystem) && (
+            <Link onClick={() => handleRemove(record)}>移除</Link>
+          )}
         </Space>
       ),
     },
@@ -1008,9 +1027,11 @@ function StoreEmployeePage() {
               共 {filteredEmployees.length} 名员工
             </Typography.Text>
           </div>
-          <Button type="primary" icon={<IconUserAdd />} onClick={openAddModal}>
-            新增员工
-          </Button>
+          {isCreateActionVisible && (
+            <Button type="primary" icon={<IconUserAdd />} onClick={openAddModal}>
+              新增员工
+            </Button>
+          )}
         </div>
 
         <Table
