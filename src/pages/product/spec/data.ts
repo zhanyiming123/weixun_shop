@@ -5,10 +5,9 @@ import usePersistentState, {
 
 export type ProductCatalogSpecItem = {
   id: string;
-  catalogId: string;
+  catalogIds: string[];
   name: string;
   values: string[];
-  sort: number;
   enabled: boolean;
   createdAt: string;
 };
@@ -18,37 +17,33 @@ const STORAGE_KEY = 'product-catalog-spec-items';
 export const DEFAULT_PRODUCT_CATALOG_SPECS: ProductCatalogSpecItem[] = [
   {
     id: 'spec_international_class_type',
-    catalogId: 'international',
+    catalogIds: ['international'],
     name: '班型',
     values: ['1v1 旗舰班', '1v4 金牌班', '标准直播班'],
-    sort: 1,
     enabled: true,
     createdAt: '2026-05-04 10:00:00',
   },
   {
     id: 'spec_international_delivery_mode',
-    catalogId: 'international',
+    catalogIds: ['international'],
     name: '授课形式',
     values: ['录播', '直播', '面授'],
-    sort: 2,
     enabled: true,
     createdAt: '2026-05-04 10:05:00',
   },
   {
     id: 'spec_thesis_service_level',
-    catalogId: 'thesis',
+    catalogIds: ['thesis'],
     name: '服务等级',
     values: ['标准版', '加急版', 'VIP 版'],
-    sort: 1,
     enabled: true,
     createdAt: '2026-05-04 10:10:00',
   },
   {
     id: 'spec_service_charge_mode',
-    catalogId: 'service',
+    catalogIds: ['service'],
     name: '收费模式',
     values: ['一次性收费', '分阶段收费'],
-    sort: 1,
     enabled: false,
     createdAt: '2026-05-04 10:15:00',
   },
@@ -69,6 +64,33 @@ export function normalizeProductCatalogSpecValues(values: string[] = []) {
   }, []);
 }
 
+function normalizeProductCatalogSpecCatalogIds(
+  catalogIds: unknown,
+  legacyCatalogId?: unknown
+) {
+  const rawCatalogIds = Array.isArray(catalogIds)
+    ? catalogIds
+    : typeof legacyCatalogId === 'string'
+      ? [legacyCatalogId]
+      : [];
+  const seenCatalogIds = new Set<string>();
+
+  return rawCatalogIds.reduce<string[]>((result, item) => {
+    if (typeof item !== 'string') {
+      return result;
+    }
+
+    const catalogId = item.trim();
+
+    if (!catalogId || seenCatalogIds.has(catalogId)) {
+      return result;
+    }
+
+    seenCatalogIds.add(catalogId);
+    return [...result, catalogId];
+  }, []);
+}
+
 export function normalizeProductCatalogSpecs(
   specs: ProductCatalogSpecItem[] = DEFAULT_PRODUCT_CATALOG_SPECS
 ) {
@@ -77,30 +99,37 @@ export function normalizeProductCatalogSpecs(
       (item) =>
         Boolean(item) &&
         typeof item.id === 'string' &&
-        typeof item.catalogId === 'string' &&
         typeof item.name === 'string'
     )
-    .map((item) => ({
-      ...item,
-      id: item.id.trim(),
-      catalogId: item.catalogId.trim(),
-      name: item.name.trim(),
-      values: normalizeProductCatalogSpecValues(item.values || []),
-      sort:
-        typeof item.sort === 'number' && Number.isFinite(item.sort) && item.sort > 0
-          ? Math.floor(item.sort)
-          : 1,
-      enabled: item.enabled !== false,
-      createdAt: item.createdAt || '',
-    }))
-    .filter((item) => item.id && item.catalogId && item.name && item.values.length > 0)
+    .map((item) => {
+      const legacyItem = item as ProductCatalogSpecItem & {
+        catalogId?: string;
+        sort?: number;
+      };
+
+      return {
+        id: item.id.trim(),
+        catalogIds: normalizeProductCatalogSpecCatalogIds(
+          legacyItem.catalogIds,
+          legacyItem.catalogId
+        ),
+        name: item.name.trim(),
+        values: normalizeProductCatalogSpecValues(item.values || []),
+        enabled: item.enabled !== false,
+        createdAt: item.createdAt || '',
+      };
+    })
+    .filter((item) => item.id && item.catalogIds.length && item.name && item.values.length > 0)
     .sort((left, right) => {
-      if (left.catalogId !== right.catalogId) {
-        return left.catalogId.localeCompare(right.catalogId);
+      const leftPrimaryCatalogId = left.catalogIds[0] || '';
+      const rightPrimaryCatalogId = right.catalogIds[0] || '';
+
+      if (leftPrimaryCatalogId !== rightPrimaryCatalogId) {
+        return leftPrimaryCatalogId.localeCompare(rightPrimaryCatalogId);
       }
 
-      if (left.sort !== right.sort) {
-        return left.sort - right.sort;
+      if (left.createdAt !== right.createdAt) {
+        return left.createdAt.localeCompare(right.createdAt);
       }
 
       return left.name.localeCompare(right.name, 'zh-Hans-CN');
@@ -131,40 +160,42 @@ export function getEnabledSpecsByCatalogId(
   }
 
   return specs
-    .filter((item) => item.enabled && item.catalogId === catalogId)
-    .sort((left, right) => left.sort - right.sort);
+    .filter((item) => item.enabled && item.catalogIds.includes(catalogId))
+    .sort((left, right) => {
+      if (left.createdAt !== right.createdAt) {
+        return left.createdAt.localeCompare(right.createdAt);
+      }
+
+      return left.name.localeCompare(right.name, 'zh-Hans-CN');
+    });
 }
 
 export function isProductCatalogSpecNameDuplicated(
   specs: ProductCatalogSpecItem[],
-  catalogId: string,
+  catalogIds: string[],
   name: string,
   excludeId?: string
 ) {
-  const normalizedCatalogId = catalogId.trim();
+  const normalizedCatalogIdSet = new Set(
+    normalizeProductCatalogSpecCatalogIds(catalogIds)
+  );
   const normalizedName = name.trim();
 
   return specs.some(
     (item) =>
-      item.catalogId === normalizedCatalogId &&
+      item.catalogIds.some((catalogId) => normalizedCatalogIdSet.has(catalogId)) &&
       item.name === normalizedName &&
       item.id !== excludeId
   );
 }
 
 export function resolveProductCatalogSpecIdentity(
-  nextIdentity: Pick<ProductCatalogSpecItem, 'catalogId' | 'name'>,
-  editingItem?: Pick<ProductCatalogSpecItem, 'catalogId' | 'name'> | null
+  nextName: string,
+  editingItem?: Pick<ProductCatalogSpecItem, 'name'> | null
 ) {
   if (editingItem) {
-    return {
-      catalogId: editingItem.catalogId,
-      name: editingItem.name,
-    };
+    return editingItem.name;
   }
 
-  return {
-    catalogId: nextIdentity.catalogId.trim(),
-    name: nextIdentity.name.trim(),
-  };
+  return nextName.trim();
 }

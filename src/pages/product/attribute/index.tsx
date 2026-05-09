@@ -28,7 +28,9 @@ import {
 } from '../catalog/data';
 import {
   ProductCatalogAttributeItem,
+  ProductCatalogAttributeNumberMode,
   ProductCatalogAttributeType,
+  getProductCatalogAttributeValueSummary,
   useProductCatalogAttributes,
 } from './data';
 
@@ -83,6 +85,52 @@ function normalizePaths(
   return [value as string[]];
 }
 
+function getPositiveIntegerRule(message: string) {
+  return {
+    validator: (value: unknown, callback: (error?: string) => void) => {
+      if (value === undefined || value === null || value === '') {
+        callback();
+        return;
+      }
+
+      if (
+        typeof value === 'number' &&
+        Number.isFinite(value) &&
+        Number.isInteger(value) &&
+        value > 0
+      ) {
+        callback();
+        return;
+      }
+
+      callback(message);
+    },
+  };
+}
+
+function getNonNegativeIntegerRule(message: string) {
+  return {
+    validator: (value: unknown, callback: (error?: string) => void) => {
+      if (value === undefined || value === null || value === '') {
+        callback();
+        return;
+      }
+
+      if (
+        typeof value === 'number' &&
+        Number.isFinite(value) &&
+        Number.isInteger(value) &&
+        value >= 0
+      ) {
+        callback();
+        return;
+      }
+
+      callback(message);
+    },
+  };
+}
+
 function AttributePage() {
   const [catalogItems] = useProductCatalogItems();
   const [attributes, setAttributes] = useProductCatalogAttributes();
@@ -103,6 +151,8 @@ function AttributePage() {
   );
   const [form] = useForm();
   const [formType, setFormType] = useState<ProductCatalogAttributeType>('text');
+  const [formNumberMode, setFormNumberMode] =
+    useState<ProductCatalogAttributeNumberMode>('integer');
 
   const filteredData = useMemo(
     () =>
@@ -131,13 +181,19 @@ function AttributePage() {
   function openAddModal() {
     setEditingItem(null);
     setFormType('text');
+    setFormNumberMode('integer');
     form.resetFields();
     form.setFieldsValue({
-      catalogIds: selectedCatalogId ? [getProductCatalogPathById(selectedCatalogId, catalogItems)] : [],
+      catalogIds: selectedCatalogId
+        ? [getProductCatalogPathById(selectedCatalogId, catalogItems)]
+        : [],
       required: false,
       sort: 1,
       enabled: true,
       type: 'text',
+      textMaxLength: undefined,
+      numberMode: 'integer',
+      numberPrecision: undefined,
     });
     setModalVisible(true);
   }
@@ -145,6 +201,7 @@ function AttributePage() {
   function openEditModal(record: ProductCatalogAttributeItem) {
     setEditingItem(record);
     setFormType(record.type);
+    setFormNumberMode(record.numberMode || 'integer');
     form.setFieldsValue({
       catalogIds: record.catalogIds.map((id) =>
         getProductCatalogPathById(id, catalogItems)
@@ -152,6 +209,9 @@ function AttributePage() {
       name: record.name,
       type: record.type,
       values: record.values,
+      textMaxLength: record.textMaxLength,
+      numberMode: record.numberMode || 'integer',
+      numberPrecision: record.numberPrecision,
       required: record.required,
       sort: record.sort,
       enabled: record.enabled,
@@ -180,8 +240,25 @@ function AttributePage() {
         .map((path) => getProductCatalogIdFromPath(path, catalogItems))
         .filter(Boolean) as string[];
       const type = values.type as ProductCatalogAttributeType;
+      const numberMode = values.numberMode as ProductCatalogAttributeNumberMode | undefined;
       const attributeValues =
         type === 'single' || type === 'multi' ? values.values || [] : [];
+      const textMaxLength =
+        type === 'text' && typeof values.textMaxLength === 'number'
+          ? values.textMaxLength
+          : undefined;
+      const normalizedNumberMode =
+        type === 'number'
+          ? numberMode === 'decimalAllowed'
+            ? 'decimalAllowed'
+            : 'integer'
+          : undefined;
+      const numberPrecision =
+        type === 'number' &&
+        normalizedNumberMode === 'decimalAllowed' &&
+        typeof values.numberPrecision === 'number'
+          ? values.numberPrecision
+          : undefined;
 
       if (editingItem) {
         setAttributes((prev) =>
@@ -193,6 +270,9 @@ function AttributePage() {
                   name: values.name,
                   type,
                   values: attributeValues,
+                  textMaxLength,
+                  numberMode: normalizedNumberMode,
+                  numberPrecision,
                   required: values.required ?? false,
                   sort: values.sort,
                   enabled: values.enabled ?? true,
@@ -206,15 +286,18 @@ function AttributePage() {
           ...prev,
           {
             id: generateId(),
-            catalogIds,
-            name: values.name,
-            type,
-            values: attributeValues,
-            required: values.required ?? false,
-            sort: values.sort,
-            enabled: values.enabled ?? true,
-            createdAt: now(),
-          },
+              catalogIds,
+              name: values.name,
+              type,
+              values: attributeValues,
+              textMaxLength,
+              numberMode: normalizedNumberMode,
+              numberPrecision,
+              required: values.required ?? false,
+              sort: values.sort,
+              enabled: values.enabled ?? true,
+              createdAt: now(),
+            },
         ]);
         setSelectedCatalogId(catalogIds[0] || selectedCatalogId);
         Message.success('添加成功');
@@ -260,12 +343,12 @@ function AttributePage() {
       dataIndex: 'values',
       width: 300,
       render: (values: string[], record: ProductCatalogAttributeItem) => {
-        if (record.type === 'text') {
-          return <span className={styles.textType}>自由填写</span>;
-        }
-
-        if (record.type === 'number') {
-          return <span className={styles.textType}>数字输入</span>;
+        if (record.type === 'text' || record.type === 'number') {
+          return (
+            <span className={styles.textType}>
+              {getProductCatalogAttributeValueSummary(record)}
+            </span>
+          );
         }
 
         if (!values.length) {
@@ -435,7 +518,44 @@ function AttributePage() {
           wrapperCol={{ span: 18 }}
           onValuesChange={(changed) => {
             if ('type' in changed) {
-              setFormType(changed.type);
+              const nextType = changed.type as ProductCatalogAttributeType;
+              setFormType(nextType);
+
+              if (nextType === 'text') {
+                setFormNumberMode('integer');
+                form.setFieldsValue({
+                  numberMode: undefined,
+                  numberPrecision: undefined,
+                });
+              } else if (nextType === 'number') {
+                setFormNumberMode('integer');
+                form.setFieldsValue({
+                  textMaxLength: undefined,
+                  numberMode: 'integer',
+                  numberPrecision: undefined,
+                });
+              } else {
+                setFormNumberMode('integer');
+                form.setFieldsValue({
+                  textMaxLength: undefined,
+                  numberMode: undefined,
+                  numberPrecision: undefined,
+                });
+              }
+            }
+
+            if ('numberMode' in changed) {
+              const nextNumberMode =
+                changed.numberMode === 'decimalAllowed'
+                  ? 'decimalAllowed'
+                  : 'integer';
+              setFormNumberMode(nextNumberMode);
+
+              if (nextNumberMode === 'integer') {
+                form.setFieldsValue({
+                  numberPrecision: undefined,
+                });
+              }
             }
           }}
         >
@@ -473,6 +593,47 @@ function AttributePage() {
               <Select.Option value="multi">多选（从预设值中选多个）</Select.Option>
             </Select>
           </Form.Item>
+          {formType === 'text' && (
+            <Form.Item
+              field="textMaxLength"
+              label="最大字符数"
+              rules={[getPositiveIntegerRule('最大字符数需为大于 0 的整数')]}
+            >
+              <InputNumber
+                min={1}
+                precision={0}
+                placeholder="留空表示不限制"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          )}
+          {formType === 'number' && (
+            <Form.Item
+              field="numberMode"
+              label="数字格式"
+              initialValue="integer"
+              rules={[{ required: true, message: '请选择数字格式' }]}
+            >
+              <Select placeholder="请选择数字格式">
+                <Select.Option value="integer">仅整数</Select.Option>
+                <Select.Option value="decimalAllowed">可含小数</Select.Option>
+              </Select>
+            </Form.Item>
+          )}
+          {formType === 'number' && formNumberMode === 'decimalAllowed' && (
+            <Form.Item
+              field="numberPrecision"
+              label="最多小数位数"
+              rules={[getNonNegativeIntegerRule('最多小数位数需为大于等于 0 的整数')]}
+            >
+              <InputNumber
+                min={0}
+                precision={0}
+                placeholder="留空表示不限制"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          )}
           {(formType === 'single' || formType === 'multi') && (
             <Form.Item
               field="values"

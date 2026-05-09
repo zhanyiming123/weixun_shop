@@ -5,7 +5,6 @@ import {
   Cascader,
   Form,
   Input,
-  InputNumber,
   InputTag,
   Message,
   Modal,
@@ -27,7 +26,6 @@ import {
   useProductCatalogItems,
 } from '../catalog/data';
 import {
-  getEnabledSpecsByCatalogId,
   isProductCatalogSpecNameDuplicated,
   normalizeProductCatalogSpecValues,
   resolveProductCatalogSpecIdentity,
@@ -58,6 +56,20 @@ function normalizePath(value: (string | string[])[] | undefined): string[] {
   return value as string[];
 }
 
+function normalizePaths(
+  value: (string | string[])[] | string[][] | undefined
+): string[][] {
+  if (!Array.isArray(value) || !value.length) {
+    return [];
+  }
+
+  if (Array.isArray(value[0])) {
+    return value as string[][];
+  }
+
+  return [value as string[]];
+}
+
 function ProductSpecPage() {
   const [catalogItems] = useProductCatalogItems();
   const [specs, setSpecs] = useProductCatalogSpecs();
@@ -77,16 +89,12 @@ function ProductSpecPage() {
   const [form] = useForm();
 
   const selectedCatalog = catalogLeafItems.find((item) => item.id === selectedCatalogId);
-  const selectedCatalogEnabledSpecs = useMemo(
-    () => getEnabledSpecsByCatalogId(specs, selectedCatalogId),
-    [selectedCatalogId, specs]
-  );
 
   const filteredData = useMemo(
     () =>
       specs
         .filter((item) => {
-          if (selectedCatalogId && item.catalogId !== selectedCatalogId) {
+          if (selectedCatalogId && !item.catalogIds.includes(selectedCatalogId)) {
             return false;
           }
 
@@ -103,8 +111,7 @@ function ProductSpecPage() {
           }
 
           return true;
-        })
-        .sort((left, right) => left.sort - right.sort),
+        }),
     [filterEnabled, searchName, selectedCatalogId, specs]
   );
 
@@ -112,10 +119,9 @@ function ProductSpecPage() {
     setEditingItem(null);
     form.resetFields();
     form.setFieldsValue({
-      catalogId: selectedCatalogId
-        ? getProductCatalogPathById(selectedCatalogId, catalogItems)
+      catalogIds: selectedCatalogId
+        ? [getProductCatalogPathById(selectedCatalogId, catalogItems)]
         : undefined,
-      sort: selectedCatalogEnabledSpecs.length + 1,
       enabled: true,
       values: [],
     });
@@ -125,10 +131,9 @@ function ProductSpecPage() {
   function openEditModal(record: ProductCatalogSpecItem) {
     setEditingItem(record);
     form.setFieldsValue({
-      catalogId: getProductCatalogPathById(record.catalogId, catalogItems),
+      catalogIds: record.catalogIds.map((id) => getProductCatalogPathById(id, catalogItems)),
       name: record.name,
       values: record.values,
-      sort: record.sort,
       enabled: record.enabled,
     });
     setModalVisible(true);
@@ -151,23 +156,16 @@ function ProductSpecPage() {
   async function handleModalOk() {
     try {
       const values = await form.validate();
-      const catalogId = getProductCatalogIdFromPath(
-        normalizePath(values.catalogId),
-        catalogItems
-      );
+      const catalogIds = normalizePaths(values.catalogIds)
+        .map((path) => getProductCatalogIdFromPath(path, catalogItems))
+        .filter(Boolean) as string[];
 
-      if (!catalogId) {
+      if (!catalogIds.length) {
         Message.warning('请选择叶子类目');
         return;
       }
 
-      const identity = resolveProductCatalogSpecIdentity(
-        {
-          catalogId,
-          name: values.name,
-        },
-        editingItem
-      );
+      const name = resolveProductCatalogSpecIdentity(values.name, editingItem);
       const specValues = normalizeProductCatalogSpecValues(values.values || []);
 
       if (!specValues.length) {
@@ -178,8 +176,8 @@ function ProductSpecPage() {
       if (
         isProductCatalogSpecNameDuplicated(
           specs,
-          identity.catalogId,
-          identity.name,
+          catalogIds,
+          name,
           editingItem?.id
         )
       ) {
@@ -193,10 +191,9 @@ function ProductSpecPage() {
             item.id === editingItem.id
               ? {
                   ...item,
-                  catalogId: identity.catalogId,
-                  name: identity.name,
+                  catalogIds,
+                  name,
                   values: specValues,
-                  sort: values.sort,
                   enabled: values.enabled ?? true,
                 }
               : item
@@ -208,15 +205,14 @@ function ProductSpecPage() {
           ...previous,
           {
             id: generateId(),
-            catalogId: identity.catalogId,
-            name: identity.name,
+            catalogIds,
+            name,
             values: specValues,
-            sort: values.sort,
             enabled: values.enabled ?? true,
             createdAt: now(),
           },
         ]);
-        setSelectedCatalogId(identity.catalogId);
+        setSelectedCatalogId(catalogIds[0] || selectedCatalogId);
         Message.success('添加成功');
       }
 
@@ -235,9 +231,17 @@ function ProductSpecPage() {
     },
     {
       title: '商品类目',
-      dataIndex: 'catalogId',
+      dataIndex: 'catalogIds',
       width: 260,
-      render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
+      render: (catalogIds: string[]) => (
+        <div className={styles.valueList}>
+          {catalogIds.map((id) => (
+            <Tag key={id} size="small">
+              {getProductCatalogFullLabel(id, catalogItems)}
+            </Tag>
+          ))}
+        </div>
+      ),
     },
     {
       title: '规格值',
@@ -252,12 +256,6 @@ function ProductSpecPage() {
           ))}
         </div>
       ),
-    },
-    {
-      title: '排序',
-      dataIndex: 'sort',
-      width: 90,
-      sorter: (a: ProductCatalogSpecItem, b: ProductCatalogSpecItem) => a.sort - b.sort,
     },
     {
       title: '状态',
@@ -396,22 +394,24 @@ function ProductSpecPage() {
           wrapperCol={{ span: 18 }}
         >
           <Form.Item
-            field="catalogId"
+            field="catalogIds"
             label="商品类目"
             rules={[{ required: true, message: '请选择类目' }]}
-            extra="一个规格项只绑定一个叶子类目。"
+            extra="支持多选，一个规格项可绑定多个叶子类目。"
           >
             <Cascader
-              allowClear={!editingItem}
-              disabled={Boolean(editingItem)}
+              mode="multiple"
+              allowClear
               options={catalogCascaderOptions}
               placeholder="请选择类目"
+              showSearch={{ retainInputValueWhileSelect: true }}
             />
           </Form.Item>
           <Form.Item
             field="name"
             label="规格项名称"
             rules={[{ required: true, message: '请输入规格项名称' }]}
+            extra={editingItem ? '编辑时不可修改规格项名称。' : undefined}
           >
             <Input
               disabled={Boolean(editingItem)}
@@ -427,14 +427,6 @@ function ProductSpecPage() {
             extra="输入后按回车添加规格值。"
           >
             <InputTag placeholder="输入规格值后回车" allowClear />
-          </Form.Item>
-          <Form.Item
-            field="sort"
-            label="排序"
-            initialValue={1}
-            rules={[{ required: true, message: '请输入排序值' }]}
-          >
-            <InputNumber min={1} max={999} placeholder="数值越小越靠前" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item field="enabled" label="状态" initialValue={true}>
             <Switch checkedText="启用" uncheckedText="禁用" />

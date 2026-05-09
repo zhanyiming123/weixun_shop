@@ -590,18 +590,23 @@ function renderCatalogAttributeField(
         className={className}
         placeholder={`请输入${attribute.name}`}
         disabled={disabled}
+        maxLength={attribute.textMaxLength}
+        showWordLimit={Boolean(attribute.textMaxLength)}
         allowClear
       />
     );
   }
 
   if (attribute.type === 'number') {
+    const precision =
+      attribute.numberMode === 'decimalAllowed' ? attribute.numberPrecision : 0;
+
     return (
       <InputNumber
         className={className}
         disabled={disabled}
         min={0}
-        precision={0}
+        precision={precision}
         placeholder={`请输入${attribute.name}`}
       />
     );
@@ -657,6 +662,29 @@ function getBundleCombinationPrice(
 
     return sum + Math.max(0, sku.price - discountAmount);
   }, 0);
+}
+
+function getCatalogAttributeRules(attribute: ProductCatalogAttributeItem) {
+  const rules: Array<Record<string, unknown>> = attribute.required
+    ? [
+        {
+          required: true,
+          message:
+            attribute.type === 'text' || attribute.type === 'number'
+              ? `请输入${attribute.name}`
+              : `请选择${attribute.name}`,
+        },
+      ]
+    : [];
+
+  if (attribute.type === 'text' && attribute.textMaxLength) {
+    rules.push({
+      max: attribute.textMaxLength,
+      message: `${attribute.name}最多支持 ${attribute.textMaxLength} 个字符`,
+    });
+  }
+
+  return rules.length ? rules : undefined;
 }
 
 function ProductCreatePage() {
@@ -3653,20 +3681,7 @@ function ProductCreatePage() {
                         className={styles.attributeFieldItem}
                         field={`catalogAttributeValue_${attribute.id}`}
                         label={attribute.name}
-                        rules={
-                          attribute.required
-                            ? [
-                                {
-                                  required: true,
-                                  message:
-                                    attribute.type === 'text' ||
-                                    attribute.type === 'number'
-                                      ? `请输入${attribute.name}`
-                                      : `请选择${attribute.name}`,
-                                },
-                              ]
-                            : undefined
-                        }
+                        rules={getCatalogAttributeRules(attribute)}
                       >
                         {renderCatalogAttributeField(
                           attribute,

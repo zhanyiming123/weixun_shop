@@ -4,6 +4,7 @@ import usePersistentState, {
 } from '@/utils/usePersistentState';
 
 export type ProductCatalogAttributeType = 'text' | 'number' | 'single' | 'multi';
+export type ProductCatalogAttributeNumberMode = 'integer' | 'decimalAllowed';
 
 export type ProductCatalogAttributeItem = {
   id: string;
@@ -11,6 +12,9 @@ export type ProductCatalogAttributeItem = {
   name: string;
   type: ProductCatalogAttributeType;
   values: string[];
+  textMaxLength?: number;
+  numberMode?: ProductCatalogAttributeNumberMode;
+  numberPrecision?: number;
   required: boolean;
   sort: number;
   enabled: boolean;
@@ -147,13 +151,82 @@ export const DEFAULT_PRODUCT_CATALOG_ATTRIBUTES: ProductCatalogAttributeItem[] =
   ...PLANNING_ATTRIBUTE_TEMPLATES,
 ];
 
-function normalizeProductCatalogAttributes(
-  attributes: ProductCatalogAttributeItem[]
+function normalizePositiveInteger(value: unknown) {
+  if (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value > 0
+  ) {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeNonNegativeInteger(value: unknown) {
+  if (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+  ) {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeAttributeConstraints(
+  item: ProductCatalogAttributeItem
+): Pick<
+  ProductCatalogAttributeItem,
+  'textMaxLength' | 'numberMode' | 'numberPrecision'
+> {
+  if (item.type === 'text') {
+    return {
+      textMaxLength: normalizePositiveInteger(item.textMaxLength),
+      numberMode: undefined,
+      numberPrecision: undefined,
+    };
+  }
+
+  if (item.type === 'number') {
+    const numberMode: ProductCatalogAttributeNumberMode =
+      item.numberMode === 'decimalAllowed' ? 'decimalAllowed' : 'integer';
+
+    return {
+      textMaxLength: undefined,
+      numberMode,
+      numberPrecision:
+        numberMode === 'decimalAllowed'
+          ? normalizeNonNegativeInteger(item.numberPrecision)
+          : undefined,
+    };
+  }
+
+  return {
+    textMaxLength: undefined,
+    numberMode: undefined,
+    numberPrecision: undefined,
+  };
+}
+
+function normalizeProductCatalogAttributeItem(item: ProductCatalogAttributeItem) {
+  return {
+    ...item,
+    ...normalizeAttributeConstraints(item),
+  };
+}
+
+export function normalizeProductCatalogAttributes(
+  attributes: ProductCatalogAttributeItem[] = DEFAULT_PRODUCT_CATALOG_ATTRIBUTES
 ) {
   const templateIds = new Set(PLANNING_ATTRIBUTE_TEMPLATES.map((item) => item.id));
   const templateNames = new Set(PLANNING_ATTRIBUTE_TEMPLATES.map((item) => item.name));
 
   const nextAttributes = attributes
+    .filter(Boolean)
     .filter((item) => item.id !== 'A003')
     .map((item) => {
       if (item.id === 'A004') {
@@ -198,22 +271,49 @@ function normalizeProductCatalogAttributes(
       const matched =
         matchedPlanningItems.get(template.id) || matchedPlanningItems.get(template.name);
 
-      return {
+      return normalizeProductCatalogAttributeItem({
         ...template,
         enabled: matched?.enabled ?? template.enabled,
         createdAt: matched?.createdAt ?? template.createdAt,
-      };
+        textMaxLength: matched?.textMaxLength,
+        numberMode: matched?.numberMode,
+        numberPrecision: matched?.numberPrecision,
+      });
     }),
-  ].sort((a, b) => {
-    const leftPrimaryCatalogId = a.catalogIds[0] || '';
-    const rightPrimaryCatalogId = b.catalogIds[0] || '';
+  ]
+    .map((item) => normalizeProductCatalogAttributeItem(item))
+    .sort((a, b) => {
+      const leftPrimaryCatalogId = a.catalogIds[0] || '';
+      const rightPrimaryCatalogId = b.catalogIds[0] || '';
 
-    if (leftPrimaryCatalogId !== rightPrimaryCatalogId) {
-      return leftPrimaryCatalogId.localeCompare(rightPrimaryCatalogId);
+      if (leftPrimaryCatalogId !== rightPrimaryCatalogId) {
+        return leftPrimaryCatalogId.localeCompare(rightPrimaryCatalogId);
+      }
+
+      return a.sort - b.sort;
+    });
+}
+
+export function getProductCatalogAttributeValueSummary(
+  item: ProductCatalogAttributeItem
+) {
+  if (item.type === 'text') {
+    return item.textMaxLength
+      ? `自由填写 / 最多 ${item.textMaxLength} 字`
+      : '自由填写';
+  }
+
+  if (item.type === 'number') {
+    if (item.numberMode === 'decimalAllowed') {
+      return item.numberPrecision !== undefined
+        ? `数字输入 / 最多 ${item.numberPrecision} 位小数`
+        : '数字输入 / 可含小数';
     }
 
-    return a.sort - b.sort;
-  });
+    return '数字输入 / 整数';
+  }
+
+  return '';
 }
 
 export function readProductCatalogAttributes() {

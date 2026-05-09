@@ -29,7 +29,7 @@ describe('store employee mock data', () => {
     ]);
   });
 
-  it('shows seeded role assignments in the shanghai managed employee list', () => {
+  it('keeps only active seeded employees in the shanghai managed employee list', () => {
     const shanghaiEmployees = buildStoreManagedEmployees('org_store_shanghai_001');
     const seededEmployees = shanghaiEmployees
       .filter((item) => item.id.startsWith('store_external_shanghai_'))
@@ -45,10 +45,6 @@ describe('store employee mock data', () => {
       },
       {
         id: 'store_external_shanghai_003',
-        roleNames: ['店员'],
-      },
-      {
-        id: 'store_external_shanghai_005',
         roleNames: ['店员'],
       },
       {

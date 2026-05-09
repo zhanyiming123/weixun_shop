@@ -149,8 +149,7 @@ export function buildProductCreateSpecItems(
         (selectedValueMap[item.id] || []).filter((value) => item.values.includes(value))
       ),
     }))
-    .filter((item) => item.values.length > 0)
-    .sort((left, right) => left.sort - right.sort);
+    .filter((item) => item.values.length > 0);
 
   if (!normalizedSpecs.length || normalizedSpecs.length !== selectedSpecs.length) {
     return [] as ProductCreateSpecItem[];

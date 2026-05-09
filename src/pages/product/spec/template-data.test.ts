@@ -99,19 +99,17 @@ describe('product spec template helpers', () => {
         [
           {
             id: 'spec_grade',
-            catalogId: 'catalog_1',
+            catalogIds: ['catalog_1'],
             name: '年级',
             values: ['10年级', '11年级'],
-            sort: 1,
             enabled: true,
             createdAt: '',
           },
           {
             id: 'spec_system',
-            catalogId: 'catalog_1',
+            catalogIds: ['catalog_1'],
             name: '课程体系',
             values: ['IB', 'IG'],
-            sort: 2,
             enabled: true,
             createdAt: '',
           },
@@ -146,19 +144,17 @@ describe('product spec template helpers', () => {
         [
           {
             id: 'spec_grade',
-            catalogId: 'catalog_1',
+            catalogIds: ['catalog_1'],
             name: '年级',
             values: ['10年级', '11年级'],
-            sort: 1,
             enabled: true,
             createdAt: '',
           },
           {
             id: 'spec_system',
-            catalogId: 'catalog_1',
+            catalogIds: ['catalog_1'],
             name: '课程体系',
             values: ['IB', 'IG'],
-            sort: 2,
             enabled: true,
             createdAt: '',
           },

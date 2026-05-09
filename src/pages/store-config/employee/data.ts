@@ -480,7 +480,12 @@ export function buildStoreExternalReferencedEmployees(
   externalEmployees: StoreExternalEmployeeItem[] = readStoreExternalEmployeeItems(storeId)
 ) {
   return externalEmployees
-    .filter((item) => item.storeId === storeId && !item.removedAt)
+    .filter(
+      (item) =>
+        item.storeId === storeId &&
+        !item.removedAt &&
+        item.status === 'enabled'
+    )
     .map<StoreReferencedEmployeeItem>((item) => ({
       id: item.id,
       name: item.name,
@@ -508,7 +513,7 @@ export function buildStoreEmployeeSourceEmployees(
   const seenEmployeeIds = new Set<string>();
 
   return [...referencedEmployees, ...externalReferencedEmployees].filter((item) => {
-    if (seenEmployeeIds.has(item.id)) {
+    if (item.status !== 'enabled' || seenEmployeeIds.has(item.id)) {
       return false;
     }
 

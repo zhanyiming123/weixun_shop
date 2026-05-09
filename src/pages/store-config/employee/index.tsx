@@ -57,7 +57,6 @@ const STORE_EMPLOYEE_DEPARTMENT_LABEL = '唯寻广州';
 type OrganizationAddMode = 'department' | 'person';
 type AddSource = 'organization' | 'external';
 type ExternalAddMode = 'single' | 'batch';
-type EmployeeStatusFilter = 'all' | 'enabled' | 'disabled';
 type AddRoleMap = Record<string, string[]>;
 
 type ExternalSingleFormState = {
@@ -116,7 +115,6 @@ function applyEmployeeFilters(
   employees: StoreManagedEmployeeItem[],
   filters: {
     keyword: string;
-    status: EmployeeStatusFilter;
     roleId: string;
   }
 ) {
@@ -135,10 +133,6 @@ function applyEmployeeFilters(
         .toLowerCase()
         .includes(keyword)
     ) {
-      return false;
-    }
-
-    if (filters.status !== 'all' && employee.status !== filters.status) {
       return false;
     }
 
@@ -206,7 +200,6 @@ function StoreEmployeePage() {
   );
   const [draftFilters, setDraftFilters] = useState({
     keyword: '',
-    status: 'all' as EmployeeStatusFilter,
     roleId: 'all',
   });
   const [appliedFilters, setAppliedFilters] = useState(draftFilters);
@@ -437,7 +430,6 @@ function StoreEmployeePage() {
   function handleReset() {
     const nextFilters = {
       keyword: '',
-      status: 'all' as EmployeeStatusFilter,
       roleId: 'all',
     };
 
@@ -834,16 +826,6 @@ function StoreEmployeePage() {
         ),
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      width: 100,
-      render: (value: 'enabled' | 'disabled') => (
-        <Tag color={value === 'enabled' ? 'green' : 'orange'}>
-          {value === 'enabled' ? '在职' : '离职'}
-        </Tag>
-      ),
-    },
-    {
       title: '操作',
       dataIndex: 'operations',
       width: 140,
@@ -993,20 +975,6 @@ function StoreEmployeePage() {
               onChange={(value) => updateDraftFilter('keyword', value)}
               onPressEnter={handleQuery}
             />
-          </div>
-          <div className={styles.filterItem}>
-            <span className={styles.filterLabel}>员工状态</span>
-            <Select
-              className={styles.filterSelect}
-              value={draftFilters.status}
-              onChange={(value) =>
-                updateDraftFilter('status', value as EmployeeStatusFilter)
-              }
-            >
-              <Option value="all">全部状态</Option>
-              <Option value="enabled">在职</Option>
-              <Option value="disabled">离职</Option>
-            </Select>
           </div>
           <div className={styles.filterItem}>
             <span className={styles.filterLabel}>店铺角色</span>
