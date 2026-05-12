@@ -34,6 +34,7 @@ import {
   isCouponEditableStatus,
   isCouponEditFieldEditable,
   getCouponOwnershipType,
+  normalizeCouponConditionSpecValues,
   CouponPageMode,
   CouponProductScope,
   CouponStackingType,
@@ -227,12 +228,14 @@ function createConditionCardState(
   id: number,
   card?: Partial<CouponConditionCardDraft>
 ): CouponConditionCard {
+  const specValues = normalizeCouponConditionSpecValues(card?.specValue);
+
   return {
     id: `condition-card-${id}`,
     catalogPath: card?.catalogPath ? [...card.catalogPath] : [],
     ownershipPaths: (card?.ownershipPaths || []).map((path) => [...path]),
     specAttributeId: card?.specAttributeId,
-    specValue: card?.specValue,
+    specValue: specValues.length ? specValues : undefined,
   };
 }
 
@@ -275,15 +278,15 @@ function sanitizeConditionSelection(
   const matchedSpecOption = specOptions.find(
     (item) => item.value === selection.specAttributeId
   );
+  const selectedSpecValues = normalizeCouponConditionSpecValues(selection.specValue);
 
   return {
     ...selection,
     specAttributeId: matchedSpecOption?.value,
     specValue:
       matchedSpecOption &&
-        selection.specValue &&
-        matchedSpecOption.values.includes(selection.specValue)
-        ? selection.specValue
+        selectedSpecValues.length
+        ? selectedSpecValues.filter((item) => matchedSpecOption.values.includes(item))
         : undefined,
   };
 }
@@ -490,7 +493,7 @@ export function CouponFormPage({
       isStoreSystem &&
       getCouponOwnershipType(record) === 'platform'
     ) {
-      Message.error('店铺管理系统中的平台券仅支持查看和复制');
+      Message.error('店铺运营工作台中的平台券仅支持查看和复制');
       openCouponDetail(record.id);
       return;
     }
@@ -642,7 +645,7 @@ export function CouponFormPage({
         catalogPath: [...item.catalogPath],
         ownershipPaths: item.ownershipPaths.map((path) => [...path]),
         specAttributeId: item.specAttributeId,
-        specValue: item.specValue,
+        specValue: item.specValue ? [...item.specValue] : undefined,
       }))
     );
 
@@ -662,18 +665,21 @@ export function CouponFormPage({
         catalogPath: [...nextCatalogPath],
         ownershipPaths: card.ownershipPaths.map((path) => [...path]),
         specAttributeId: card.specAttributeId,
-        specValue: card.specValue,
+        specValue: card.specValue ? [...card.specValue] : undefined,
       },
       nextCatalogPath.length
         ? buildConditionSpecOptions(nextCatalogPath, couponCategories, catalogAttributes)
         : []
+    );
+    const sanitizedSpecValues = normalizeCouponConditionSpecValues(
+      sanitizedSelection.specValue
     );
 
     return {
       ...card,
       catalogPath: [...nextCatalogPath],
       specAttributeId: sanitizedSelection.specAttributeId,
-      specValue: sanitizedSelection.specValue,
+      specValue: sanitizedSpecValues.length ? sanitizedSpecValues : undefined,
     };
   }
 
@@ -785,9 +791,10 @@ export function CouponFormPage({
           specAttributeId: matchedSpecOption?.value,
           specValue:
             matchedSpecOption &&
-              card.specValue &&
-              matchedSpecOption.values.includes(card.specValue)
-              ? card.specValue
+              card.specValue?.length
+              ? card.specValue.filter((item) =>
+                matchedSpecOption.values.includes(item)
+              )
               : undefined,
         };
       })
@@ -796,11 +803,13 @@ export function CouponFormPage({
 
   function handleConditionSpecValueChange(
     cardId: string,
-    value: string | undefined
+    value: string[] | string | undefined
   ) {
     if (!canEditProductScope) {
       return;
     }
+
+    const nextSpecValues = normalizeCouponConditionSpecValues(value);
 
     syncConditionCards(
       conditionCards.map((card) => {
@@ -821,9 +830,10 @@ export function CouponFormPage({
           ...card,
           specValue:
             matchedSpecOption &&
-              value &&
-              matchedSpecOption.values.includes(value)
-              ? value
+              nextSpecValues.length
+              ? nextSpecValues.filter((item) =>
+                matchedSpecOption.values.includes(item)
+              )
               : undefined,
         };
       })
@@ -1504,6 +1514,7 @@ export function CouponFormPage({
                                     <Select
                                       allowClear
                                       className={styles.conditionCardSelect}
+                                      mode="multiple"
                                       placeholder={
                                         selectedSpecOption
                                           ? '请选择规格值'
@@ -1514,7 +1525,7 @@ export function CouponFormPage({
                                       onChange={(value) =>
                                         handleConditionSpecValueChange(
                                           section.card.id,
-                                          typeof value === 'string'
+                                          Array.isArray(value) || typeof value === 'string'
                                             ? value
                                             : undefined
                                         )

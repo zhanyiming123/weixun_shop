@@ -145,7 +145,7 @@ function StoreBasicConfigPage() {
         <div className={styles.heroHeader}>
           <Space direction="vertical" size={10} style={{ display: 'flex' }}>
             <Tag color="arcoblue" size="large">
-              {demoContext?.systemLabel || '店铺管理系统'}
+              {demoContext?.systemLabel || '店铺运营工作台'}
             </Tag>
             <Typography.Title className={styles.heroTitle} heading={4}>
               店铺基础配置

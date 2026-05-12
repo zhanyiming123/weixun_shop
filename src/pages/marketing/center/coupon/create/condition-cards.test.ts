@@ -18,7 +18,7 @@ describe('coupon condition cards helpers', () => {
           catalogPath: ['weixun-course', 'international'],
           ownershipPaths: [['study-abroad']],
           specAttributeId: 'spec-course',
-          specValue: '直播班',
+          specValue: ['直播班'],
         },
       ]
     );
@@ -34,7 +34,7 @@ describe('coupon condition cards helpers', () => {
         catalogPath: ['weixun-course', 'international'],
         ownershipPaths: [['study-abroad']],
         specAttributeId: 'spec-course',
-        specValue: '直播班',
+        specValue: ['直播班'],
       },
     ]);
   });
@@ -46,7 +46,7 @@ describe('coupon condition cards helpers', () => {
         catalogPath: ['weixun-course', 'international'],
         ownershipPaths: [['study-abroad']],
         specAttributeId: 'spec-course',
-        specValue: '直播班',
+        specValue: ['直播班', '录播班'],
       },
       {
         catalogPath: ['weixun-mall'],
@@ -66,10 +66,26 @@ describe('coupon condition cards helpers', () => {
           catalogPath: ['weixun-course', 'international'],
           ownershipPaths: [['study-abroad']],
           specAttributeId: 'spec-course',
-          specValue: '直播班',
+          specValue: ['直播班', '录播班'],
         },
       ],
     });
+  });
+
+  it('normalizes legacy single spec values into multi-select arrays', () => {
+    const drafts = buildConditionCardDrafts(
+      [['weixun-course', 'international']],
+      [
+        {
+          catalogPath: ['weixun-course', 'international'],
+          ownershipPaths: [],
+          specAttributeId: 'spec-course',
+          specValue: '直播班',
+        },
+      ]
+    );
+
+    expect(drafts[0]?.specValue).toEqual(['直播班']);
   });
 
   it('disables catalog paths already selected by other cards', () => {

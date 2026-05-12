@@ -623,8 +623,8 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
 
             <Typography.Text type="secondary" className={styles.permissionHelp}>
               {pageScope === 'store'
-                ? '店铺角色只配置店铺管理后台的页面查看、编辑和业务功能使用范围。'
-                : '商户角色只配置商户管理后台的页面查看、编辑和业务功能使用范围。'}
+                ? '店铺角色只配置店铺运营工作台的页面查看、编辑和业务功能使用范围。'
+                : '商户角色只配置电商管理工作台的页面查看、编辑和业务功能使用范围。'}
             </Typography.Text>
 
             <div className={styles.merchantPermissionLayout}>

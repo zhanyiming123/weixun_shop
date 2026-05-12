@@ -287,7 +287,7 @@ export type CouponConditionOwnershipSelection = {
   catalogPath: string[];
   ownershipPaths: string[][];
   specAttributeId?: string;
-  specValue?: string;
+  specValue?: string | string[];
 };
 
 const ALL_COUPON_STORE_IDS = DEFAULT_PRODUCT_STORE_ITEMS.map((item) => item.id);
@@ -1119,6 +1119,16 @@ function cloneConditionCategoryPaths(conditionCategoryPaths: string[][]) {
   return conditionCategoryPaths.map((path) => [...path]);
 }
 
+export function normalizeCouponConditionSpecValues(
+  specValue?: string | string[]
+) {
+  if (Array.isArray(specValue)) {
+    return specValue.filter((item): item is string => Boolean(item));
+  }
+
+  return typeof specValue === 'string' && specValue ? [specValue] : [];
+}
+
 function cloneConditionOwnershipSelections(
   conditionOwnershipSelections: CouponConditionOwnershipSelection[]
 ) {
@@ -1126,7 +1136,7 @@ function cloneConditionOwnershipSelections(
     catalogPath: [...item.catalogPath],
     ownershipPaths: cloneConditionCategoryPaths(item.ownershipPaths),
     specAttributeId: item.specAttributeId,
-    specValue: item.specValue,
+    specValue: normalizeCouponConditionSpecValues(item.specValue),
   }));
 }
 

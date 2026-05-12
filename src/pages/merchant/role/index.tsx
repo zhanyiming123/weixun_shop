@@ -240,7 +240,7 @@ function MerchantRolePage() {
               <Tag
                 key={name}
                 size="small"
-                color={name === '商户管理系统' ? 'arcoblue' : 'green'}
+                color={name === '电商管理工作台' ? 'arcoblue' : 'green'}
                 style={{ marginRight: 4, marginBottom: 2 }}
               >
                 {name}

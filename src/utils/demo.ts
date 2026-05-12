@@ -65,8 +65,8 @@ const DEFAULT_AVATAR =
   'https://lf1-xgcdn-tos.pstatp.com/obj/vcloud/vadmin/start.8e0e4855ee346a46ccff8ff3e24db27b.png';
 
 export const DEMO_SYSTEM_LABEL_MAP: Record<DemoSystemId, string> = {
-  merchant: '商户管理系统',
-  store: '店铺管理系统',
+  merchant: '电商管理工作台',
+  store: '店铺运营工作台',
 };
 
 export const DEMO_IDENTITY_PRESET_MAP: Record<DemoIdentityId, DemoIdentityPreset> = {

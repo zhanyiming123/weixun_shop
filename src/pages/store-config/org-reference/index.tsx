@@ -238,7 +238,7 @@ function StoreOrgReferencePage() {
           <Space direction="vertical" size={10} style={{ display: 'flex' }}>
             <Space wrap>
               <Tag color="arcoblue" size="large">
-                {demoContext?.systemLabel || '店铺管理系统'}
+                {demoContext?.systemLabel || '店铺运营工作台'}
               </Tag>
               <Tag>{demoContext?.identityLabel || '区域管理员'}</Tag>
               <Tag color="green">{currentStoreName}</Tag>

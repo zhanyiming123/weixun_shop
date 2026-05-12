@@ -255,11 +255,11 @@ export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
 export const MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS: MerchantRolePermissionSystemOption[] =
   [
     {
-      label: '店铺管理系统',
+      label: '店铺运营工作台',
       value: 'store',
     },
     {
-      label: '商户管理系统',
+      label: '电商管理工作台',
       value: 'merchant',
     },
   ];
@@ -964,10 +964,10 @@ export function getMerchantRoleSystemNames(
   const merchantKeys = normalizeEnterpriseRolePermissionKeys(keys, scope, 'merchant');
   const systems: string[] = [];
   if (merchantKeys.some((k) => MERCHANT_ROLE_STORE_KEY_SET.has(k))) {
-    systems.push('店铺管理系统');
+    systems.push('店铺运营工作台');
   }
   if (merchantKeys.some((k) => MERCHANT_ROLE_MERCHANT_KEY_SET.has(k))) {
-    systems.push('商户管理系统');
+    systems.push('电商管理工作台');
   }
   return systems;
 }

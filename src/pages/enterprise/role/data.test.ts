@@ -154,13 +154,13 @@ describe('merchant role permission tree', () => {
         ['merchant-system.permission', 'merchant/role', 'merchant/department'],
         'headquarter'
       )
-    ).toEqual(['商户管理系统']);
+    ).toEqual(['电商管理工作台']);
 
     expect(
       getMerchantRoleSystemNames(
         ['store-system.config', 'store-config/employee', 'store-config/role'],
         'store'
       )
-    ).toEqual(['店铺管理系统']);
+    ).toEqual(['店铺运营工作台']);
   });
 });

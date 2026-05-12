@@ -1,6 +1,7 @@
 import {
   CouponConditionOwnershipSelection,
   CouponFormValues,
+  normalizeCouponConditionSpecValues,
 } from '../data';
 import { ProductCatalogCascaderOption } from '@/pages/product/catalog/data';
 
@@ -8,7 +9,7 @@ export type CouponConditionCardDraft = {
   catalogPath: string[];
   ownershipPaths: string[][];
   specAttributeId?: string;
-  specValue?: string;
+  specValue?: string[];
 };
 
 function clonePath(path: string[]) {
@@ -25,7 +26,9 @@ function getPathKey(path: string[]) {
 
 function hasConditionSelectionContent(selection: CouponConditionOwnershipSelection) {
   return Boolean(
-    selection.ownershipPaths.length || selection.specAttributeId || selection.specValue
+    selection.ownershipPaths.length ||
+      selection.specAttributeId ||
+      normalizeCouponConditionSpecValues(selection.specValue).length
   );
 }
 
@@ -47,23 +50,28 @@ export function buildConditionCardDrafts(
 
   const orderedCards = conditionCategoryPaths.map((catalogPath) => {
     const matchedSelection = selectionMap.get(getPathKey(catalogPath));
+    const specValues = normalizeCouponConditionSpecValues(matchedSelection?.specValue);
 
     return {
       catalogPath: clonePath(catalogPath),
       ownershipPaths: clonePathList(matchedSelection?.ownershipPaths || []),
       specAttributeId: matchedSelection?.specAttributeId,
-      specValue: matchedSelection?.specValue,
+      specValue: specValues.length ? specValues : undefined,
     };
   });
 
   const fallbackCards = conditionOwnershipSelections
     .filter((item) => !categoryPathKeySet.has(getPathKey(item.catalogPath)))
-    .map((item) => ({
-      catalogPath: clonePath(item.catalogPath),
-      ownershipPaths: clonePathList(item.ownershipPaths),
-      specAttributeId: item.specAttributeId,
-      specValue: item.specValue,
-    }));
+    .map((item) => {
+      const specValues = normalizeCouponConditionSpecValues(item.specValue);
+
+      return {
+        catalogPath: clonePath(item.catalogPath),
+        ownershipPaths: clonePathList(item.ownershipPaths),
+        specAttributeId: item.specAttributeId,
+        specValue: specValues.length ? specValues : undefined,
+      };
+    });
 
   return [...orderedCards, ...fallbackCards];
 }
@@ -74,12 +82,16 @@ export function buildConditionFormStateFromCardDrafts(
   const validCards = cards.filter((item) => item.catalogPath.length > 0);
   const conditionCategoryPaths = validCards.map((item) => clonePath(item.catalogPath));
   const conditionOwnershipSelections = validCards
-    .map((item) => ({
-      catalogPath: clonePath(item.catalogPath),
-      ownershipPaths: clonePathList(item.ownershipPaths),
-      specAttributeId: item.specAttributeId,
-      specValue: item.specValue,
-    }))
+    .map((item) => {
+      const specValues = normalizeCouponConditionSpecValues(item.specValue);
+
+      return {
+        catalogPath: clonePath(item.catalogPath),
+        ownershipPaths: clonePathList(item.ownershipPaths),
+        specAttributeId: item.specAttributeId,
+        specValue: specValues.length ? specValues : undefined,
+      };
+    })
     .filter(hasConditionSelectionContent);
 
   return {

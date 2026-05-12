@@ -103,6 +103,21 @@ describe('coupon data helpers', () => {
     expect(getCreatePageDefaultStackingCouponType(false)).toBe('shopOnly');
   });
 
+  it('normalizes legacy single spec values when building coupon form values', () => {
+    const record = readCouponById('122661783985');
+
+    expect(record).toBeTruthy();
+
+    const formValues = buildCouponFormValuesFromRecord(record!);
+
+    expect(formValues.conditionOwnershipSelections).toMatchObject([
+      {
+        specAttributeId: 'A001',
+        specValue: ['标准直播班'],
+      },
+    ]);
+  });
+
   it('keeps only full reduction on the create page discount options', () => {
     expect(getCreatePageDiscountOptions().map((item) => item.value)).toEqual([
       'fullReduction',
@@ -167,6 +182,40 @@ describe('coupon data helpers', () => {
       });
     } finally {
       updateCouponById('122661783978', originalValues);
+    }
+  });
+
+  it('persists multi-selected spec values when updating condition-based coupons', () => {
+    const originalRecord = readCouponById('122661783977');
+
+    expect(originalRecord).toBeTruthy();
+
+    const originalValues = buildCouponFormValuesFromRecord(originalRecord!);
+
+    try {
+      const updated = updateCouponById('122661783977', {
+        ...originalValues,
+        productScope: 'condition',
+        conditionCategoryPaths: [['weixun-course', 'international']],
+        conditionOwnershipSelections: [
+          {
+            catalogPath: ['weixun-course', 'international'],
+            ownershipPaths: [['dept_06', 'system_06_03', 'item_06_03_01']],
+            specAttributeId: 'A001',
+            specValue: ['标准直播班', '1v1 旗舰班'],
+          },
+        ],
+        selectedSkuIds: [],
+      });
+
+      expect(updated?.conditionOwnershipSelections).toMatchObject([
+        {
+          specAttributeId: 'A001',
+          specValue: ['标准直播班', '1v1 旗舰班'],
+        },
+      ]);
+    } finally {
+      updateCouponById('122661783977', originalValues);
     }
   });
 
