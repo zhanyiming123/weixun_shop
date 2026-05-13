@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Input,
@@ -12,11 +12,13 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   OrganizationItem,
+  createOrganizationId,
+  DEFAULT_ORGANIZATION_CAPABILITIES,
+  formatOrganizationDateTime,
   ORGANIZATION_STATUS_LABEL_MAP,
   useOrganizationItems,
   writeOrganizationItems,
 } from '@/pages/enterprise/organization/data';
-import StoreDetailModal from '@/pages/enterprise/organization/store-detail-modal';
 import { GlobalState } from '@/store';
 import {
   buildDemoUserInfo,
@@ -24,11 +26,16 @@ import {
   persistDemoSelection,
   resolveDemoSelection,
 } from '@/utils/demo';
-import {
-  getOrganizationCreatePath,
-  getOrganizationEditPath,
-} from '@/utils/demo-route';
 import { writeCurrentOrganizationId } from '@/utils/organization';
+import MerchantStoreDetailModal from './store-detail-modal';
+import MerchantStoreFormModal from './store-form-modal';
+import {
+  MerchantStoreFormValues,
+  buildMerchantStoreBaseInfo,
+  getMerchantOrganizationListPath,
+  getMerchantOrganizationModalPath,
+  readMerchantOrganizationModalState,
+} from './store-modal-utils';
 import styles from './index.module.less';
 
 const STORE_EMPLOYEE_VIEW_PATH = '/merchant/organization/store-employee';
@@ -52,6 +59,19 @@ function MerchantOrganizationPage() {
     () => new Set(allowedOrganizationIds),
     [allowedOrganizationIds]
   );
+  const modalState = useMemo(
+    () => readMerchantOrganizationModalState(location.search),
+    [location.search]
+  );
+  const editingOrganization = useMemo(
+    () =>
+      modalState.mode === 'edit'
+        ? organizationItems.find((item) => item.id === modalState.organizationId)
+        : null,
+    [modalState.mode, modalState.organizationId, organizationItems]
+  );
+  const formModalVisible =
+    modalState.mode === 'create' || Boolean(editingOrganization);
 
   const storeItems = useMemo(
     () =>
@@ -81,14 +101,16 @@ function MerchantOrganizationPage() {
     setDetailVisible(true);
   }
 
-  function goToEdit(item: OrganizationItem) {
-    history.push(
-      getOrganizationEditPath(location.pathname, item.id, item.type, 'basic')
-    );
+  function closeFormModal() {
+    history.replace(getMerchantOrganizationListPath());
   }
 
-  function goToCreate() {
-    history.push(getOrganizationCreatePath(location.pathname, 'store'));
+  function openEditModal(item: OrganizationItem) {
+    history.push(getMerchantOrganizationModalPath('edit', item.id));
+  }
+
+  function openCreateModal() {
+    history.push(getMerchantOrganizationModalPath('create'));
   }
 
   function goToStoreEmployee(item: OrganizationItem) {
@@ -184,6 +206,59 @@ function MerchantOrganizationPage() {
     });
   }
 
+  function handleFormSubmit(values: MerchantStoreFormValues) {
+    const now = new Date();
+    const baseInfo = buildMerchantStoreBaseInfo({
+      mode: modalState.mode || 'create',
+      values,
+      organization: editingOrganization,
+      date: now,
+    });
+    const formattedNow = formatOrganizationDateTime(now);
+
+    const nextItem: OrganizationItem = editingOrganization
+      ? {
+          ...editingOrganization,
+          ...baseInfo,
+          updatedAt: formattedNow,
+        }
+      : {
+          id: createOrganizationId('store', now),
+          type: 'store',
+          ...baseInfo,
+          selectedStoreIds: [],
+          status: 'enabled',
+          capabilities: {
+            ...DEFAULT_ORGANIZATION_CAPABILITIES,
+          },
+          customProductInfoRules: [],
+          createdAt: formattedNow,
+          updatedAt: formattedNow,
+        };
+
+    const nextItems = editingOrganization
+      ? organizationItems.map((item) => (item.id === nextItem.id ? nextItem : item))
+      : [nextItem, ...organizationItems];
+
+    writeOrganizationItems(nextItems);
+    setOrganizationItems(nextItems);
+    closeFormModal();
+    Message.success(editingOrganization ? '店铺保存成功' : '店铺创建成功');
+  }
+
+  useEffect(() => {
+    if (modalState.mode !== 'edit') {
+      return;
+    }
+
+    if (editingOrganization) {
+      return;
+    }
+
+    Message.error(modalState.organizationId ? '当前店铺不存在或已删除' : '缺少店铺标识');
+    history.replace(getMerchantOrganizationListPath());
+  }, [editingOrganization, history, modalState.mode, modalState.organizationId]);
+
   return (
     <div className={styles.page}>
       {/* 筛选栏 */}
@@ -206,7 +281,7 @@ function MerchantOrganizationPage() {
       {/* 卡片网格 */}
       <div className={styles.grid}>
         {/* 新建店铺卡片 */}
-        <button type="button" className={styles.createCard} onClick={goToCreate}>
+        <button type="button" className={styles.createCard} onClick={openCreateModal}>
           <IconPlus className={styles.createIcon} />
           <span className={styles.createLabel}>新建店铺</span>
         </button>
@@ -269,7 +344,7 @@ function MerchantOrganizationPage() {
               <button
                 type="button"
                 className={styles.footerBtn}
-                onClick={() => goToEdit(item)}
+                onClick={() => openEditModal(item)}
               >
                 编辑
               </button>
@@ -300,7 +375,15 @@ function MerchantOrganizationPage() {
         <div className={styles.emptyHint}>未找到名称含「{appliedKeyword}」的店铺</div>
       )}
 
-      <StoreDetailModal
+      <MerchantStoreFormModal
+        visible={formModalVisible}
+        mode={modalState.mode || 'create'}
+        organization={editingOrganization}
+        onCancel={closeFormModal}
+        onSubmit={handleFormSubmit}
+      />
+
+      <MerchantStoreDetailModal
         visible={detailVisible}
         organization={viewingOrganization}
         onCancel={() => setDetailVisible(false)}
