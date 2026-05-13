@@ -40,4 +40,17 @@ describe('findFirstNavigableRouteKey', () => {
     ]);
     expect(topLevelAfterSalesRoute).toBeUndefined();
   });
+
+  it('keeps merchant store management as a parent menu with store list as the only visible child', () => {
+    const organizationRoute = routes.find(
+      (item) => item.key === 'merchant-system.organization'
+    );
+
+    expect(organizationRoute?.children?.map((item) => item.key)).toEqual([
+      'merchant/organization',
+    ]);
+    expect(
+      organizationRoute?.children?.[0].children?.every((item) => item.ignore)
+    ).toBe(true);
+  });
 });
