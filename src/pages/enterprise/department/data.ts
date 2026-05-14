@@ -455,6 +455,16 @@ function buildHeadquarterDepartmentItems(
 }
 
 function toProductOwnershipItems(items: EnterpriseDepartmentItem[]) {
+  const ownershipMetaById = new Map(
+    readProductOwnershipItems().map((item) => [
+      item.id,
+      {
+        enabled: item.enabled !== false,
+        sort: item.sort,
+      },
+    ])
+  );
+
   return items
     .filter((item) => item.scope === 'headquarter')
     .map(
@@ -462,6 +472,8 @@ function toProductOwnershipItems(items: EnterpriseDepartmentItem[]) {
         id,
         name,
         parentId,
+        sort: ownershipMetaById.get(id)?.sort,
+        enabled: ownershipMetaById.get(id)?.enabled ?? true,
       })
     );
 }

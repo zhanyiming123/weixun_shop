@@ -121,6 +121,17 @@ describe('merchant role permission tree', () => {
           { key: 'merchant/department', title: '部门管理' },
         ],
       },
+      {
+        key: 'merchant-system.system-settings',
+        title: '系统设置',
+        children: [
+          { key: 'merchant/system-menu-config', title: '系统菜单配置' },
+          {
+            key: 'merchant/data-permission-module-config',
+            title: '数据权限模块配置',
+          },
+        ],
+      },
     ]);
   });
 

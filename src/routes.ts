@@ -206,6 +206,29 @@ export const routes: IRoute[] = [
     ],
   },
   {
+    name: 'menu.merchant.systemSettings',
+    key: 'merchant/system-settings',
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+    children: [
+      {
+        name: 'menu.merchant.systemMenuConfig',
+        key: 'merchant/system-menu-config',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
+      },
+      {
+        name: 'menu.merchant.dataPermissionModuleConfig',
+        key: 'merchant/data-permission-module-config',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
+      },
+    ],
+  },
+  {
     name: 'menu.merchant.employee.create',
     key: 'merchant/employee/create',
     ignore: true,

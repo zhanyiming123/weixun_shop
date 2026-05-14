@@ -33,10 +33,31 @@
   flex: 1;
 }
 
+.headerSort {
+  width: 80px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.headerStatus {
+  width: 140px;
+  flex: none;
+  text-align: center;
+}
+
 .headerOps {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  width: 264px;
+  flex: none;
+  box-sizing: border-box;
+  padding-left: 24px;
   color: var(--color-text-2);
   font-weight: 500;
 }
@@ -77,6 +98,10 @@
   &.dragging {
     opacity: 0.4;
     background: var(--color-fill-2);
+  }
+
+  &.rowDisabled {
+    background: var(--color-fill-1);
   }
 
   &.dropBefore {
@@ -137,8 +162,19 @@
   width: 16px;
 }
 
+.nameCell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
 .nodeName {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   color: var(--color-text-1);
   overflow: hidden;
@@ -146,11 +182,43 @@
   white-space: nowrap;
 }
 
+.nodeStatus {
+  color: var(--color-text-3);
+  font-size: 12px;
+  flex: none;
+}
+
+.nodeSort {
+  width: 80px;
+  flex: none;
+  text-align: center;
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+.nodeStatusCell {
+  width: 140px;
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+
+.statusText {
+  color: rgb(var(--success-6));
+}
+
+.statusMuted {
+  color: var(--color-text-3);
+}
+
 .nodeActions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 20px;
+  width: 264px;
   flex: none;
+  box-sizing: border-box;
   padding-left: 24px;
 }
 

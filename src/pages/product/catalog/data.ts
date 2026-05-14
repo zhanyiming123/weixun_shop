@@ -1,3 +1,4 @@
+import { Dispatch, SetStateAction } from 'react';
 import usePersistentState, {
   readPersistentValue,
 } from '@/utils/usePersistentState';
@@ -7,12 +8,15 @@ export type ProductCatalogConfigItem = {
   name: string;
   parentId: string | null;
   hasSkuSpec?: boolean;
+  sort?: number;
+  enabled?: boolean;
 };
 
 export type ProductCatalogTreeNode = {
   id: string;
   label: string;
   hasSkuSpec?: boolean;
+  enabled: boolean;
   children?: ProductCatalogTreeNode[];
 };
 
@@ -22,6 +26,7 @@ export type ProductCatalogLeafItem = {
   labelPath: string[];
   path: string[];
   hasSkuSpec: boolean;
+  enabled: boolean;
 };
 
 export type ProductCatalogCascaderOption = {
@@ -33,40 +38,100 @@ export type ProductCatalogCascaderOption = {
 
 const STORAGE_KEY = 'product-catalog-config-items';
 
+function normalizeSortValue(value: unknown, fallbackValue: number) {
+  if (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+  ) {
+    return value;
+  }
+
+  return fallbackValue;
+}
+
 export const DEFAULT_PRODUCT_CATALOG_ITEMS: ProductCatalogConfigItem[] = [
-  { id: 'weixun-course', name: '唯寻课程', parentId: null },
+  { id: 'weixun-course', name: '唯寻课程', parentId: null, enabled: true },
   {
     id: 'international',
     name: '国际课程',
     parentId: 'weixun-course',
     hasSkuSpec: true,
+    enabled: true,
   },
   {
     id: 'planning',
     name: '升学规划',
     parentId: 'weixun-course',
     hasSkuSpec: false,
+    enabled: true,
   },
   {
     id: 'thesis',
     name: '论文文书',
     parentId: 'weixun-course',
     hasSkuSpec: false,
+    enabled: true,
   },
   {
     id: 'service',
     name: '服务费',
     parentId: 'weixun-course',
     hasSkuSpec: false,
+    enabled: true,
   },
 ];
 
+export function normalizeProductCatalogItems(
+  items: ProductCatalogConfigItem[] = DEFAULT_PRODUCT_CATALOG_ITEMS
+) {
+  const siblingCountMap = new Map<string | null, number>();
+  const siblingIndexMap = new Map<string | null, number>();
+
+  items.forEach((item) => {
+    siblingCountMap.set(item.parentId, (siblingCountMap.get(item.parentId) || 0) + 1);
+  });
+
+  return items.map((item) => {
+    const currentSiblingIndex = siblingIndexMap.get(item.parentId) || 0;
+    const nextSiblingIndex = currentSiblingIndex + 1;
+    siblingIndexMap.set(item.parentId, nextSiblingIndex);
+    const siblingCount = siblingCountMap.get(item.parentId) || nextSiblingIndex;
+    const fallbackSort = siblingCount - nextSiblingIndex + 1;
+
+    return {
+      ...item,
+      sort: normalizeSortValue(item.sort, fallbackSort),
+      enabled: item.enabled !== false,
+    };
+  });
+}
+
 export function readProductCatalogItems() {
-  return readPersistentValue(STORAGE_KEY, DEFAULT_PRODUCT_CATALOG_ITEMS);
+  return normalizeProductCatalogItems(
+    readPersistentValue(STORAGE_KEY, DEFAULT_PRODUCT_CATALOG_ITEMS)
+  );
 }
 
 export function useProductCatalogItems() {
-  return usePersistentState(STORAGE_KEY, DEFAULT_PRODUCT_CATALOG_ITEMS);
+  const [items, setItems] = usePersistentState(STORAGE_KEY, DEFAULT_PRODUCT_CATALOG_ITEMS);
+
+  const setNormalizedItems: Dispatch<SetStateAction<ProductCatalogConfigItem[]>> = (
+    value
+  ) => {
+    setItems((prev) =>
+      normalizeProductCatalogItems(
+        typeof value === 'function'
+          ? (
+              value as (prevState: ProductCatalogConfigItem[]) => ProductCatalogConfigItem[]
+            )(normalizeProductCatalogItems(prev))
+          : value
+      )
+    );
+  };
+
+  return [normalizeProductCatalogItems(items), setNormalizedItems] as const;
 }
 
 export function buildProductCatalogTree(
@@ -82,15 +147,18 @@ export function buildProductCatalogTree(
   });
 
   const buildNodes = (parentId: string | null): ProductCatalogTreeNode[] =>
-    (childrenMap.get(parentId) || []).map((item) => {
+    [...(childrenMap.get(parentId) || [])]
+      .sort((left, right) => (right.sort || 0) - (left.sort || 0))
+      .map((item) => {
       const children = buildNodes(item.id);
       return {
         id: item.id,
         label: item.name,
         hasSkuSpec: item.hasSkuSpec,
+        enabled: item.enabled !== false,
         children: children.length ? children : undefined,
       };
-    });
+      });
 
   return buildNodes(null);
 }
@@ -98,11 +166,13 @@ export function buildProductCatalogTree(
 function flattenProductCatalogLeaves(
   nodes: ProductCatalogTreeNode[],
   parentPath: string[] = [],
-  parentLabelPath: string[] = []
+  parentLabelPath: string[] = [],
+  parentEnabled = true
 ): ProductCatalogLeafItem[] {
   return nodes.flatMap((node) => {
     const path = [...parentPath, node.id];
     const labelPath = [...parentLabelPath, node.label];
+    const enabled = parentEnabled && node.enabled;
 
     if (!node.children?.length) {
       return [
@@ -112,11 +182,12 @@ function flattenProductCatalogLeaves(
           labelPath,
           path,
           hasSkuSpec: Boolean(node.hasSkuSpec),
+          enabled,
         },
       ];
     }
 
-    return flattenProductCatalogLeaves(node.children, path, labelPath);
+    return flattenProductCatalogLeaves(node.children, path, labelPath, enabled);
   });
 }
 
@@ -127,13 +198,18 @@ export function buildProductCatalogLeafItems(
 }
 
 function toProductCatalogCascaderOptions(
-  nodes: ProductCatalogTreeNode[]
+  nodes: ProductCatalogTreeNode[],
+  parentDisabled = false
 ): ProductCatalogCascaderOption[] {
   return nodes.map((node) => ({
     value: node.id,
     label: node.label,
+    disabled: parentDisabled || !node.enabled,
     children: node.children?.length
-      ? toProductCatalogCascaderOptions(node.children)
+      ? toProductCatalogCascaderOptions(
+          node.children,
+          parentDisabled || !node.enabled
+        )
       : undefined,
   }));
 }

@@ -480,6 +480,20 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
     ],
   },
+  {
+    key: 'merchant-system.system-settings',
+    title: '系统设置',
+    children: [
+      {
+        key: 'merchant/system-menu-config',
+        title: '系统菜单配置',
+      },
+      {
+        key: 'merchant/data-permission-module-config',
+        title: '数据权限模块配置',
+      },
+    ],
+  },
 ];
 
 const MERCHANT_ROLE_PERMISSION_TREE_BY_SYSTEM: Record<

@@ -385,13 +385,8 @@ function AttributePage() {
       title: '状态',
       dataIndex: 'enabled',
       width: 120,
-      render: (value: boolean, record: ProductCatalogAttributeItem) => (
-        <Switch
-          checked={value}
-          checkedText="启用"
-          uncheckedText="禁用"
-          onChange={(checked) => handleToggleEnabled(record, checked)}
-        />
+      render: (value: boolean) => (
+        <Tag color={value ? 'green' : 'red'}>{value ? '启用' : '禁用'}</Tag>
       ),
     },
     {
@@ -402,7 +397,7 @@ function AttributePage() {
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 140,
+      width: 190,
       fixed: 'right' as const,
       render: (_: unknown, record: ProductCatalogAttributeItem) => (
         <span className={styles.actionLinks}>
@@ -410,9 +405,21 @@ function AttributePage() {
             编辑
           </Typography.Text>
           <span className={styles.actionDivider}>|</span>
-          <Popconfirm title={`确定删除属性「${record.name}」吗？`} onOk={() => handleDelete(record)}>
-            <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
-          </Popconfirm>
+          {record.enabled ? (
+            <Popconfirm
+              title={`确定禁用属性「${record.name}」吗？`}
+              onOk={() => handleToggleEnabled(record, false)}
+            >
+              <Typography.Text className={styles.actionLink}>禁用</Typography.Text>
+            </Popconfirm>
+          ) : (
+            <Typography.Text
+              className={styles.actionLink}
+              onClick={() => handleToggleEnabled(record, true)}
+            >
+              启用
+            </Typography.Text>
+          )}
         </span>
       ),
     },

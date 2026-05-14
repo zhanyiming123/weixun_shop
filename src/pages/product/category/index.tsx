@@ -3,9 +3,12 @@ import {
   Button,
   Form,
   Input,
+  InputNumber,
   Message,
   Modal,
   Popconfirm,
+  Switch,
+  Tag,
   Tooltip,
   Typography,
 } from '@arco-design/web-react';
@@ -40,33 +43,17 @@ function reorderItems(
   const rest = siblings.filter((i) => i.id !== dragId);
   const tIdx = rest.findIndex((i) => i.id === targetId);
   const insertAt = pos === 'after' ? tIdx + 1 : tIdx;
-  const reordered = [...rest.slice(0, insertAt), drag, ...rest.slice(insertAt)];
+  const reorderedItems = [...rest.slice(0, insertAt), drag, ...rest.slice(insertAt)];
+  const reordered = reorderedItems.map((item, index) => ({
+    ...item,
+    sort: reorderedItems.length - index,
+  }));
 
   const iter = reordered[Symbol.iterator]();
   return items.map((item) =>
     item.parentId === pid ? (iter.next().value as ProductOwnershipConfigItem) : item
   );
 }
-
-function removeWithDescendants(
-  items: ProductOwnershipConfigItem[],
-  id: string
-): ProductOwnershipConfigItem[] {
-  const toRemove = new Set<string>([id]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const item of items) {
-      if (item.parentId !== null && toRemove.has(item.parentId) && !toRemove.has(item.id)) {
-        toRemove.add(item.id);
-        changed = true;
-      }
-    }
-  }
-  return items.filter((i) => !toRemove.has(i.id));
-}
-
-const MAX_DEPTH = 2;
 
 function CategoryPage() {
   const [items, setItems] = useProductOwnershipItems();
@@ -90,6 +77,11 @@ function CategoryPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverPos, setDragOverPos] = useState<'before' | 'after'>('before');
 
+  const itemMap = useMemo(
+    () => new Map(items.map((item) => [item.id, item])),
+    [items]
+  );
+
   const childrenMap = useMemo(() => {
     const map = new Map<string | null, ProductOwnershipConfigItem[]>();
     for (const item of items) {
@@ -100,8 +92,39 @@ function CategoryPage() {
         group.push(item);
       }
     }
+
+    map.forEach((group, key) => {
+      map.set(
+        key,
+        [...group].sort((left, right) => (right.sort || 0) - (left.sort || 0))
+      );
+    });
+
     return map;
   }, [items]);
+
+  const parentDisplayName = useMemo(() => {
+    const currentParentId = editingItem?.parentId ?? addParentId;
+
+    if (!currentParentId) {
+      return editingItem ? '无' : '';
+    }
+
+    const labelPath: string[] = [];
+    let currentId: string | null = currentParentId;
+
+    while (currentId) {
+      const currentItem = itemMap.get(currentId);
+      if (!currentItem) {
+        break;
+      }
+
+      labelPath.unshift(currentItem.name);
+      currentId = currentItem.parentId;
+    }
+
+    return labelPath.join(' / ');
+  }, [addParentId, editingItem, itemMap]);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -115,13 +138,21 @@ function CategoryPage() {
     setEditingItem(null);
     setAddParentId(parentId);
     form.resetFields();
+    form.setFieldsValue({
+      sort: 0,
+      enabled: true,
+    });
     setModalVisible(true);
   }
 
   function openEditModal(item: ProductOwnershipConfigItem) {
     setEditingItem(item);
     setAddParentId(null);
-    form.setFieldsValue({ name: item.name });
+    form.setFieldsValue({
+      name: item.name,
+      sort: item.sort,
+      enabled: item.enabled !== false,
+    });
     setModalVisible(true);
   }
 
@@ -130,7 +161,16 @@ function CategoryPage() {
       const values = await form.validate();
       if (editingItem) {
         setItems((prev) =>
-          prev.map((i) => (i.id === editingItem.id ? { ...i, name: values.name } : i))
+          prev.map((i) =>
+            i.id === editingItem.id
+              ? {
+                  ...i,
+                  name: values.name,
+                  sort: values.sort,
+                  enabled: values.enabled ?? true,
+                }
+              : i
+          )
         );
         Message.success('修改成功');
       } else {
@@ -138,6 +178,8 @@ function CategoryPage() {
           id: `ownership_${Date.now()}`,
           name: values.name,
           parentId: addParentId,
+          sort: values.sort,
+          enabled: values.enabled ?? true,
         };
         setItems((prev) => [...prev, newItem]);
         if (addParentId) {
@@ -155,9 +197,13 @@ function CategoryPage() {
     }
   }
 
-  function handleDelete(item: ProductOwnershipConfigItem) {
-    setItems((prev) => removeWithDescendants(prev, item.id));
-    Message.success('删除成功');
+  function handleToggleEnabled(item: ProductOwnershipConfigItem, checked: boolean) {
+    setItems((prev) =>
+      prev.map((current) =>
+        current.id === item.id ? { ...current, enabled: checked } : current
+      )
+    );
+    Message.success(`${item.name}已${checked ? '启用' : '禁用'}`);
   }
 
   function onDragStart(e: React.DragEvent, id: string) {
@@ -193,10 +239,11 @@ function CategoryPage() {
     const isDragging = dragId === item.id;
     const isDropBefore = dragOverId === item.id && dragOverPos === 'before';
     const isDropAfter = dragOverId === item.id && dragOverPos === 'after';
-    const canAddChild = depth < MAX_DEPTH;
+    const isEnabled = item.enabled !== false;
 
     const cls = [
       styles.row,
+      !isEnabled && styles.rowDisabled,
       isDragging && styles.dragging,
       isDropBefore && styles.dropBefore,
       isDropAfter && styles.dropAfter,
@@ -208,42 +255,57 @@ function CategoryPage() {
       <div key={item.id}>
         <div
           className={cls}
-          style={{ paddingLeft: 16 + depth * 28 }}
           draggable
           onDragStart={(e) => onDragStart(e, item.id)}
           onDragOver={(e) => onDragOver(e, item.id)}
           onDrop={(e) => onDrop(e, item.id)}
           onDragEnd={onDragEnd}
         >
-          <span className={styles.dragHandle}>
-            <IconDragDotVertical />
+          <span className={styles.nameCell} style={{ paddingLeft: depth * 28 }}>
+            <span className={styles.dragHandle}>
+              <IconDragDotVertical />
+            </span>
+            <span
+              className={styles.expandIcon}
+              onClick={() => hasChildren && toggleExpand(item.id)}
+            >
+              {hasChildren ? (
+                isExpanded ? <IconDown /> : <IconRight />
+              ) : (
+                <span className={styles.expandPlaceholder} />
+              )}
+            </span>
+            <span className={styles.nodeName}>
+              {item.name}
+              {!isEnabled && <span className={styles.nodeStatus}>已禁用</span>}
+            </span>
           </span>
-          <span
-            className={styles.expandIcon}
-            onClick={() => hasChildren && toggleExpand(item.id)}
-          >
-            {hasChildren ? (
-              isExpanded ? <IconDown /> : <IconRight />
-            ) : (
-              <span className={styles.expandPlaceholder} />
-            )}
+          <span className={styles.nodeSort}>{item.sort || '-'}</span>
+          <span className={styles.nodeStatusCell}>
+            <Tag color={isEnabled ? 'green' : 'red'}>{isEnabled ? '启用' : '禁用'}</Tag>
           </span>
-          <span className={styles.nodeName}>{item.name}</span>
           <span className={styles.nodeActions}>
-            {canAddChild && (
-              <Typography.Text className={styles.actionLink} onClick={() => openAddModal(item.id)}>
-                新增子分类
-              </Typography.Text>
-            )}
+            <Typography.Text className={styles.actionLink} onClick={() => openAddModal(item.id)}>
+              新增子分类
+            </Typography.Text>
             <Typography.Text className={styles.actionLink} onClick={() => openEditModal(item)}>
               编辑
             </Typography.Text>
-            <Popconfirm
-              title={`确定删除「${item.name}」${hasChildren ? '及其所有子分类' : ''}吗？`}
-              onOk={() => handleDelete(item)}
-            >
-              <Typography.Text className={styles.actionLinkDanger}>删除</Typography.Text>
-            </Popconfirm>
+            {isEnabled ? (
+              <Popconfirm
+                title={`确定禁用「${item.name}」吗？`}
+                onOk={() => handleToggleEnabled(item, false)}
+              >
+                <Typography.Text className={styles.actionLink}>禁用</Typography.Text>
+              </Popconfirm>
+            ) : (
+              <Typography.Text
+                className={styles.actionLink}
+                onClick={() => handleToggleEnabled(item, true)}
+              >
+                启用
+              </Typography.Text>
+            )}
           </span>
         </div>
         {isExpanded && hasChildren && (
@@ -268,8 +330,15 @@ function CategoryPage() {
       <div className={styles.listContainer}>
         <div className={styles.listHeader}>
           <span className={styles.headerName}>商品分类</span>
+          <span className={styles.headerSort}>
+            排序
+            <Tooltip content="序号越大，显示越靠前">
+              <IconInfoCircle className={styles.headerInfoIcon} />
+            </Tooltip>
+          </span>
+          <span className={styles.headerStatus}>状态</span>
           <span className={styles.headerOps}>
-            <Tooltip content="可对商品分类进行新增、编辑、删除操作，同级分类支持拖拽排序">
+            <Tooltip content="可对商品分类进行新增、编辑、启用/禁用操作，同级分类支持拖拽排序">
               <IconInfoCircle className={styles.headerInfoIcon} />
             </Tooltip>
             操作
@@ -301,12 +370,38 @@ function CategoryPage() {
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 18 }}
         >
+          {(addParentId || editingItem) && (
+            <Form.Item label="父分类">
+              <Input value={parentDisplayName} disabled />
+            </Form.Item>
+          )}
           <Form.Item
             field="name"
-            label="分类名称"
-            rules={[{ required: true, message: '请输入分类名称' }]}
+            label="子分类名称"
+            rules={[{ required: true, message: '请输入子分类名称' }]}
           >
-            <Input placeholder="请输入分类名称" maxLength={20} showWordLimit />
+            <Input placeholder="请输入子分类名称" maxLength={20} showWordLimit />
+          </Form.Item>
+          <Form.Item
+            field="sort"
+            label="排序"
+            initialValue={0}
+            rules={[{ required: true, message: '请输入排序值' }]}
+          >
+            <InputNumber
+              min={0}
+              max={999}
+              placeholder="数值越大越靠前"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item
+            field="enabled"
+            label="状态"
+            initialValue={true}
+            triggerPropName="checked"
+          >
+            <Switch checkedText="启用" uncheckedText="禁用" />
           </Form.Item>
         </Form>
       </Modal>
