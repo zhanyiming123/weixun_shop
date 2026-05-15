@@ -256,6 +256,15 @@ export const routes: IRoute[] = [
     visibleDemoIdentities: ['merchant_admin'],
   },
   {
+    name: 'menu.merchant.role.view',
+    key: 'merchant/role/view',
+    ignore: true,
+    breadcrumb: false,
+    visibleScopes: ['headquarter', 'region', 'store'],
+    visibleSystems: ['merchant'],
+    visibleDemoIdentities: ['merchant_admin'],
+  },
+  {
     name: 'menu.product',
     key: 'product',
     visibleScopes: ['store'],

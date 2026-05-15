@@ -18,6 +18,8 @@ export type DataPermissionSystem = {
   modules: DataPermissionModuleItem[];
 };
 
+export type MerchantDataPermissionSystemKey = 'merchant' | 'store';
+
 export const DATA_PERMISSION_MODULE_CONFIG_STORAGE_KEY =
   'merchant-data-permission-module-config-systems-v1';
 
@@ -111,6 +113,30 @@ export function createDefaultDataPermissionSystems(): DataPermissionSystem[] {
       ],
     },
   ];
+}
+
+export function getMerchantDataPermissionSystemId(
+  system: MerchantDataPermissionSystemKey
+) {
+  return system === 'merchant'
+    ? 'system_merchant_workbench'
+    : 'system_store_workbench';
+}
+
+export function getDataPermissionModulesByMerchantSystem(
+  systems: DataPermissionSystem[],
+  system: MerchantDataPermissionSystemKey
+) {
+  const matchedSystem = systems.find(
+    (item) => item.id === getMerchantDataPermissionSystemId(system)
+  );
+
+  if (!matchedSystem) {
+    return [];
+  }
+
+  const enabledModules = matchedSystem.modules.filter((item) => item.status === 'enabled');
+  return enabledModules.length ? enabledModules : matchedSystem.modules;
 }
 
 export function filterDataPermissionSystems(

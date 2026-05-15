@@ -67,8 +67,31 @@ export function getRoleListPath(pathname: string, scope: EnterpriseRoleScope) {
   return `${getRoleRouteBase(pathname)}?tab=${scope}`;
 }
 
-export function getRoleCreatePath(pathname: string, scope: EnterpriseRoleScope) {
-  return `${getRoleRouteBase(pathname)}/create?tab=${scope}`;
+function buildRoleQueryPath(
+  pathname: string,
+  query: Record<string, string | undefined>
+) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `${pathname}?${queryString}` : pathname;
+}
+
+export function getRoleCreatePath(
+  pathname: string,
+  scope: EnterpriseRoleScope,
+  query?: Record<string, string | undefined>
+) {
+  return buildRoleQueryPath(`${getRoleRouteBase(pathname)}/create`, {
+    tab: scope,
+    ...query,
+  });
 }
 
 export function getRoleEditPath(
@@ -76,5 +99,19 @@ export function getRoleEditPath(
   id: string,
   scope: EnterpriseRoleScope
 ) {
-  return `${getRoleRouteBase(pathname)}/edit?id=${id}&tab=${scope}`;
+  return buildRoleQueryPath(`${getRoleRouteBase(pathname)}/edit`, {
+    id,
+    tab: scope,
+  });
+}
+
+export function getRoleViewPath(
+  pathname: string,
+  id: string,
+  scope: EnterpriseRoleScope
+) {
+  return buildRoleQueryPath(`${getRoleRouteBase(pathname)}/view`, {
+    id,
+    tab: scope,
+  });
 }

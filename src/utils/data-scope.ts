@@ -39,6 +39,10 @@ export function resolveVisibleEmployeeIds(params: ResolutionParams): string[] {
         return [currentUserId];
     }
 
+    if (viewScope === 'self_cross_department') {
+        return [currentUserId];
+    }
+
     if (viewScope === 'all') {
         return allEmployees.map((e) => e.id);
     }
@@ -50,7 +54,7 @@ export function resolveVisibleEmployeeIds(params: ResolutionParams): string[] {
         return Array.from(visibleSet);
     }
 
-    // viewScope === 'department'
+    // department / department_cross_department currently share the same fallback
     // If no department is set for current user, fallback to self
     if (!currentDepartmentId) {
         return [currentUserId];

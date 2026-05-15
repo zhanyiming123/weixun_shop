@@ -303,8 +303,10 @@ const STORE_ROLE_DATA_VIEW_SCOPE_PRIORITY: Record<
   number
 > = {
   self: 0,
+  self_cross_department: 0,
   custom_employee: 1,
   department: 2,
+  department_cross_department: 2,
   all: 3,
 };
 

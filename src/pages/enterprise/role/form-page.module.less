@@ -45,6 +45,24 @@
   flex-direction: column;
 }
 
+.merchantForm {
+  max-width: 960px;
+
+  :global(.arco-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :global(.arco-form-item-label-col) {
+    display: flex;
+    align-items: center;
+  }
+
+  :global(.arco-form-item-label) {
+    margin-bottom: 0;
+    line-height: 22px;
+  }
+}
+
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -60,6 +78,13 @@
 .textarea {
   width: 100%;
   max-width: 360px;
+}
+
+.merchantForm {
+  .input,
+  .textarea {
+    max-width: 560px;
+  }
 }
 
 .formLabel {

@@ -1,9 +1,15 @@
 import { EnterpriseRoleItem, EnterpriseRoleScope } from '@/pages/enterprise/role/data';
 
 export type MerchantRoleTab = 'merchant' | 'store';
+export type MerchantRoleType = 'merchant' | 'store';
 
 export const MERCHANT_ROLE_TAB_LABEL_MAP: Record<MerchantRoleTab, string> = {
   merchant: '商户角色',
+  store: '店铺角色',
+};
+
+export const MERCHANT_ROLE_TYPE_LABEL_MAP: Record<MerchantRoleType, string> = {
+  merchant: '电商管理角色',
   store: '店铺角色',
 };
 
@@ -21,6 +27,18 @@ export function getMerchantRoleCreateScope(
   return tab === 'store' ? 'store' : 'headquarter';
 }
 
+export function getMerchantRoleTypeByScope(
+  scope: EnterpriseRoleScope
+): MerchantRoleType {
+  return scope === 'store' ? 'store' : 'merchant';
+}
+
+export function getMerchantRoleScopeByType(
+  type: MerchantRoleType
+): EnterpriseRoleScope {
+  return type === 'store' ? 'store' : 'headquarter';
+}
+
 export function filterMerchantRoleItems(
   items: EnterpriseRoleItem[],
   tab: MerchantRoleTab
@@ -31,7 +49,13 @@ export function filterMerchantRoleItems(
         return item.scope === 'store';
       }
 
-      return item.scope !== 'store' && item.id.startsWith('role_merchant_');
+      return (
+        item.scope !== 'store' &&
+        (
+          item.id.startsWith('role_merchant_') ||
+          (!item.isDefault && Boolean(item.merchantPermissionConfigs))
+        )
+      );
     })
     .sort((left, right) => {
       if (left.isDefault !== right.isDefault) {

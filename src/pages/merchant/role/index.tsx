@@ -3,6 +3,7 @@ import qs from 'query-string';
 import {
   Button,
   Card,
+  Input,
   Message,
   Modal,
   Pagination,
@@ -16,11 +17,8 @@ import { IconPlus } from '@arco-design/web-react/icon';
 import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
-  ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP,
-  ENTERPRISE_ROLE_SCOPE_LABEL_MAP,
   EnterpriseRoleItem,
-  getEnterpriseRolePermissionTitles,
-  getMerchantRoleSystemNames,
+  getMerchantRoleEnabledSystemNames,
   useEnterpriseRoleItems,
 } from '@/pages/enterprise/role/data';
 import {
@@ -28,16 +26,21 @@ import {
   EmployeeItem,
   EMPLOYEE_STATUS_TABLE_LABEL_MAP,
 } from '@/pages/enterprise/employee/data';
-import { getRoleCreatePath, getRoleEditPath } from '@/utils/demo-route';
+import {
+  getRoleCreatePath,
+  getRoleEditPath,
+  getRoleViewPath,
+} from '@/utils/demo-route';
 import usePersistentState from '@/utils/usePersistentState';
 import { buildMerchantRoleEmployeePreviewRows } from './role-employees';
 import {
   filterMerchantRoleItems,
   getMerchantRoleCreateScope,
   getMerchantRoleListTabPath,
-  MERCHANT_ROLE_TAB_LABEL_MAP,
   MerchantRoleTab,
   normalizeMerchantRoleTab,
+  MERCHANT_ROLE_TYPE_LABEL_MAP,
+  getMerchantRoleTypeByScope,
 } from './tab-config';
 
 const TabPane = Tabs.TabPane;
@@ -51,12 +54,11 @@ function MerchantRolePage() {
     'enterprise-employee-items-v1',
     DEFAULT_EMPLOYEE_ITEMS
   );
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [viewingRole, setViewingRole] = useState<EnterpriseRoleItem | null>(null);
   const [employeeListVisible, setEmployeeListVisible] = useState(false);
   const [employeeListRole, setEmployeeListRole] = useState<EnterpriseRoleItem | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [roleKeyword, setRoleKeyword] = useState('');
 
   const locationQuery = useMemo(() => qs.parse(location.search), [location.search]);
   const activeTab = useMemo<MerchantRoleTab>(
@@ -72,14 +74,23 @@ function MerchantRolePage() {
   }, [activeTab, history, location.pathname, locationQuery.tab]);
 
   const currentRoles = useMemo(
-    () => filterMerchantRoleItems(roleItems, activeTab),
-    [activeTab, roleItems]
+    () =>
+      filterMerchantRoleItems(roleItems, activeTab)
+        .filter((item) => item.name.includes(roleKeyword.trim()))
+        .sort((left, right) => {
+          if (left.isDefault !== right.isDefault) {
+            return Number(right.isDefault) - Number(left.isDefault);
+          }
+
+          return right.updatedAt.localeCompare(left.updatedAt);
+        }),
+    [activeTab, roleItems, roleKeyword]
   );
 
   useEffect(() => {
     setSelectedRowKeys([]);
     setPage(1);
-  }, [activeTab]);
+  }, [activeTab, roleKeyword]);
 
   useEffect(() => {
     const pageCount = Math.max(1, Math.ceil(currentRoles.length / PAGE_SIZE));
@@ -93,31 +104,12 @@ function MerchantRolePage() {
     [currentRoles, page]
   );
 
-  const referenceRoleNameMap = useMemo(
-    () =>
-      roleItems.reduce<Record<string, string>>((acc, item) => {
-        acc[item.id] = item.name;
-        return acc;
-      }, {}),
-    [roleItems]
-  );
-
-  function openDetailModal(record: EnterpriseRoleItem) {
-    setViewingRole(record);
-    setDetailVisible(true);
-  }
-
   function openEmployeeListModal(record: EnterpriseRoleItem) {
     setEmployeeListRole(record);
     setEmployeeListVisible(true);
   }
 
   function resetRelatedModalState(removedRoleIds: string[]) {
-    if (viewingRole && removedRoleIds.includes(viewingRole.id)) {
-      setDetailVisible(false);
-      setViewingRole(null);
-    }
-
     if (employeeListRole && removedRoleIds.includes(employeeListRole.id)) {
       setEmployeeListVisible(false);
       setEmployeeListRole(null);
@@ -225,11 +217,21 @@ function MerchantRolePage() {
       ),
     },
     {
+      title: '角色类型',
+      dataIndex: 'scope',
+      width: 140,
+      render: (_: unknown, record: EnterpriseRoleItem) => (
+        <Typography.Text className={styles.roleDescription}>
+          {MERCHANT_ROLE_TYPE_LABEL_MAP[getMerchantRoleTypeByScope(record.scope)]}
+        </Typography.Text>
+      ),
+    },
+    {
       title: '系统',
       dataIndex: 'functionPermissionKeys',
       width: 230,
       render: (_: unknown, record: EnterpriseRoleItem) => {
-        const systems = getMerchantRoleSystemNames(record.functionPermissionKeys, record.scope);
+        const systems = getMerchantRoleEnabledSystemNames(record);
         if (!systems.length) {
           return <Typography.Text className={styles.roleDescription}>-</Typography.Text>;
         }
@@ -264,6 +266,16 @@ function MerchantRolePage() {
       ),
     },
     {
+      title: '更新人',
+      dataIndex: 'updatedBy',
+      width: 120,
+      render: (value?: string) => (
+        <Typography.Text className={styles.roleDescription}>
+          {value || '-'}
+        </Typography.Text>
+      ),
+    },
+    {
       title: '更新时间',
       dataIndex: 'updatedAt',
       width: 180,
@@ -271,13 +283,15 @@ function MerchantRolePage() {
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 180,
+      width: 220,
       fixed: 'right' as const,
       render: (_: unknown, record: EnterpriseRoleItem) => (
         <span className={styles.actionLinks}>
           <Typography.Text
             className={styles.actionLink}
-            onClick={() => openDetailModal(record)}
+            onClick={() =>
+              history.push(getRoleViewPath(location.pathname, record.id, record.scope))
+            }
           >
             查看
           </Typography.Text>
@@ -289,6 +303,23 @@ function MerchantRolePage() {
             }
           >
             编辑
+          </Typography.Text>
+          <span className={styles.actionDivider}>|</span>
+          <Typography.Text
+            className={styles.actionLink}
+            onClick={() =>
+              history.push(
+                getRoleCreatePath(
+                  location.pathname,
+                  getMerchantRoleCreateScope(getMerchantRoleTypeByScope(record.scope)),
+                  {
+                  sourceId: record.id,
+                  }
+                )
+              )
+            }
+          >
+            复制
           </Typography.Text>
           <span className={styles.actionDivider}>|</span>
           <Popconfirm
@@ -304,35 +335,21 @@ function MerchantRolePage() {
     },
   ];
 
-  const viewingRolePermissionTitles = viewingRole
-    ? getEnterpriseRolePermissionTitles(
-        viewingRole.functionPermissionKeys,
-        viewingRole.scope,
-        'merchant'
-      )
-    : [];
-
   return (
     <div className={styles.page}>
       <Card className={styles.panelCard}>
-        <Tabs
-          activeTab={activeTab}
-          className={styles.tabs}
-          onChange={(value) =>
-            history.replace(
-              getMerchantRoleListTabPath(
-                location.pathname,
-                normalizeMerchantRoleTab(value)
-              )
-            )
-          }
-        >
-          {(['merchant', 'store'] as MerchantRoleTab[]).map((tab) => (
-            <TabPane key={tab} title={MERCHANT_ROLE_TAB_LABEL_MAP[tab]} />
-          ))}
-        </Tabs>
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarFilters}>
+            <span className={styles.filterLabel}>角色名称</span>
+            <Input.Search
+              allowClear
+              className={styles.filterInput}
+              placeholder="请输入角色名称"
+              value={roleKeyword}
+              onChange={setRoleKeyword}
+            />
+          </div>
 
-        <div className={`${styles.toolbar} ${styles.toolbarActionsOnly}`}>
           <Button
             icon={<IconPlus />}
             type="primary"
@@ -349,13 +366,29 @@ function MerchantRolePage() {
           </Button>
         </div>
 
+        <Tabs
+          activeTab={activeTab}
+          className={styles.tabs}
+          onChange={(value) =>
+            history.replace(
+              getMerchantRoleListTabPath(
+                location.pathname,
+                normalizeMerchantRoleTab(value)
+              )
+            )
+          }
+        >
+          <TabPane key="merchant" title={MERCHANT_ROLE_TYPE_LABEL_MAP.merchant} />
+          <TabPane key="store" title={MERCHANT_ROLE_TYPE_LABEL_MAP.store} />
+        </Tabs>
+
         <Table
           rowKey="id"
           columns={columns}
           data={pagedRoles}
           noDataElement="当前分类下暂无角色"
           pagination={false}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1320 }}
           tableLayoutFixed
           rowSelection={{
             type: 'checkbox',
@@ -389,81 +422,6 @@ function MerchantRolePage() {
           />
         </div>
       </Card>
-
-      <Modal
-        title="角色详情"
-        visible={detailVisible}
-        footer={null}
-        onCancel={() => setDetailVisible(false)}
-        style={{ width: 720 }}
-      >
-        {viewingRole && (
-          <div className={styles.detailGrid}>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>角色范围</span>
-              <span className={styles.detailValue}>
-                {ENTERPRISE_ROLE_SCOPE_LABEL_MAP[viewingRole.scope]}
-              </span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>角色属性</span>
-              <span className={styles.detailValue}>
-                <Tag size="small" color={viewingRole.isDefault ? 'arcoblue' : 'green'}>
-                  {viewingRole.isDefault ? '默认角色' : '自定义角色'}
-                </Tag>
-              </span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>角色名称</span>
-              <span className={styles.detailValue}>{viewingRole.name}</span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>员工数量</span>
-              <span className={styles.detailValue}>{viewingRole.employeeCount} 人</span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>参考角色</span>
-              <span className={styles.detailValue}>
-                {viewingRole.referenceRoleId
-                  ? referenceRoleNameMap[viewingRole.referenceRoleId] || '-'
-                  : '-'}
-              </span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>数据权限</span>
-              <span className={styles.detailValue}>
-                {ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP[viewingRole.dataPermissions.viewScope]}
-              </span>
-            </div>
-            <div className={styles.detailItemFull}>
-              <span className={styles.detailLabel}>功能权限</span>
-              {viewingRolePermissionTitles.length ? (
-                <div className={styles.detailTags}>
-                  {viewingRolePermissionTitles.map((title) => (
-                    <Tag key={title} size="small">
-                      {title}
-                    </Tag>
-                  ))}
-                </div>
-              ) : (
-                <span className={styles.detailValue}>未配置功能权限</span>
-              )}
-            </div>
-            <div className={styles.detailItemFull}>
-              <span className={styles.detailLabel}>角色描述</span>
-              <span className={styles.detailValue}>{viewingRole.description || '-'}</span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>创建时间</span>
-              <span className={styles.detailValue}>{viewingRole.createdAt}</span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>更新时间</span>
-              <span className={styles.detailValue}>{viewingRole.updatedAt}</span>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       <Modal
         title={employeeListRole ? `角色员工（${employeeListRole.name}）` : '角色员工'}

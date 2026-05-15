@@ -2,12 +2,20 @@ import usePersistentState, {
   readPersistentValue,
   writePersistentValue,
 } from '@/utils/usePersistentState';
+import {
+  createDefaultDataPermissionSystems,
+  DATA_PERMISSION_MODULE_CONFIG_STORAGE_KEY,
+  DataPermissionSystem,
+  getDataPermissionModulesByMerchantSystem,
+} from '@/pages/merchant/data-permission-module-config/data';
 
 export type EnterpriseRoleScope = 'headquarter' | 'store' | 'region';
 export type EnterpriseRoleDataViewScope =
   | 'all'
   | 'department'
+  | 'department_cross_department'
   | 'self'
+  | 'self_cross_department'
   | 'custom_employee';
 
 export type EnterpriseRoleDataPermissions = {
@@ -33,9 +41,11 @@ export type EnterpriseRoleItem = {
   description: string;
   employeeCount: number;
   isDefault: boolean;
+  updatedBy?: string;
   referenceRoleId?: string;
   dataPermissions: EnterpriseRoleDataPermissions;
   functionPermissionKeys: string[];
+  merchantPermissionConfigs?: MerchantRolePermissionConfigs;
   createdAt: string;
   updatedAt: string;
 };
@@ -47,6 +57,16 @@ export type EnterpriseRolePermissionState = {
 
 export type EnterpriseRolePermissionMode = 'default' | 'merchant';
 export type MerchantRolePermissionSystem = 'store' | 'merchant';
+export type MerchantRoleDataPermissionModuleScopes = Partial<
+  Record<string, EnterpriseRoleDataViewScope>
+>;
+export type MerchantRolePermissionState = EnterpriseRolePermissionState & {
+  dataPermissionModuleScopes: MerchantRoleDataPermissionModuleScopes;
+};
+export type MerchantRolePermissionConfigs = Record<
+  MerchantRolePermissionSystem,
+  MerchantRolePermissionState
+>;
 
 export type MerchantRolePermissionSystemOption = {
   label: string;
@@ -84,7 +104,9 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP: Record<
 > = {
   all: '全量数据',
   department: '本部门数据',
+  department_cross_department: '本部门(小组)以及跨部门人员',
   self: '个人数据',
+  self_cross_department: '本人以及跨部门人员',
   custom_employee: '自定义员工范围',
 };
 
@@ -94,9 +116,41 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP: Record<
 > = {
   all: '可查看当前权限范围内的全部业务数据。',
   department: '可查看当前部门下的业务数据。',
+  department_cross_department: '可查看本部门（小组）及协作跨部门人员相关业务数据。',
   self: '仅可查看当前账号自己产生的业务数据。',
+  self_cross_department: '可查看本人及协作跨部门人员相关业务数据。',
   custom_employee: '允许为持有该角色的每个单独员工自定义配置能查看的其他员工业务数据。',
 };
+
+export const MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS: EnterpriseRoleDataViewScopeOption[] =
+  [
+    {
+      label: '本人',
+      value: 'self',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self,
+    },
+    {
+      label: '本人以及跨部门人员',
+      value: 'self_cross_department',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self_cross_department,
+    },
+    {
+      label: '本部门(小组)',
+      value: 'department',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department,
+    },
+    {
+      label: '本部门(小组)以及跨部门人员',
+      value: 'department_cross_department',
+      description:
+        ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department_cross_department,
+    },
+    {
+      label: '全量数据',
+      value: 'all',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.all,
+    },
+  ];
 
 export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS: EnterpriseRoleDataViewScopeOption[] =
   [
@@ -126,7 +180,11 @@ export function getEnterpriseRoleDataViewScopeOptions(
   scope: EnterpriseRoleScope = 'headquarter',
   mode: EnterpriseRolePermissionMode = 'default'
 ) {
-  if (mode === 'merchant' || scope === 'store') {
+  if (mode === 'merchant') {
+    return MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS;
+  }
+
+  if (scope === 'store') {
     return ENTERPRISE_ROLE_DATA_VIEW_SCOPE_OPTIONS.filter(
       (option) => option.value !== 'custom_employee'
     );
@@ -255,12 +313,12 @@ export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
 export const MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS: MerchantRolePermissionSystemOption[] =
   [
     {
-      label: '店铺运营工作台',
-      value: 'store',
-    },
-    {
       label: '电商管理工作台',
       value: 'merchant',
+    },
+    {
+      label: '店铺运营工作台',
+      value: 'store',
     },
   ];
 
@@ -808,7 +866,9 @@ export function normalizeEnterpriseRoleDataViewScope(
   if (
     value === 'all' ||
     value === 'department' ||
+    value === 'department_cross_department' ||
     value === 'self' ||
+    value === 'self_cross_department' ||
     value === 'custom_employee'
   ) {
     return value;
@@ -971,6 +1031,425 @@ export function getEnterpriseRolePermissionTitles(
   return Array.from(new Set(titles));
 }
 
+export function getMerchantRolePrimaryPermissionSystem(
+  scope: EnterpriseRoleScope = 'headquarter'
+): MerchantRolePermissionSystem {
+  return scope === 'store' ? 'store' : 'merchant';
+}
+
+export function getMerchantRolePermissionKeysBySystem(
+  keys: string[],
+  system: MerchantRolePermissionSystem,
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  const systemKeySet = new Set(getMerchantRolePermissionSystemKeys(system));
+  return normalizeEnterpriseRolePermissionKeys(keys, scope, 'merchant').filter((key) =>
+    systemKeySet.has(key)
+  );
+}
+
+function readMerchantRoleDataPermissionSystems() {
+  return readPersistentValue<DataPermissionSystem[]>(
+    DATA_PERMISSION_MODULE_CONFIG_STORAGE_KEY,
+    createDefaultDataPermissionSystems()
+  );
+}
+
+function getMerchantRoleDataPermissionModuleIds(
+  system: MerchantRolePermissionSystem,
+  systems = readMerchantRoleDataPermissionSystems()
+) {
+  return getDataPermissionModulesByMerchantSystem(systems, system).map((item) => item.id);
+}
+
+export function normalizeMerchantRoleDataPermissionModuleScopes(
+  value: unknown,
+  system: MerchantRolePermissionSystem,
+  scope: EnterpriseRoleScope = 'headquarter',
+  fallbackViewScope?: EnterpriseRoleDataViewScope
+): MerchantRoleDataPermissionModuleScopes {
+  const moduleIds = getMerchantRoleDataPermissionModuleIds(system);
+  const rawValue =
+    value && typeof value === 'object'
+      ? (value as Record<string, unknown>)
+      : undefined;
+
+  if (!rawValue) {
+    if (!fallbackViewScope) {
+      return {};
+    }
+
+    return moduleIds.reduce<MerchantRoleDataPermissionModuleScopes>((result, moduleId) => {
+      result[moduleId] = normalizeEnterpriseRoleDataViewScopeByScope(
+        fallbackViewScope,
+        scope,
+        'merchant'
+      );
+      return result;
+    }, {});
+  }
+
+  return moduleIds.reduce<MerchantRoleDataPermissionModuleScopes>((result, moduleId) => {
+    const nextValue = rawValue[moduleId];
+    if (typeof nextValue === 'string') {
+      result[moduleId] = normalizeEnterpriseRoleDataViewScopeByScope(
+        nextValue,
+        scope,
+        'merchant'
+      );
+    }
+
+    return result;
+  }, {});
+}
+
+export function getMerchantRoleResolvedDataViewScope(
+  state: Pick<MerchantRolePermissionState, 'dataPermissions'> & {
+    dataPermissionModuleScopes?: MerchantRoleDataPermissionModuleScopes;
+  },
+  system: MerchantRolePermissionSystem,
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  const moduleIds = getMerchantRoleDataPermissionModuleIds(system);
+  const moduleScopes = state.dataPermissionModuleScopes || {};
+  for (const moduleId of moduleIds) {
+    const scopedValue = moduleScopes[moduleId];
+    if (scopedValue) {
+      return normalizeEnterpriseRoleDataViewScopeByScope(
+        scopedValue,
+        scope,
+        'merchant'
+      );
+    }
+  }
+
+  return cloneEnterpriseRoleDataPermissions(
+    state.dataPermissions,
+    scope,
+    'merchant'
+  ).viewScope;
+}
+
+function cloneMerchantRolePermissionState(
+  value: Partial<MerchantRolePermissionState> | undefined,
+  system: MerchantRolePermissionSystem,
+  scope: EnterpriseRoleScope,
+  fallbackDataPermissions: EnterpriseRoleDataPermissions,
+  fallbackFunctionPermissionKeys: string[],
+  fillDataPermissionModuleFallback: boolean
+): MerchantRolePermissionState {
+  const dataPermissions = cloneEnterpriseRoleDataPermissions(
+    value?.dataPermissions || fallbackDataPermissions,
+    scope,
+    'merchant'
+  );
+  const dataPermissionModuleScopes = normalizeMerchantRoleDataPermissionModuleScopes(
+    value?.dataPermissionModuleScopes,
+    system,
+    scope,
+    fillDataPermissionModuleFallback ? dataPermissions.viewScope : undefined
+  );
+
+  return {
+    dataPermissions: {
+      viewScope: getMerchantRoleResolvedDataViewScope(
+        {
+          dataPermissions,
+          dataPermissionModuleScopes,
+        },
+        system,
+        scope
+      ),
+    },
+    dataPermissionModuleScopes,
+    functionPermissionKeys: getMerchantRolePermissionKeysBySystem(
+      value?.functionPermissionKeys || fallbackFunctionPermissionKeys,
+      system,
+      scope
+    ),
+  };
+}
+
+export function cloneMerchantRolePermissionConfigs(
+  value:
+    | Partial<Record<MerchantRolePermissionSystem, Partial<MerchantRolePermissionState>>>
+    | undefined,
+  scope: EnterpriseRoleScope = 'headquarter',
+  fallbackDataPermissions = cloneEnterpriseRoleDataPermissions(undefined, scope, 'merchant'),
+  fallbackFunctionPermissionKeys: string[] = [],
+  options?: {
+    fillDataPermissionModuleFallback?: boolean;
+  }
+): MerchantRolePermissionConfigs {
+  const rawMerchantValue = value?.merchant;
+  const rawStoreValue = value?.store;
+  const fillDataPermissionModuleFallback =
+    options?.fillDataPermissionModuleFallback ?? false;
+
+  return {
+    merchant: cloneMerchantRolePermissionState(
+      rawMerchantValue,
+      'merchant',
+      scope,
+      fallbackDataPermissions,
+      fallbackFunctionPermissionKeys,
+      fillDataPermissionModuleFallback
+    ),
+    store: cloneMerchantRolePermissionState(
+      rawStoreValue,
+      'store',
+      scope,
+      fallbackDataPermissions,
+      fallbackFunctionPermissionKeys,
+      fillDataPermissionModuleFallback
+    ),
+  };
+}
+
+export function getDefaultMerchantRolePermissionConfigs(
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  return cloneMerchantRolePermissionConfigs(
+    undefined,
+    scope,
+    cloneEnterpriseRoleDataPermissions(undefined, scope, 'merchant'),
+    [],
+    {
+      fillDataPermissionModuleFallback: false,
+    }
+  );
+}
+
+export function mergeMerchantRolePermissionSystemKeys(
+  configs: MerchantRolePermissionConfigs,
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  return normalizeEnterpriseRolePermissionKeys(
+    [
+      ...configs.merchant.functionPermissionKeys,
+      ...configs.store.functionPermissionKeys,
+    ],
+    scope,
+    'merchant'
+  );
+}
+
+export function getMerchantRoleLegacyPermissionState(
+  configs: MerchantRolePermissionConfigs,
+  scope: EnterpriseRoleScope = 'headquarter'
+): EnterpriseRolePermissionState {
+  const primarySystem = getMerchantRolePrimaryPermissionSystem(scope);
+
+  return {
+    dataPermissions: {
+      viewScope: getMerchantRoleResolvedDataViewScope(
+        configs[primarySystem],
+        primarySystem,
+        scope
+      ),
+    },
+    functionPermissionKeys: mergeMerchantRolePermissionSystemKeys(configs, scope),
+  };
+}
+
+export function patchMerchantRolePermissionConfigs(
+  current: MerchantRolePermissionConfigs,
+  system: MerchantRolePermissionSystem,
+  value: Partial<MerchantRolePermissionState>,
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  const currentSystemState = current[system];
+  const nextDataPermissionModuleScopes =
+    'dataPermissionModuleScopes' in value
+      ? normalizeMerchantRoleDataPermissionModuleScopes(
+          value.dataPermissionModuleScopes,
+          system,
+          scope
+        )
+      : currentSystemState.dataPermissionModuleScopes;
+  const nextDataPermissions = cloneEnterpriseRoleDataPermissions(
+    'dataPermissions' in value ? value.dataPermissions : currentSystemState.dataPermissions,
+    scope,
+    'merchant'
+  );
+
+  return cloneMerchantRolePermissionConfigs(
+    {
+      merchant: current.merchant,
+      store: current.store,
+      [system]: {
+        dataPermissions: {
+          viewScope: getMerchantRoleResolvedDataViewScope(
+            {
+              dataPermissions: nextDataPermissions,
+              dataPermissionModuleScopes: nextDataPermissionModuleScopes,
+            },
+            system,
+            scope
+          ),
+        },
+        dataPermissionModuleScopes: nextDataPermissionModuleScopes,
+        functionPermissionKeys:
+          'functionPermissionKeys' in value
+            ? value.functionPermissionKeys
+            : currentSystemState.functionPermissionKeys,
+      },
+    },
+    scope,
+    cloneEnterpriseRoleDataPermissions(undefined, scope, 'merchant'),
+    [],
+    {
+      fillDataPermissionModuleFallback: false,
+    }
+  );
+}
+
+export function areMerchantRolePermissionConfigsEqual(
+  left: MerchantRolePermissionConfigs,
+  right: MerchantRolePermissionConfigs,
+  scope: EnterpriseRoleScope = 'headquarter'
+) {
+  return (['merchant', 'store'] as MerchantRolePermissionSystem[]).every((system) =>
+    areEnterpriseRolePermissionStatesEqual(left[system], right[system], scope, 'merchant') &&
+    JSON.stringify(left[system].dataPermissionModuleScopes) ===
+      JSON.stringify(right[system].dataPermissionModuleScopes)
+  );
+}
+
+export function getMerchantRolePermissionConfig(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >,
+  system: MerchantRolePermissionSystem
+) {
+  const configs = cloneMerchantRolePermissionConfigs(
+    role.merchantPermissionConfigs,
+    role.scope,
+    cloneEnterpriseRoleDataPermissions(role.dataPermissions, role.scope, 'merchant'),
+    role.functionPermissionKeys,
+    {
+      fillDataPermissionModuleFallback: true,
+    }
+  );
+
+  return configs[system];
+}
+
+export function getMerchantRolePermissionConfigs(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >
+) {
+  return cloneMerchantRolePermissionConfigs(
+    role.merchantPermissionConfigs,
+    role.scope,
+    cloneEnterpriseRoleDataPermissions(role.dataPermissions, role.scope, 'merchant'),
+    role.functionPermissionKeys,
+    {
+      fillDataPermissionModuleFallback: true,
+    }
+  );
+}
+
+export function getMerchantRolePermissionTitlesBySystem(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >,
+  system: MerchantRolePermissionSystem
+) {
+  return getEnterpriseRolePermissionTitles(
+    getMerchantRolePermissionConfig(role, system).functionPermissionKeys,
+    role.scope,
+    'merchant'
+  );
+}
+
+export function getMerchantRoleDataPermissionSummaryBySystem(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >,
+  system: MerchantRolePermissionSystem
+) {
+  const permissionConfig = getMerchantRolePermissionConfig(role, system);
+  const viewScope = getMerchantRoleResolvedDataViewScope(
+    permissionConfig,
+    system,
+    role.scope
+  );
+
+  return {
+    label: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP[viewScope],
+    description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP[viewScope],
+  };
+}
+
+export function hasMerchantRoleConfiguredDataPermissions(
+  permissionConfig: Pick<MerchantRolePermissionState, 'dataPermissionModuleScopes'>
+) {
+  return Object.values(permissionConfig.dataPermissionModuleScopes).some(Boolean);
+}
+
+export function isMerchantRolePermissionSystemConfigured(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >,
+  system: MerchantRolePermissionSystem
+) {
+  const permissionConfig = getMerchantRolePermissionConfig(role, system);
+  return (
+    permissionConfig.functionPermissionKeys.length > 0 ||
+    hasMerchantRoleConfiguredDataPermissions(permissionConfig)
+  );
+}
+
+export function getMerchantRoleEnabledSystemNames(
+  role: Pick<
+    EnterpriseRoleItem,
+    'scope' | 'dataPermissions' | 'functionPermissionKeys' | 'merchantPermissionConfigs'
+  >
+) {
+  return MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS.reduce<string[]>((result, option) => {
+    if (isMerchantRolePermissionSystemConfigured(role, option.value)) {
+      result.push(option.label);
+    }
+
+    return result;
+  }, []);
+}
+
+export function buildEnterpriseRoleCopyDraft(
+  role: EnterpriseRoleItem,
+  copySuffix = '-副本'
+) {
+  return {
+    scope: role.scope,
+    name: `${role.name}${copySuffix}`,
+    description: role.description,
+    dataPermissions: cloneEnterpriseRoleDataPermissions(
+      role.dataPermissions,
+      role.scope,
+      role.merchantPermissionConfigs ? 'merchant' : 'default'
+    ),
+    functionPermissionKeys: [...role.functionPermissionKeys],
+    merchantPermissionConfigs: role.merchantPermissionConfigs
+      ? cloneMerchantRolePermissionConfigs(
+          role.merchantPermissionConfigs,
+          role.scope,
+          cloneEnterpriseRoleDataPermissions(role.dataPermissions, role.scope, 'merchant'),
+          role.functionPermissionKeys,
+          {
+            fillDataPermissionModuleFallback: true,
+          }
+        )
+      : undefined,
+  };
+}
+
 export function getMerchantRoleSystemNames(
   keys: string[],
   scope: EnterpriseRoleScope = 'headquarter'
@@ -1030,6 +1509,10 @@ function normalizeReferenceRoleId(value: unknown) {
   return typeof value === 'string' && value ? value : undefined;
 }
 
+function normalizeRoleUpdatedBy(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : '系统初始化';
+}
+
 function normalizeEnterpriseRoleItem(
   item: Partial<EnterpriseRoleItem>,
   index: number
@@ -1047,14 +1530,37 @@ function normalizeEnterpriseRoleItem(
     ? item.functionPermissionKeys.filter((k): k is string => typeof k === 'string')
     : [];
   const enterpriseKeySet = ENTERPRISE_ROLE_PERMISSION_KEY_SET_BY_SCOPE[scope];
+  const hasMerchantPermissionConfigs =
+    Boolean(item.merchantPermissionConfigs?.merchant) ||
+    Boolean(item.merchantPermissionConfigs?.store);
   const hasMerchantOnlyKeys =
     scope !== 'store' &&
     rawPermissionKeys.some(
       (k) => MERCHANT_ROLE_PERMISSION_KEY_SET.has(k) && !enterpriseKeySet.has(k)
     );
-  const permissionMode: EnterpriseRolePermissionMode = hasMerchantOnlyKeys
-    ? 'merchant'
-    : 'default';
+  const permissionMode: EnterpriseRolePermissionMode =
+    hasMerchantPermissionConfigs || hasMerchantOnlyKeys ? 'merchant' : 'default';
+  const normalizedDataPermissions = cloneEnterpriseRoleDataPermissions(
+    item.dataPermissions,
+    scope,
+    permissionMode
+  );
+  const merchantPermissionConfigs =
+    permissionMode === 'merchant'
+      ? cloneMerchantRolePermissionConfigs(
+          item.merchantPermissionConfigs,
+          scope,
+          normalizedDataPermissions,
+          rawPermissionKeys,
+          {
+            fillDataPermissionModuleFallback: true,
+          }
+        )
+      : undefined;
+  const legacyPermissionState =
+    merchantPermissionConfigs
+      ? getMerchantRoleLegacyPermissionState(merchantPermissionConfigs, scope)
+      : undefined;
 
   return {
     id: item.id || `enterprise_role_${index + 1}`,
@@ -1064,13 +1570,14 @@ function normalizeEnterpriseRoleItem(
     employeeCount:
       Number.isFinite(employeeCount) && employeeCount > 0 ? employeeCount : 0,
     isDefault: Boolean(item.isDefault),
+    updatedBy: normalizeRoleUpdatedBy(item.updatedBy),
     referenceRoleId: normalizeReferenceRoleId(item.referenceRoleId),
-    dataPermissions: cloneEnterpriseRoleDataPermissions(item.dataPermissions, scope, permissionMode),
-    functionPermissionKeys: normalizeEnterpriseRolePermissionKeys(
-      rawPermissionKeys,
-      scope,
-      permissionMode
-    ),
+    dataPermissions:
+      legacyPermissionState?.dataPermissions || normalizedDataPermissions,
+    functionPermissionKeys:
+      legacyPermissionState?.functionPermissionKeys ||
+      normalizeEnterpriseRolePermissionKeys(rawPermissionKeys, scope, permissionMode),
+    merchantPermissionConfigs,
     createdAt,
     updatedAt:
       typeof item.updatedAt === 'string' && item.updatedAt ? item.updatedAt : createdAt,

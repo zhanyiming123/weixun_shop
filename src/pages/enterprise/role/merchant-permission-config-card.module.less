@@ -1,0 +1,227 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+  border-right: 1px solid var(--color-border-2);
+  background: #fff;
+}
+
+.sidebarTitle {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.systemMenu {
+  border: 0;
+  background: transparent;
+
+  :global(.arco-menu-inner) {
+    padding: 0;
+  }
+
+  :global(.arco-menu-item) {
+    height: 48px;
+    margin-bottom: 8px;
+    padding: 0 16px;
+    color: var(--color-text-2);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 48px;
+    border-radius: 8px;
+  }
+
+  :global(.arco-menu-item:hover) {
+    background: var(--color-fill-1);
+  }
+
+  :global(.arco-menu-selected),
+  :global(.arco-menu-selected:hover),
+  :global(.arco-menu-item.arco-menu-selected) {
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+    background: var(--color-fill-2);
+  }
+}
+
+.systemMenuLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.systemHint {
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.content {
+  min-width: 0;
+  padding: 20px 24px 24px;
+}
+
+.tabs {
+  :global(.arco-tabs-header) {
+    margin-bottom: 16px;
+  }
+}
+
+.treePanel,
+.dataPanel {
+  min-height: 420px;
+}
+
+.treePanel {
+  overflow: auto;
+  padding-right: 8px;
+
+  :global(.arco-tree-node) {
+    color: #111827;
+  }
+
+  :global(.arco-tree-node-title) {
+    color: #111827;
+    font-weight: 500;
+  }
+
+  :global(.arco-checkbox-label) {
+    color: #111827;
+  }
+
+  :global(.arco-tree-node-switcher) {
+    color: #111827;
+  }
+}
+
+.permissionNodeTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.permissionNodeIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-3);
+}
+
+.treePanelReadonly {
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.dataPanel {
+  min-height: 420px;
+}
+
+.viewScopeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.viewScopeOptionContent {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.viewScopeTitle {
+  color: var(--color-text-1);
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.viewScopeDescription {
+  color: var(--color-text-2);
+  line-height: 20px;
+  white-space: normal;
+}
+
+.helpText {
+  color: var(--color-text-3);
+  line-height: 20px;
+}
+
+.dataTable {
+  :global(.arco-table-th) {
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  :global(.arco-table-cell) {
+    vertical-align: middle;
+  }
+}
+
+.scopeColumnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.moduleName {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.moduleDescription {
+  color: var(--color-text-2);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.scopeSelect {
+  width: 100%;
+  min-width: 180px;
+
+  :global(.arco-select-view) {
+    font-size: 14px;
+  }
+}
+
+.dataEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border-2);
+  }
+
+  .treePanel,
+  .dataPanel {
+    min-height: 300px;
+  }
+
+  .moduleName,
+  .moduleDescription,
+  .scopeSelect :global(.arco-select-view) {
+    font-size: 14px;
+    line-height: 22px;
+  }
+}

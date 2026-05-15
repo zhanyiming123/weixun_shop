@@ -3,6 +3,8 @@ import {
   filterMerchantRoleItems,
   getMerchantRoleCreateScope,
   getMerchantRoleListTabPath,
+  getMerchantRoleScopeByType,
+  getMerchantRoleTypeByScope,
   normalizeMerchantRoleTab,
 } from './tab-config';
 
@@ -51,6 +53,18 @@ describe('merchant role tab config', () => {
           isDefault: true,
           dataPermissions: { viewScope: 'department' },
           functionPermissionKeys: [],
+          merchantPermissionConfigs: {
+            merchant: {
+              dataPermissions: { viewScope: 'department' },
+              dataPermissionModuleScopes: {},
+              functionPermissionKeys: ['merchant-system.permission'],
+            },
+            store: {
+              dataPermissions: { viewScope: 'department' },
+              dataPermissionModuleScopes: {},
+              functionPermissionKeys: [],
+            },
+          },
           createdAt: '2026-04-08 11:00:00',
           updatedAt: '2026-04-08 11:00:00',
         },
@@ -110,6 +124,10 @@ describe('merchant role tab config', () => {
   it('returns the correct create scope and tab path', () => {
     expect(getMerchantRoleCreateScope('merchant')).toBe('headquarter');
     expect(getMerchantRoleCreateScope('store')).toBe('store');
+    expect(getMerchantRoleTypeByScope('headquarter')).toBe('merchant');
+    expect(getMerchantRoleTypeByScope('store')).toBe('store');
+    expect(getMerchantRoleScopeByType('merchant')).toBe('headquarter');
+    expect(getMerchantRoleScopeByType('store')).toBe('store');
     expect(getMerchantRoleListTabPath('/merchant/role', 'store')).toBe(
       '/merchant/role?tab=store'
     );
