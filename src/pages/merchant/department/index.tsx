@@ -1693,8 +1693,8 @@ function MerchantDepartmentPage() {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item field="role" label="商户角色">
-            <Select allowClear placeholder="请选择商户角色">
+          <Form.Item field="role" label="角色">
+            <Select allowClear placeholder="请选择角色">
               {merchantRoleOptions.map((role) => (
                 <Option key={role} value={role}>
                   {role}
