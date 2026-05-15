@@ -1,13 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Button,
-  Dropdown,
   Empty,
   Menu,
   Select,
   Table,
   Tabs,
   Tag,
+  Trigger,
   Typography,
   Tree,
 } from '@arco-design/web-react';
@@ -149,6 +149,10 @@ function MerchantPermissionConfigCard({
     createDefaultDataPermissionSystems()
   );
   const currentPermissionConfig = permissionConfigs[selectedSystem];
+  const [batchSettingVisible, setBatchSettingVisible] = useState(false);
+  const [batchScopeValue, setBatchScopeValue] = useState<
+    EnterpriseRoleDataViewScope | undefined
+  >();
   const permissionTree = getMerchantRolePermissionTree(selectedSystem);
   const treeData = useMemo(() => decoratePermissionTree(permissionTree), [permissionTree]);
   const defaultExpandedKeys = getMerchantRolePermissionRootKeys(selectedSystem);
@@ -166,7 +170,7 @@ function MerchantPermissionConfigCard({
     currentPermissionConfig.functionPermissionKeys.length > 0 ||
     hasMerchantRoleConfiguredDataPermissions(currentPermissionConfig);
 
-  function handleBatchScopeSelect(value?: EnterpriseRoleDataViewScope) {
+  function handleBatchScopeApply(value?: EnterpriseRoleDataViewScope) {
     if (!onBatchDataViewScopeChange) {
       return;
     }
@@ -184,17 +188,44 @@ function MerchantPermissionConfigCard({
     onBatchDataViewScopeChange(selectedSystem, nextModuleScopes);
   }
 
-  const batchScopeMenu = (
-    <Menu
-      onClickMenuItem={(key) =>
-        handleBatchScopeSelect((key || undefined) as EnterpriseRoleDataViewScope | undefined)
-      }
-    >
-      <MenuItem key="">清空设置</MenuItem>
-      {dataViewScopeOptions.map((option) => (
-        <MenuItem key={option.value}>{option.label}</MenuItem>
-      ))}
-    </Menu>
+  const batchSettingContent = (
+    <div className={styles.batchSettingCard}>
+      <Select
+        allowClear
+        className={styles.batchSettingSelect}
+        placeholder="请选择数据范围"
+        value={batchScopeValue}
+        onChange={(value) =>
+          setBatchScopeValue(value as EnterpriseRoleDataViewScope | undefined)
+        }
+      >
+        {dataViewScopeOptions.map((option) => (
+          <Option key={`batch-${option.value}`} value={option.value}>
+            {option.label}
+          </Option>
+        ))}
+      </Select>
+      <div className={styles.batchSettingActions}>
+        <Button
+          size="small"
+          onClick={() => {
+            setBatchScopeValue(undefined);
+          }}
+        >
+          清空
+        </Button>
+        <Button
+          size="small"
+          type="primary"
+          onClick={() => {
+            handleBatchScopeApply(batchScopeValue);
+            setBatchSettingVisible(false);
+          }}
+        >
+          应用
+        </Button>
+      </div>
+    </div>
   );
 
   const dataColumns = [
@@ -215,11 +246,29 @@ function MerchantPermissionConfigCard({
       title: (
         <div className={styles.scopeColumnHeader}>
           <span>数据范围</span>
-          <Dropdown droplist={batchScopeMenu} disabled={readOnly || !dataPermissionModules.length}>
-            <Button size="mini" type="text" disabled={readOnly || !dataPermissionModules.length}>
+          <Trigger
+            clickToClose={false}
+            popup={() => batchSettingContent}
+            popupAlign={{ top: 8 }}
+            popupVisible={batchSettingVisible}
+            position="bl"
+            trigger="click"
+            unmountOnExit={false}
+            onVisibleChange={(visible) => {
+              setBatchSettingVisible(visible);
+              if (visible) {
+                setBatchScopeValue(undefined);
+              }
+            }}
+          >
+            <Button
+              size="mini"
+              type="text"
+              disabled={readOnly || !dataPermissionModules.length}
+            >
               批量设置
             </Button>
-          </Dropdown>
+          </Trigger>
         </div>
       ),
       dataIndex: 'id',
