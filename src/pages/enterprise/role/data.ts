@@ -130,20 +130,9 @@ export const MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS: EnterpriseRoleDataViewScopeO
       description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self,
     },
     {
-      label: '本人以及跨部门人员',
-      value: 'self_cross_department',
-      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.self_cross_department,
-    },
-    {
       label: '本部门(小组)',
       value: 'department',
       description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department,
-    },
-    {
-      label: '本部门(小组)以及跨部门人员',
-      value: 'department_cross_department',
-      description:
-        ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department_cross_department,
     },
     {
       label: '全量数据',
