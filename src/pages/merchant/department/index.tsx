@@ -1117,16 +1117,6 @@ function MerchantDepartmentPage() {
         roleConfigDraft.merchantRoleConfig.merchantRoleIds
       ),
     };
-    const hasMerchantStoreScope =
-      normalizedMerchantRoleConfig.storeScopeIds.length > 0;
-    const hasMerchantRole =
-      normalizedMerchantRoleConfig.merchantRoleIds.length > 0;
-
-    if (hasMerchantStoreScope !== hasMerchantRole) {
-      setActiveRoleConfigTab('merchant');
-      Message.error('请同时完成店铺范围和电商管理角色配置');
-      return;
-    }
 
     const storeRoleBindingValidationResult = validateMerchantStoreRoleBindings(
       roleConfigDraft.storeRoleBindings,
@@ -1135,7 +1125,7 @@ function MerchantDepartmentPage() {
 
     if (storeRoleBindingValidationResult.errorCode === 'incomplete') {
       setActiveRoleConfigTab('store');
-      Message.error('请完成每一条店铺角色配置后再保存');
+      Message.error('已选择所在店铺的配置请补充店铺角色');
       return;
     }
 

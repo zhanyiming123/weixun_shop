@@ -134,7 +134,7 @@ describe('merchant department role config helpers', () => {
     expect(qingshaoNode?.disabled).toBe(false);
   });
 
-  it('rejects incomplete store role bindings', () => {
+  it('rejects bindings with store selected but no store role', () => {
     expect(
       validateMerchantStoreRoleBindings(
         [
@@ -147,6 +147,22 @@ describe('merchant department role config helpers', () => {
         readProductStoreItems()
       ).errorCode
     ).toBe('incomplete');
+  });
+
+  it('allows empty bindings without blocking save', () => {
+    const result = validateMerchantStoreRoleBindings(
+      [
+        {
+          id: 'binding_1',
+          storeIds: [],
+          storeRoleIds: [],
+        },
+      ],
+      readProductStoreItems()
+    );
+
+    expect(result.errorCode).toBe(null);
+    expect(result.normalizedBindings).toEqual([]);
   });
 
   it('rejects duplicate stores across bindings', () => {

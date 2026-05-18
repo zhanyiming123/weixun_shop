@@ -207,13 +207,15 @@ export function validateMerchantStoreRoleBindings(
   bindings: MerchantStoreRoleBinding[],
   storeItems: ProductStoreItem[] = readProductStoreItems()
 ) {
-  const normalizedBindings = bindings.map((binding) => ({
-    id: binding.id,
-    storeIds: normalizeMerchantStoreScopeIds(binding.storeIds, storeItems),
-    storeRoleIds: normalizeMerchantRoleIds(binding.storeRoleIds),
-  }));
+  const normalizedBindings = bindings
+    .map((binding) => ({
+      id: binding.id,
+      storeIds: normalizeMerchantStoreScopeIds(binding.storeIds, storeItems),
+      storeRoleIds: normalizeMerchantRoleIds(binding.storeRoleIds),
+    }))
+    .filter((binding) => binding.storeIds.length > 0 || binding.storeRoleIds.length > 0);
   const hasIncompleteBinding = normalizedBindings.some(
-    (binding) => !binding.storeIds.length || !binding.storeRoleIds.length
+    (binding) => binding.storeIds.length > 0 && !binding.storeRoleIds.length
   );
 
   if (hasIncompleteBinding) {
