@@ -8,148 +8,118 @@ export type ProductCatalogAttributeNumberMode = 'integer' | 'decimalAllowed';
 
 export type ProductCatalogAttributeItem = {
   id: string;
-  catalogIds: string[];
   name: string;
+  description?: string;
   type: ProductCatalogAttributeType;
   values: string[];
   textMaxLength?: number;
   numberMode?: ProductCatalogAttributeNumberMode;
   numberPrecision?: number;
-  required: boolean;
   sort: number;
   enabled: boolean;
   createdAt: string;
 };
 
-const STORAGE_KEY = 'product-catalog-attribute-items';
+export const PRODUCT_CATALOG_ATTRIBUTE_TYPE_LABELS: Record<
+  ProductCatalogAttributeType,
+  string
+> = {
+  text: '文本',
+  number: '数字',
+  single: '单选',
+  multi: '多选',
+};
 
-const PLANNING_ATTRIBUTE_TEMPLATES: ProductCatalogAttributeItem[] = [
-  {
-    id: 'planning_destination',
-    catalogIds: ['planning'],
-    name: '留学方向',
-    type: 'single',
-    values: ['加拿大', '新加坡', '澳大利亚', '香港', '美国'],
-    required: true,
-    sort: 1,
-    enabled: true,
-    createdAt: '2026-04-06 17:00:00',
-  },
-  {
-    id: 'planning_level',
-    catalogIds: ['planning'],
-    name: '等级',
-    type: 'single',
-    values: ['博士', '研究生', '本科'],
-    required: true,
-    sort: 2,
-    enabled: true,
-    createdAt: '2026-04-06 17:01:00',
-  },
-  {
-    id: 'planning_grade',
-    catalogIds: ['planning'],
-    name: '报名年级',
-    type: 'single',
-    values: ['八上', '八下', '九上', '九下', '十下', '十二上', '大一上'],
-    required: true,
-    sort: 3,
-    enabled: true,
-    createdAt: '2026-04-06 17:02:00',
-  },
-  {
-    id: 'planning_semester_count',
-    catalogIds: ['planning'],
-    name: '服务学期数',
-    type: 'number',
-    values: [],
-    required: true,
-    sort: 4,
-    enabled: true,
-    createdAt: '2026-04-06 17:03:00',
-  },
-  {
-    id: 'planning_school_count',
-    catalogIds: ['planning'],
-    name: '申请院校数量',
-    type: 'number',
-    values: [],
-    required: true,
-    sort: 5,
-    enabled: true,
-    createdAt: '2026-04-06 17:04:00',
-  },
-  {
-    id: 'planning_product_tag',
-    catalogIds: ['planning'],
-    name: '商品标签',
-    type: 'single',
-    values: ['常规', '延期'],
-    required: false,
-    sort: 6,
-    enabled: true,
-    createdAt: '2026-04-06 17:05:00',
-  },
-  {
-    id: 'planning_business_tag',
-    catalogIds: ['planning'],
-    name: '业务标签',
-    type: 'single',
-    values: ['正价', '速通'],
-    required: true,
-    sort: 7,
-    enabled: true,
-    createdAt: '2026-04-06 17:06:00',
-  },
-];
+export const PRODUCT_CATALOG_ATTRIBUTE_TYPE_COLORS: Record<
+  ProductCatalogAttributeType,
+  string
+> = {
+  text: 'gray',
+  number: 'gold',
+  single: 'arcoblue',
+  multi: 'green',
+};
+
+const STORAGE_KEY = 'product-catalog-attribute-definition-items-v2';
 
 export const DEFAULT_PRODUCT_CATALOG_ATTRIBUTES: ProductCatalogAttributeItem[] = [
   {
-    id: 'A001',
-    catalogIds: ['international'],
+    id: 'attr_class_type',
     name: '班型',
     type: 'single',
     values: ['1v4 金牌班', '1v1 旗舰班', '标准直播班'],
-    required: true,
     sort: 1,
     enabled: true,
-    createdAt: '2024-02-01 10:00:00',
+    createdAt: '2026-05-18 10:00:00',
   },
   {
-    id: 'A002',
-    catalogIds: ['international'],
+    id: 'attr_delivery_mode',
     name: '授课形式',
     type: 'multi',
     values: ['录播', '直播', '面授'],
-    required: false,
     sort: 2,
     enabled: true,
-    createdAt: '2024-02-01 10:05:00',
+    createdAt: '2026-05-18 10:05:00',
   },
   {
-    id: 'A005',
-    catalogIds: ['thesis'],
-    name: '文书类型',
-    type: 'multi',
-    values: ['PS', 'RL', 'CV', 'Essay'],
-    required: true,
-    sort: 1,
+    id: 'attr_service_level',
+    name: '服务等级',
+    type: 'single',
+    values: ['标准版', '加急版', 'VIP 版'],
+    sort: 3,
     enabled: true,
-    createdAt: '2024-02-02 09:00:00',
+    createdAt: '2026-05-18 10:10:00',
   },
   {
-    id: 'A006',
-    catalogIds: ['service'],
+    id: 'attr_charge_mode',
     name: '收费模式',
     type: 'single',
     values: ['一次性收费', '分阶段收费'],
-    required: true,
-    sort: 1,
+    sort: 4,
     enabled: true,
-    createdAt: '2024-02-03 08:00:00',
+    createdAt: '2026-05-18 10:15:00',
   },
-  ...PLANNING_ATTRIBUTE_TEMPLATES,
+  {
+    id: 'attr_remark',
+    name: '备注',
+    type: 'text',
+    values: [],
+    textMaxLength: 50,
+    sort: 5,
+    enabled: true,
+    createdAt: '2026-05-18 10:20:00',
+  },
+  {
+    id: 'attr_semester_count',
+    name: '服务学期数',
+    type: 'number',
+    values: [],
+    numberMode: 'integer',
+    sort: 6,
+    enabled: true,
+    createdAt: '2026-05-18 10:25:00',
+  },
 ];
+
+export function mergeDefaultProductCatalogAttributes(
+  attributes: ProductCatalogAttributeItem[] = [],
+  defaults: ProductCatalogAttributeItem[] = DEFAULT_PRODUCT_CATALOG_ATTRIBUTES
+) {
+  if (!Array.isArray(attributes) || !attributes.length) {
+    return defaults;
+  }
+
+  const existingIds = new Set(
+    attributes
+      .filter((item) => item && typeof item.id === 'string' && item.id.trim())
+      .map((item) => item.id.trim())
+  );
+
+  return [
+    ...attributes,
+    ...defaults.filter((item) => !existingIds.has(item.id)),
+  ];
+}
 
 function normalizePositiveInteger(value: unknown) {
   if (
@@ -177,14 +147,43 @@ function normalizeNonNegativeInteger(value: unknown) {
   return undefined;
 }
 
+function uniqueTrimmedValues(values: unknown) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seenValues = new Set<string>();
+
+  return values.reduce<string[]>((result, item) => {
+    if (typeof item !== 'string') {
+      return result;
+    }
+
+    const value = item.trim();
+
+    if (!value || seenValues.has(value)) {
+      return result;
+    }
+
+    seenValues.add(value);
+    return [...result, value];
+  }, []);
+}
+
 function normalizeAttributeConstraints(
   item: ProductCatalogAttributeItem
 ): Pick<
   ProductCatalogAttributeItem,
-  'textMaxLength' | 'numberMode' | 'numberPrecision'
+  'description' | 'textMaxLength' | 'numberMode' | 'numberPrecision'
 > {
+  const description =
+    typeof item.description === 'string' && item.description.trim()
+      ? item.description.trim()
+      : undefined;
+
   if (item.type === 'text') {
     return {
+      description,
       textMaxLength: normalizePositiveInteger(item.textMaxLength),
       numberMode: undefined,
       numberPrecision: undefined,
@@ -196,6 +195,7 @@ function normalizeAttributeConstraints(
       item.numberMode === 'decimalAllowed' ? 'decimalAllowed' : 'integer';
 
     return {
+      description,
       textMaxLength: undefined,
       numberMode,
       numberPrecision:
@@ -206,13 +206,16 @@ function normalizeAttributeConstraints(
   }
 
   return {
+    description,
     textMaxLength: undefined,
     numberMode: undefined,
     numberPrecision: undefined,
   };
 }
 
-function normalizeProductCatalogAttributeItem(item: ProductCatalogAttributeItem) {
+function normalizeProductCatalogAttributeItem(
+  item: ProductCatalogAttributeItem
+): ProductCatalogAttributeItem {
   return {
     ...item,
     ...normalizeAttributeConstraints(item),
@@ -222,75 +225,48 @@ function normalizeProductCatalogAttributeItem(item: ProductCatalogAttributeItem)
 export function normalizeProductCatalogAttributes(
   attributes: ProductCatalogAttributeItem[] = DEFAULT_PRODUCT_CATALOG_ATTRIBUTES
 ) {
-  const templateIds = new Set(PLANNING_ATTRIBUTE_TEMPLATES.map((item) => item.id));
-  const templateNames = new Set(PLANNING_ATTRIBUTE_TEMPLATES.map((item) => item.name));
-
-  const nextAttributes = attributes
-    .filter(Boolean)
-    .filter((item) => item.id !== 'A003')
+  return attributes
+    .filter(
+      (item) =>
+        Boolean(item) &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string'
+    )
     .map((item) => {
-      if (item.id === 'A004') {
-        const nextCatalogIds = item.catalogIds.filter((id) => id !== 'planning');
-        return {
-          ...item,
-          catalogIds: nextCatalogIds,
-        };
-      }
-
-      return item;
-    })
-    .filter((item) => item.id !== 'A004' || item.catalogIds.length)
-    .filter((item) => {
-      if (templateIds.has(item.id)) {
-        return false;
-      }
-
-      if (item.catalogIds.includes('planning') && templateNames.has(item.name)) {
-        return false;
-      }
-
-      return true;
-    });
-
-  const matchedPlanningItems = new Map<string, ProductCatalogAttributeItem>();
-
-  attributes.forEach((item) => {
-    if (templateIds.has(item.id)) {
-      matchedPlanningItems.set(item.id, item);
-      return;
-    }
-
-    if (item.catalogIds.includes('planning') && templateNames.has(item.name)) {
-      matchedPlanningItems.set(item.name, item);
-    }
-  });
-
-  return [
-    ...nextAttributes,
-    ...PLANNING_ATTRIBUTE_TEMPLATES.map((template) => {
-      const matched =
-        matchedPlanningItems.get(template.id) || matchedPlanningItems.get(template.name);
+      const type: ProductCatalogAttributeType =
+        item.type === 'number' ||
+        item.type === 'single' ||
+        item.type === 'multi'
+          ? item.type
+          : 'text';
+      const normalizedValues =
+        type === 'single' || type === 'multi' ? uniqueTrimmedValues(item.values) : [];
 
       return normalizeProductCatalogAttributeItem({
-        ...template,
-        enabled: matched?.enabled ?? template.enabled,
-        createdAt: matched?.createdAt ?? template.createdAt,
-        textMaxLength: matched?.textMaxLength,
-        numberMode: matched?.numberMode,
-        numberPrecision: matched?.numberPrecision,
+        id: item.id.trim(),
+        name: item.name.trim(),
+        description: item.description,
+        type,
+        values: normalizedValues,
+        textMaxLength: item.textMaxLength,
+        numberMode: item.numberMode,
+        numberPrecision: item.numberPrecision,
+        sort: normalizePositiveInteger(item.sort) || 1,
+        enabled: item.enabled !== false,
+        createdAt: item.createdAt || '',
       });
-    }),
-  ]
-    .map((item) => normalizeProductCatalogAttributeItem(item))
-    .sort((a, b) => {
-      const leftPrimaryCatalogId = a.catalogIds[0] || '';
-      const rightPrimaryCatalogId = b.catalogIds[0] || '';
-
-      if (leftPrimaryCatalogId !== rightPrimaryCatalogId) {
-        return leftPrimaryCatalogId.localeCompare(rightPrimaryCatalogId);
+    })
+    .filter((item) => item.id && item.name)
+    .sort((left, right) => {
+      if (left.sort !== right.sort) {
+        return left.sort - right.sort;
       }
 
-      return a.sort - b.sort;
+      if (left.createdAt !== right.createdAt) {
+        return left.createdAt.localeCompare(right.createdAt);
+      }
+
+      return left.name.localeCompare(right.name, 'zh-Hans-CN');
     });
 }
 
@@ -313,12 +289,14 @@ export function getProductCatalogAttributeValueSummary(
     return '数字输入 / 整数';
   }
 
-  return '';
+  return item.values.length ? `${item.values.length} 个枚举值` : '';
 }
 
 export function readProductCatalogAttributes() {
   const stored = readPersistentValue(STORAGE_KEY, DEFAULT_PRODUCT_CATALOG_ATTRIBUTES);
-  const normalized = normalizeProductCatalogAttributes(stored);
+  const normalized = normalizeProductCatalogAttributes(
+    mergeDefaultProductCatalogAttributes(stored)
+  );
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
     writePersistentValue(STORAGE_KEY, normalized);
@@ -331,15 +309,16 @@ export function useProductCatalogAttributes() {
   return usePersistentState(STORAGE_KEY, readProductCatalogAttributes());
 }
 
-export function getEnabledAttributesByCatalogId(
-  attributes: ProductCatalogAttributeItem[],
-  catalogId?: string
+export function getEnabledProductCatalogAttributes(
+  attributes: ProductCatalogAttributeItem[]
 ) {
-  if (!catalogId) {
-    return [];
-  }
-
   return attributes
-    .filter((item) => item.enabled && item.catalogIds.includes(catalogId))
-    .sort((a, b) => a.sort - b.sort);
+    .filter((item) => item.enabled)
+    .sort((left, right) => {
+      if (left.sort !== right.sort) {
+        return left.sort - right.sort;
+      }
+
+      return left.name.localeCompare(right.name, 'zh-Hans-CN');
+    });
 }

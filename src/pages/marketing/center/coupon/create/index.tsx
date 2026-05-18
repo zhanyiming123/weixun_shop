@@ -54,10 +54,14 @@ import {
   readProductCatalogItems,
 } from '@/pages/product/catalog/data';
 import {
-  getEnabledAttributesByCatalogId,
   ProductCatalogAttributeItem,
   readProductCatalogAttributes,
 } from '@/pages/product/attribute/data';
+import {
+  buildProductCatalogAttributesFromTemplate,
+  getEnabledProductCatalogAttributeTemplateByCatalogId,
+  readProductCatalogAttributeTemplates,
+} from '@/pages/product/attribute-template/data';
 import {
   buildProductOwnershipCascaderOptions,
   buildProductOwnershipLeafItems,
@@ -242,7 +246,8 @@ function createConditionCardState(
 function buildConditionSpecOptions(
   catalogPath: string[],
   catalogLeafItems: ProductCatalogLeafItem[],
-  catalogAttributes: ProductCatalogAttributeItem[]
+  catalogAttributes: ProductCatalogAttributeItem[],
+  catalogAttributeTemplates: ReturnType<typeof readProductCatalogAttributeTemplates>
 ): ConditionSpecOption[] {
   const matchedCatalogLeaves = catalogLeafItems.filter((item) =>
     isPathPrefix(catalogPath, item.path)
@@ -255,7 +260,13 @@ function buildConditionSpecOptions(
   const shouldAppendCatalogLabel = matchedCatalogLeaves.length > 1;
 
   return matchedCatalogLeaves.flatMap((catalogItem) =>
-    getEnabledAttributesByCatalogId(catalogAttributes, catalogItem.id)
+    buildProductCatalogAttributesFromTemplate(
+      getEnabledProductCatalogAttributeTemplateByCatalogId(
+        catalogAttributeTemplates,
+        catalogItem.id
+      ),
+      catalogAttributes
+    )
       .filter(
         (attribute) =>
           (attribute.type === 'single' || attribute.type === 'multi') &&
@@ -324,6 +335,10 @@ export function CouponFormPage({
     [catalogItems]
   );
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const catalogAttributeTemplates = useMemo(
+    () => readProductCatalogAttributeTemplates(catalogAttributes),
+    [catalogAttributes]
+  );
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const storeItems = useMemo(() => readProductStoreItems(), []);
   const ownershipLeafItems = useMemo(
@@ -370,14 +385,15 @@ export function CouponFormPage({
           labelPath,
           specOptions: card.catalogPath.length
             ? buildConditionSpecOptions(
-              card.catalogPath,
-              couponCategories,
-              catalogAttributes
-            )
+                card.catalogPath,
+                couponCategories,
+                catalogAttributes,
+                catalogAttributeTemplates
+              )
             : [],
         };
       }),
-    [catalogAttributes, conditionCards, couponCategories]
+    [catalogAttributeTemplates, catalogAttributes, conditionCards, couponCategories]
   );
   const selectedConditionCatalogPaths = useMemo(
     () =>
@@ -668,7 +684,12 @@ export function CouponFormPage({
         specValue: card.specValue ? [...card.specValue] : undefined,
       },
       nextCatalogPath.length
-        ? buildConditionSpecOptions(nextCatalogPath, couponCategories, catalogAttributes)
+        ? buildConditionSpecOptions(
+            nextCatalogPath,
+            couponCategories,
+            catalogAttributes,
+            catalogAttributeTemplates
+          )
         : []
     );
     const sanitizedSpecValues = normalizeCouponConditionSpecValues(
@@ -782,7 +803,8 @@ export function CouponFormPage({
         const specOptions = buildConditionSpecOptions(
           card.catalogPath,
           couponCategories,
-          catalogAttributes
+          catalogAttributes,
+          catalogAttributeTemplates
         );
         const matchedSpecOption = specOptions.find((item) => item.value === value);
 
@@ -820,7 +842,8 @@ export function CouponFormPage({
         const specOptions = buildConditionSpecOptions(
           card.catalogPath,
           couponCategories,
-          catalogAttributes
+          catalogAttributes,
+          catalogAttributeTemplates
         );
         const matchedSpecOption = specOptions.find(
           (item) => item.value === card.specAttributeId

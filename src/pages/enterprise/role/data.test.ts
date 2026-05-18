@@ -110,7 +110,8 @@ describe('merchant role permission tree', () => {
         children: [
           { key: 'product-config/category', title: '商品分类' },
           { key: 'product-config/catalog', title: '商品类目' },
-          { key: 'product-config/attribute', title: '类目属性' },
+          { key: 'product-config/attribute', title: '类目属性字段' },
+          { key: 'product-config/attribute-template', title: '类目属性模板' },
           { key: 'product-config/spec', title: '商品规格' },
         ],
       },

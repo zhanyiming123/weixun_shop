@@ -82,10 +82,14 @@ import {
   readProductOwnershipItems,
 } from '../category/data';
 import {
-  ProductCatalogAttributeItem,
-  getEnabledAttributesByCatalogId,
   readProductCatalogAttributes,
 } from '../attribute/data';
+import {
+  buildProductCatalogAttributesFromTemplate,
+  getEnabledProductCatalogAttributeTemplateByCatalogId,
+  readProductCatalogAttributeTemplates,
+  type ProductCatalogTemplateResolvedAttribute,
+} from '../attribute-template/data';
 import {
   getEnabledSpecsByCatalogId,
   readProductCatalogSpecs,
@@ -159,6 +163,8 @@ import {
   type ProductSkuAttributeRow,
   type ProductSpecDimension,
 } from './spec';
+
+const { useForm } = Form;
 
 type CarouselImage = {
   uid: string;
@@ -823,7 +829,7 @@ function buildStoreChannelProductPoolConfigDraftMap(
 }
 
 function renderCatalogAttributeField(
-  attribute: ProductCatalogAttributeItem,
+  attribute: ProductCatalogTemplateResolvedAttribute,
   className: string,
   disabled = false
 ) {
@@ -883,7 +889,7 @@ function renderCatalogAttributeField(
   );
 }
 
-function getCatalogAttributeRules(attribute: ProductCatalogAttributeItem) {
+function getCatalogAttributeRules(attribute: ProductCatalogTemplateResolvedAttribute) {
   const rules: Array<Record<string, unknown>> = attribute.required
     ? [
         {
@@ -908,6 +914,7 @@ function getCatalogAttributeRules(attribute: ProductCatalogAttributeItem) {
 
 function ProductCreatePage() {
   const productService = useMemo(() => new ProductService(), []);
+  const [baseForm] = useForm();
   const history = useHistory();
   const location = useLocation<ProductCreateLocationState>();
   const currentOrganization = useSelector(
@@ -918,6 +925,10 @@ function ProductCreatePage() {
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const catalogAttributeTemplates = useMemo(
+    () => readProductCatalogAttributeTemplates(catalogAttributes),
+    [catalogAttributes]
+  );
   const catalogSpecs = useMemo(() => readProductCatalogSpecs(), []);
   const catalogSpecTemplates = useMemo(() => readProductCatalogSpecTemplates(), []);
   const storeItems = useMemo(() => readProductStoreItems(), []);
@@ -1293,6 +1304,7 @@ function ProductCreatePage() {
     const visibleStoreIdSet = new Set(scopedStoreItems.map((item) => item.id));
 
     if (!sourceProduct) {
+      clearCatalogAttributeDraftValues(currentCatalogAttributes);
       setProductCatalogId(undefined);
       setProductOwnershipId(undefined);
       setProductName('');
@@ -1340,6 +1352,7 @@ function ProductCreatePage() {
       return;
     }
 
+    clearCatalogAttributeDraftValues(currentCatalogAttributes);
     setProductCatalogId(sourceProduct.productCatalogId);
     setProductOwnershipId(sourceProduct.productOwnershipId);
     setProductName(
@@ -1776,6 +1789,21 @@ function ProductCreatePage() {
     setIndependentPriceRuleDraftMap({});
   }
 
+  function clearCatalogAttributeDraftValues(
+    attributes: Array<Pick<ProductCatalogTemplateResolvedAttribute, 'id'>>
+  ) {
+    if (!attributes.length) {
+      return;
+    }
+
+    baseForm.setFieldsValue(
+      attributes.reduce<Record<string, undefined>>((result, attribute) => {
+        result[`catalogAttributeValue_${attribute.id}`] = undefined;
+        return result;
+      }, {})
+    );
+  }
+
   function applyProductCatalogIdChange(nextCatalogId?: string) {
     const nextSelectedSpecIds =
       pageMode === 'create'
@@ -1784,6 +1812,7 @@ function ProductCreatePage() {
           )
         : [];
 
+    clearCatalogAttributeDraftValues(currentCatalogAttributes);
     setProductCatalogId(nextCatalogId);
     resetMultiSpecDraft();
     setSelectedCatalogSpecIds(nextSelectedSpecIds);
@@ -1795,10 +1824,19 @@ function ProductCreatePage() {
     const nextCatalogId = getProductCatalogIdFromPath(normalizePath(value), catalogItems);
 
     if (
-      (nextCatalogId || '') === (productCatalogId || '') ||
-      isEditMode ||
-      specMode !== 'multi'
+      (nextCatalogId || '') === (productCatalogId || '')
     ) {
+      setProductCatalogId(nextCatalogId);
+      return;
+    }
+
+    if (isEditMode) {
+      setProductCatalogId(nextCatalogId);
+      return;
+    }
+
+    if (specMode !== 'multi') {
+      clearCatalogAttributeDraftValues(currentCatalogAttributes);
       setProductCatalogId(nextCatalogId);
       return;
     }
@@ -3892,8 +3930,15 @@ function ProductCreatePage() {
   }
 
   const currentCatalogAttributes = useMemo(
-    () => getEnabledAttributesByCatalogId(catalogAttributes, productCatalogId),
-    [catalogAttributes, productCatalogId]
+    () =>
+      buildProductCatalogAttributesFromTemplate(
+        getEnabledProductCatalogAttributeTemplateByCatalogId(
+          catalogAttributeTemplates,
+          productCatalogId
+        ),
+        catalogAttributes
+      ),
+    [catalogAttributeTemplates, catalogAttributes, productCatalogId]
   );
   const storeChannelTargetStoreItems = useMemo(
     () =>
@@ -5299,7 +5344,7 @@ function ProductCreatePage() {
           </Typography.Title>
         </div>
 
-        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
+        <Form form={baseForm} className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
             <Form.Item label="商品类型">
               <Select className={styles.singleFieldControl} value="virtual" disabled>

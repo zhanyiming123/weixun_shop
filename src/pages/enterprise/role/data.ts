@@ -233,7 +233,11 @@ export const ENTERPRISE_ROLE_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
       {
         key: 'product/attribute',
-        title: '类目属性',
+        title: '类目属性字段',
+      },
+      {
+        key: 'product/attribute-template',
+        title: '类目属性模板',
       },
     ],
   },
@@ -487,7 +491,11 @@ const MERCHANT_ROLE_MERCHANT_PERMISSION_TREE: EnterpriseRolePermissionNode[] = [
       },
       {
         key: 'product-config/attribute',
-        title: '类目属性',
+        title: '类目属性字段',
+      },
+      {
+        key: 'product-config/attribute-template',
+        title: '类目属性模板',
       },
       {
         key: 'product-config/spec',
@@ -563,12 +571,14 @@ const ENTERPRISE_ROLE_PERMISSION_EXCLUDED_KEYS_BY_SCOPE: Partial<
     'product/category',
     'product/catalog',
     'product/attribute',
+    'product/attribute-template',
     'permission.enterprise-management',
   ],
   region: [
     'product/category',
     'product/catalog',
     'product/attribute',
+    'product/attribute-template',
     'permission.enterprise-management',
   ],
 };
@@ -750,6 +760,7 @@ const LEGACY_PERMISSION_KEY_TO_MERCHANT_KEYS: Record<string, string[]> = {
   'product/category': ['product-config/category'],
   'product/catalog': ['product-config/catalog'],
   'product/attribute': ['product-config/attribute'],
+  'product/attribute-template': ['product-config/attribute-template'],
   'product/spec': ['product-config/spec'],
   'permission.order-management': ['store-system.order'],
   'merchant-system.order': ['store-system.order'],
@@ -1586,6 +1597,7 @@ const MERCHANT_ROLE_ALL_PERMISSION_KEYS = [
   'product-config/category',
   'product-config/catalog',
   'product-config/attribute',
+  'product-config/attribute-template',
   'product-config/spec',
   'merchant-system.marketing',
   'merchant/marketing/center',
@@ -1609,6 +1621,7 @@ const MERCHANT_ROLE_PRODUCT_KEYS = [
   'product-config/category',
   'product-config/catalog',
   'product-config/attribute',
+  'product-config/attribute-template',
   'product-config/spec',
 ];
 const MERCHANT_ROLE_MARKETING_KEYS = [

@@ -80,10 +80,14 @@ import {
   readProductOwnershipItems,
 } from '../../category/data';
 import {
-  ProductCatalogAttributeItem,
-  getEnabledAttributesByCatalogId,
   readProductCatalogAttributes,
 } from '../../attribute/data';
+import {
+  buildProductCatalogAttributesFromTemplate,
+  getEnabledProductCatalogAttributeTemplateByCatalogId,
+  readProductCatalogAttributeTemplates,
+  type ProductCatalogTemplateResolvedAttribute,
+} from '../../attribute-template/data';
 import {
   DEFAULT_INVENTORY_UNIT,
   INVENTORY_UNIT_OPTIONS,
@@ -580,7 +584,7 @@ function buildStoreChannelProductPoolConfigDraftMap(
 }
 
 function renderCatalogAttributeField(
-  attribute: ProductCatalogAttributeItem,
+  attribute: ProductCatalogTemplateResolvedAttribute,
   className: string,
   disabled = false
 ) {
@@ -664,7 +668,7 @@ function getBundleCombinationPrice(
   }, 0);
 }
 
-function getCatalogAttributeRules(attribute: ProductCatalogAttributeItem) {
+function getCatalogAttributeRules(attribute: ProductCatalogTemplateResolvedAttribute) {
   const rules: Array<Record<string, unknown>> = attribute.required
     ? [
         {
@@ -699,6 +703,10 @@ function ProductCreatePage() {
   const catalogItems = useMemo(() => readProductCatalogItems(), []);
   const ownershipItems = useMemo(() => readProductOwnershipItems(), []);
   const catalogAttributes = useMemo(() => readProductCatalogAttributes(), []);
+  const catalogAttributeTemplates = useMemo(
+    () => readProductCatalogAttributeTemplates(catalogAttributes),
+    [catalogAttributes]
+  );
   const storeItems = useMemo(() => readProductStoreItems(), []);
   const visibleStoreIds = currentOrganization?.storeIds || EMPTY_STORE_IDS;
   const currentStoreId =
@@ -2782,8 +2790,15 @@ function ProductCreatePage() {
   }
 
   const currentCatalogAttributes = useMemo(
-    () => getEnabledAttributesByCatalogId(catalogAttributes, productCatalogId),
-    [catalogAttributes, productCatalogId]
+    () =>
+      buildProductCatalogAttributesFromTemplate(
+        getEnabledProductCatalogAttributeTemplateByCatalogId(
+          catalogAttributeTemplates,
+          productCatalogId
+        ),
+        catalogAttributes
+      ),
+    [catalogAttributeTemplates, catalogAttributes, productCatalogId]
   );
   const storeChannelTargetStoreItems = useMemo(
     () =>

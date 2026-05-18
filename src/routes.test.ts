@@ -53,4 +53,18 @@ describe('findFirstNavigableRouteKey', () => {
       organizationRoute?.children?.[0].children?.every((item) => item.ignore)
     ).toBe(true);
   });
+
+  it('adds the attribute template menu and keeps create/edit routes hidden under it', () => {
+    const productConfigRoute = routes.find((item) => item.key === 'product-config');
+    const attributeTemplateRoute = productConfigRoute?.children?.find(
+      (item) => item.key === 'product-config/attribute-template'
+    );
+
+    expect(attributeTemplateRoute?.name).toBe('menu.product.attributeTemplate');
+    expect(attributeTemplateRoute?.children?.map((item) => item.key)).toEqual([
+      'product/attribute-template/create',
+      'product/attribute-template/edit',
+    ]);
+    expect(attributeTemplateRoute?.children?.every((item) => item.ignore)).toBe(true);
+  });
 });

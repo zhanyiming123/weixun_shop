@@ -104,6 +104,33 @@ export const routes: IRoute[] = [
         visibleDemoIdentities: ['merchant_admin'],
       },
       {
+        name: 'menu.product.attributeTemplate',
+        key: 'product-config/attribute-template',
+        visibleScopes: ['headquarter', 'region', 'store'],
+        visibleSystems: ['merchant'],
+        visibleDemoIdentities: ['merchant_admin'],
+        children: [
+          {
+            name: 'menu.product.attributeTemplateCreate',
+            key: 'product/attribute-template/create',
+            ignore: true,
+            breadcrumb: false,
+            visibleScopes: ['headquarter', 'region', 'store'],
+            visibleSystems: ['merchant'],
+            visibleDemoIdentities: ['merchant_admin'],
+          },
+          {
+            name: 'menu.product.attributeTemplateEdit',
+            key: 'product/attribute-template/edit',
+            ignore: true,
+            breadcrumb: false,
+            visibleScopes: ['headquarter', 'region', 'store'],
+            visibleSystems: ['merchant'],
+            visibleDemoIdentities: ['merchant_admin'],
+          },
+        ],
+      },
+      {
         name: 'menu.product.spec',
         key: 'product-config/spec',
         visibleScopes: ['headquarter', 'region', 'store'],

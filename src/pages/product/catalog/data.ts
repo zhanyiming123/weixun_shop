@@ -266,3 +266,30 @@ export function getProductCatalogIdFromPath(
       item.path.every((value, index) => value === path[index])
   )?.id;
 }
+
+function isProductCatalogPathPrefix(path: string[], targetPath: string[]) {
+  return (
+    path.length > 0 &&
+    path.length <= targetPath.length &&
+    path.every((value, index) => value === targetPath[index])
+  );
+}
+
+export function expandProductCatalogPathsToLeafIds(
+  paths: string[][],
+  items: ProductCatalogConfigItem[] = DEFAULT_PRODUCT_CATALOG_ITEMS
+) {
+  if (!paths.length) {
+    return [];
+  }
+
+  const matchedLeafIdSet = new Set<string>();
+
+  buildProductCatalogLeafItems(items).forEach((leafItem) => {
+    if (paths.some((path) => isProductCatalogPathPrefix(path, leafItem.path))) {
+      matchedLeafIdSet.add(leafItem.id);
+    }
+  });
+
+  return Array.from(matchedLeafIdSet);
+}

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   Button,
-  Cascader,
   Card,
   Form,
   Input,
@@ -19,14 +18,9 @@ import {
 import { IconPlus } from '@arco-design/web-react/icon';
 import styles from './index.module.less';
 import {
-  buildProductCatalogCascaderOptions,
-  buildProductCatalogLeafItems,
-  getProductCatalogFullLabel,
-  getProductCatalogIdFromPath,
-  getProductCatalogPathById,
-  useProductCatalogItems,
-} from '../catalog/data';
-import {
+  getEnabledProductCatalogAttributes,
+  PRODUCT_CATALOG_ATTRIBUTE_TYPE_COLORS,
+  PRODUCT_CATALOG_ATTRIBUTE_TYPE_LABELS,
   ProductCatalogAttributeItem,
   ProductCatalogAttributeNumberMode,
   ProductCatalogAttributeType,
@@ -44,45 +38,10 @@ function now() {
   return new Date().toISOString().replace('T', ' ').slice(0, 19);
 }
 
-const TYPE_COLORS: Record<ProductCatalogAttributeType, string> = {
-  text: 'gray',
-  number: 'gold',
-  single: 'arcoblue',
-  multi: 'green',
-};
-
-const TYPE_LABELS: Record<ProductCatalogAttributeType, string> = {
-  text: '文本',
-  number: '数字',
-  single: '单选',
-  multi: '多选',
-};
-
-function normalizePath(value: (string | string[])[] | undefined): string[] {
-  if (!Array.isArray(value) || !value.length) {
-    return [];
-  }
-
-  const firstValue = value[0];
-  if (Array.isArray(firstValue)) {
-    return firstValue;
-  }
-
-  return value as string[];
-}
-
-function normalizePaths(
-  value: (string | string[])[] | string[][] | undefined
-): string[][] {
-  if (!Array.isArray(value) || !value.length) {
-    return [];
-  }
-
-  if (Array.isArray(value[0])) {
-    return value as string[][];
-  }
-
-  return [value as string[]];
+function getNextSortValue(attributes: ProductCatalogAttributeItem[]) {
+  return (
+    attributes.reduce((maxSort, item) => Math.max(maxSort, item.sort), 0) + 1
+  );
 }
 
 function getPositiveIntegerRule(message: string) {
@@ -132,17 +91,7 @@ function getNonNegativeIntegerRule(message: string) {
 }
 
 function AttributePage() {
-  const [catalogItems] = useProductCatalogItems();
   const [attributes, setAttributes] = useProductCatalogAttributes();
-  const catalogLeafItems = useMemo(
-    () => buildProductCatalogLeafItems(catalogItems),
-    [catalogItems]
-  );
-  const catalogCascaderOptions = useMemo(
-    () => buildProductCatalogCascaderOptions(catalogItems),
-    [catalogItems]
-  );
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>('');
   const [searchName, setSearchName] = useState('');
   const [filterEnabled, setFilterEnabled] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -154,29 +103,35 @@ function AttributePage() {
   const [formNumberMode, setFormNumberMode] =
     useState<ProductCatalogAttributeNumberMode>('integer');
 
-  const filteredData = useMemo(
-    () =>
-      attributes
-        .filter((item) => {
-          if (selectedCatalogId && !item.catalogIds.includes(selectedCatalogId)) {
-            return false;
-          }
-          if (searchName && !item.name.includes(searchName)) {
-            return false;
-          }
-          if (filterEnabled === 'true' && !item.enabled) {
-            return false;
-          }
-          if (filterEnabled === 'false' && item.enabled) {
-            return false;
-          }
-          return true;
-        })
-        .sort((a, b) => a.sort - b.sort),
-    [attributes, filterEnabled, searchName, selectedCatalogId]
+  const orderedAttributes = useMemo(
+    () => [
+      ...getEnabledProductCatalogAttributes(attributes),
+      ...attributes
+        .filter((item) => !item.enabled)
+        .sort((left, right) => left.sort - right.sort),
+    ],
+    [attributes]
   );
 
-  const selectedCatalog = catalogLeafItems.find((item) => item.id === selectedCatalogId);
+  const filteredData = useMemo(
+    () =>
+      orderedAttributes.filter((item) => {
+        if (searchName && !item.name.includes(searchName)) {
+          return false;
+        }
+
+        if (filterEnabled === 'true' && !item.enabled) {
+          return false;
+        }
+
+        if (filterEnabled === 'false' && item.enabled) {
+          return false;
+        }
+
+        return true;
+      }),
+    [filterEnabled, orderedAttributes, searchName]
+  );
 
   function openAddModal() {
     setEditingItem(null);
@@ -184,12 +139,8 @@ function AttributePage() {
     setFormNumberMode('integer');
     form.resetFields();
     form.setFieldsValue({
-      catalogIds: selectedCatalogId
-        ? [getProductCatalogPathById(selectedCatalogId, catalogItems)]
-        : [],
-      required: false,
-      sort: 1,
       enabled: true,
+      description: '',
       type: 'text',
       textMaxLength: undefined,
       numberMode: 'integer',
@@ -203,25 +154,16 @@ function AttributePage() {
     setFormType(record.type);
     setFormNumberMode(record.numberMode || 'integer');
     form.setFieldsValue({
-      catalogIds: record.catalogIds.map((id) =>
-        getProductCatalogPathById(id, catalogItems)
-      ),
       name: record.name,
+      description: record.description,
       type: record.type,
       values: record.values,
       textMaxLength: record.textMaxLength,
       numberMode: record.numberMode || 'integer',
       numberPrecision: record.numberPrecision,
-      required: record.required,
-      sort: record.sort,
       enabled: record.enabled,
     });
     setModalVisible(true);
-  }
-
-  function handleDelete(record: ProductCatalogAttributeItem) {
-    setAttributes((prev) => prev.filter((item) => item.id !== record.id));
-    Message.success('删除成功');
   }
 
   function handleToggleEnabled(record: ProductCatalogAttributeItem, checked: boolean) {
@@ -236,9 +178,6 @@ function AttributePage() {
   async function handleModalOk() {
     try {
       const values = await form.validate();
-      const catalogIds = normalizePaths(values.catalogIds)
-        .map((path) => getProductCatalogIdFromPath(path, catalogItems))
-        .filter(Boolean) as string[];
       const type = values.type as ProductCatalogAttributeType;
       const numberMode = values.numberMode as ProductCatalogAttributeNumberMode | undefined;
       const attributeValues =
@@ -266,15 +205,13 @@ function AttributePage() {
             item.id === editingItem.id
               ? {
                   ...item,
-                  catalogIds,
                   name: values.name,
+                  description: values.description?.trim() || undefined,
                   type,
                   values: attributeValues,
                   textMaxLength,
                   numberMode: normalizedNumberMode,
                   numberPrecision,
-                  required: values.required ?? false,
-                  sort: values.sort,
                   enabled: values.enabled ?? true,
                 }
               : item
@@ -286,20 +223,18 @@ function AttributePage() {
           ...prev,
           {
             id: generateId(),
-              catalogIds,
-              name: values.name,
-              type,
-              values: attributeValues,
-              textMaxLength,
-              numberMode: normalizedNumberMode,
-              numberPrecision,
-              required: values.required ?? false,
-              sort: values.sort,
-              enabled: values.enabled ?? true,
-              createdAt: now(),
-            },
+            name: values.name,
+            description: values.description?.trim() || undefined,
+            type,
+            values: attributeValues,
+            textMaxLength,
+            numberMode: normalizedNumberMode,
+            numberPrecision,
+            sort: getNextSortValue(prev),
+            enabled: values.enabled ?? true,
+            createdAt: now(),
+          },
         ]);
-        setSelectedCatalogId(catalogIds[0] || selectedCatalogId);
         Message.success('添加成功');
       }
 
@@ -313,35 +248,34 @@ function AttributePage() {
     {
       title: '属性名称',
       dataIndex: 'name',
-      width: 180,
+      width: 200,
       render: (value: string) => <Typography.Text bold>{value}</Typography.Text>,
     },
     {
-      title: '商品类目',
-      dataIndex: 'catalogIds',
+      title: '字段说明',
+      dataIndex: 'description',
       width: 260,
-      render: (catalogIds: string[]) => (
-        <div className={styles.valueList}>
-          {catalogIds.map((id) => (
-            <Tag key={id} size="small">
-              {getProductCatalogFullLabel(id, catalogItems)}
-            </Tag>
-          ))}
-        </div>
-      ),
+      render: (value: string | undefined) =>
+        value ? (
+          <Typography.Text type="secondary">{value}</Typography.Text>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '属性类型',
       dataIndex: 'type',
       width: 120,
       render: (value: ProductCatalogAttributeType) => (
-        <Tag color={TYPE_COLORS[value]}>{TYPE_LABELS[value]}</Tag>
+        <Tag color={PRODUCT_CATALOG_ATTRIBUTE_TYPE_COLORS[value]}>
+          {PRODUCT_CATALOG_ATTRIBUTE_TYPE_LABELS[value]}
+        </Tag>
       ),
     },
     {
-      title: '属性值',
+      title: '字段配置',
       dataIndex: 'values',
-      width: 300,
+      width: 360,
       render: (values: string[], record: ProductCatalogAttributeItem) => {
         if (record.type === 'text' || record.type === 'number') {
           return (
@@ -365,21 +299,6 @@ function AttributePage() {
           </div>
         );
       },
-    },
-    {
-      title: '是否必填',
-      dataIndex: 'required',
-      width: 100,
-      render: (value: boolean) => (
-        <Tag color={value ? 'red' : 'gray'}>{value ? '必填' : '选填'}</Tag>
-      ),
-    },
-    {
-      title: '排序',
-      dataIndex: 'sort',
-      width: 90,
-      sorter: (a: ProductCatalogAttributeItem, b: ProductCatalogAttributeItem) =>
-        a.sort - b.sort,
     },
     {
       title: '状态',
@@ -430,30 +349,11 @@ function AttributePage() {
       <Card className={styles.filterCard}>
         <div className={styles.filterRow}>
           <div className={styles.filterItem}>
-            <span className={styles.filterLabel}>商品类目</span>
-            <Cascader
-              allowClear
-              className={styles.catalogCascader}
-              options={catalogCascaderOptions}
-              placeholder="请选择商品类目"
-              value={
-                selectedCatalogId
-                  ? getProductCatalogPathById(selectedCatalogId, catalogItems)
-                  : undefined
-              }
-              onChange={(value) =>
-                setSelectedCatalogId(
-                  getProductCatalogIdFromPath(normalizePath(value), catalogItems) || ''
-                )
-              }
-            />
-          </div>
-          <div className={styles.filterItem}>
             <span className={styles.filterLabel}>属性名称</span>
             <Input
               allowClear
               placeholder="请输入属性名称"
-              style={{ width: 200 }}
+              style={{ width: 220 }}
               value={searchName}
               onChange={setSearchName}
             />
@@ -487,12 +387,7 @@ function AttributePage() {
 
       <Card className={styles.tableCard}>
         <div className={styles.toolbar}>
-          <div className={styles.toolbarLeft}>
-            <Typography.Text className={styles.categoryTitle}>
-              当前类目：
-              <Typography.Text bold>{selectedCatalog?.label || '全部类目'}</Typography.Text>
-            </Typography.Text>
-          </div>
+          <div className={styles.toolbarLeft} />
           <Button icon={<IconPlus />} type="primary" onClick={openAddModal}>
             添加属性
           </Button>
@@ -503,7 +398,7 @@ function AttributePage() {
           data={filteredData}
           noDataElement="暂无属性数据"
           pagination={{ pageSize: 10, showTotal: true }}
-          scroll={{ x: 1560 }}
+          scroll={{ x: 1430 }}
           tableLayoutFixed
         />
       </Card>
@@ -567,25 +462,19 @@ function AttributePage() {
           }}
         >
           <Form.Item
-            field="catalogIds"
-            label="选择类目"
-            rules={[{ required: true, message: '请选择类目' }]}
-            extra="支持多级级联与多选，一个属性可绑定多个商品类目"
-          >
-            <Cascader
-              mode="multiple"
-              allowClear
-              options={catalogCascaderOptions}
-              placeholder="请选择类目"
-              showSearch={{ retainInputValueWhileSelect: true }}
-            />
-          </Form.Item>
-          <Form.Item
             field="name"
             label="属性名称"
             rules={[{ required: true, message: '请输入属性名称' }]}
           >
             <Input placeholder="请输入属性名称" maxLength={20} showWordLimit />
+          </Form.Item>
+          <Form.Item field="description" label="字段说明">
+            <Input.TextArea
+              placeholder="请输入字段说明"
+              maxLength={100}
+              showWordLimit
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
           </Form.Item>
           <Form.Item
             field="type"
@@ -651,17 +540,6 @@ function AttributePage() {
               <InputTag placeholder="输入属性值后回车" allowClear />
             </Form.Item>
           )}
-          <Form.Item field="required" label="是否必填" initialValue={false}>
-            <Switch checkedText="必填" uncheckedText="选填" />
-          </Form.Item>
-          <Form.Item
-            field="sort"
-            label="排序"
-            initialValue={1}
-            rules={[{ required: true, message: '请输入排序值' }]}
-          >
-            <InputNumber min={1} max={999} placeholder="数值越小越靠前" style={{ width: '100%' }} />
-          </Form.Item>
           <Form.Item field="enabled" label="状态" initialValue={true}>
             <Switch checkedText="启用" uncheckedText="禁用" />
           </Form.Item>

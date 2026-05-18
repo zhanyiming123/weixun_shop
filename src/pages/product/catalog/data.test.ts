@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProductCatalogCascaderOptions,
   buildProductCatalogLeafItems,
+  expandProductCatalogPathsToLeafIds,
   getProductCatalogLeafById,
   normalizeProductCatalogItems,
   type ProductCatalogConfigItem,
@@ -118,5 +119,62 @@ describe('product catalog data helpers', () => {
       hasSkuSpec: true,
       enabled: false,
     });
+  });
+
+  it('expands parent paths to all descendant leaf catalogs for cascader multi-select filters', () => {
+    const items: ProductCatalogConfigItem[] = [
+      {
+        id: 'root',
+        name: '课程类目',
+        parentId: null,
+        sort: 1,
+        enabled: true,
+      },
+      {
+        id: 'group_a',
+        name: 'A 组',
+        parentId: 'root',
+        sort: 2,
+        enabled: true,
+      },
+      {
+        id: 'leaf_a1',
+        name: 'A1',
+        parentId: 'group_a',
+        hasSkuSpec: true,
+        sort: 2,
+        enabled: true,
+      },
+      {
+        id: 'leaf_a2',
+        name: 'A2',
+        parentId: 'group_a',
+        hasSkuSpec: false,
+        sort: 1,
+        enabled: true,
+      },
+      {
+        id: 'leaf_b1',
+        name: 'B1',
+        parentId: 'root',
+        hasSkuSpec: true,
+        sort: 1,
+        enabled: true,
+      },
+    ];
+
+    expect(
+      expandProductCatalogPathsToLeafIds([['root', 'group_a']], items)
+    ).toEqual(['leaf_a1', 'leaf_a2']);
+
+    expect(
+      expandProductCatalogPathsToLeafIds(
+        [
+          ['root'],
+          ['root', 'group_a', 'leaf_a1'],
+        ],
+        items
+      )
+    ).toEqual(['leaf_a1', 'leaf_a2', 'leaf_b1']);
   });
 });

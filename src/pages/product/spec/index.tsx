@@ -20,6 +20,7 @@ import styles from './index.module.less';
 import {
   buildProductCatalogCascaderOptions,
   buildProductCatalogLeafItems,
+  expandProductCatalogPathsToLeafIds,
   getProductCatalogFullLabel,
   getProductCatalogIdFromPath,
   getProductCatalogPathById,
@@ -41,19 +42,6 @@ function generateId() {
 
 function now() {
   return new Date().toISOString().replace('T', ' ').slice(0, 19);
-}
-
-function normalizePath(value: (string | string[])[] | undefined): string[] {
-  if (!Array.isArray(value) || !value.length) {
-    return [];
-  }
-
-  const firstValue = value[0];
-  if (Array.isArray(firstValue)) {
-    return firstValue;
-  }
-
-  return value as string[];
 }
 
 function normalizePaths(
@@ -81,20 +69,40 @@ function ProductSpecPage() {
     () => buildProductCatalogCascaderOptions(catalogItems),
     [catalogItems]
   );
-  const [selectedCatalogId, setSelectedCatalogId] = useState('');
+  const [selectedCatalogPaths, setSelectedCatalogPaths] = useState<string[][]>([]);
   const [searchName, setSearchName] = useState('');
   const [filterEnabled, setFilterEnabled] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ProductCatalogSpecItem | null>(null);
   const [form] = useForm();
+  const selectedCatalogIds = useMemo(
+    () => expandProductCatalogPathsToLeafIds(selectedCatalogPaths, catalogItems),
+    [catalogItems, selectedCatalogPaths]
+  );
 
-  const selectedCatalog = catalogLeafItems.find((item) => item.id === selectedCatalogId);
+  const selectedCatalogSummary = useMemo(() => {
+    if (!selectedCatalogIds.length) {
+      return '全部类目';
+    }
+
+    if (selectedCatalogIds.length === 1) {
+      return (
+        catalogLeafItems.find((item) => item.id === selectedCatalogIds[0])?.label ||
+        '全部类目'
+      );
+    }
+
+    return `已选 ${selectedCatalogIds.length} 个类目`;
+  }, [catalogLeafItems, selectedCatalogIds]);
 
   const filteredData = useMemo(
     () =>
       specs
         .filter((item) => {
-          if (selectedCatalogId && !item.catalogIds.includes(selectedCatalogId)) {
+          if (
+            selectedCatalogIds.length &&
+            !item.catalogIds.some((catalogId) => selectedCatalogIds.includes(catalogId))
+          ) {
             return false;
           }
 
@@ -112,15 +120,17 @@ function ProductSpecPage() {
 
           return true;
         }),
-    [filterEnabled, searchName, selectedCatalogId, specs]
+    [filterEnabled, searchName, selectedCatalogIds, specs]
   );
 
   function openAddModal() {
     setEditingItem(null);
     form.resetFields();
     form.setFieldsValue({
-      catalogIds: selectedCatalogId
-        ? [getProductCatalogPathById(selectedCatalogId, catalogItems)]
+      catalogIds: selectedCatalogIds.length
+        ? selectedCatalogIds.map((catalogId) =>
+            getProductCatalogPathById(catalogId, catalogItems)
+          )
         : undefined,
       enabled: true,
       values: [],
@@ -212,7 +222,9 @@ function ProductSpecPage() {
             createdAt: now(),
           },
         ]);
-        setSelectedCatalogId(catalogIds[0] || selectedCatalogId);
+        setSelectedCatalogPaths(
+          catalogIds[0] ? [getProductCatalogPathById(catalogIds[0], catalogItems)] : []
+        );
         Message.success('添加成功');
       }
 
@@ -309,19 +321,13 @@ function ProductSpecPage() {
             <span className={styles.filterLabel}>商品类目</span>
             <Cascader
               allowClear
+              changeOnSelect
               className={styles.catalogCascader}
+              mode="multiple"
               options={catalogCascaderOptions}
               placeholder="请选择商品类目"
-              value={
-                selectedCatalogId
-                  ? getProductCatalogPathById(selectedCatalogId, catalogItems)
-                  : undefined
-              }
-              onChange={(value) =>
-                setSelectedCatalogId(
-                  getProductCatalogIdFromPath(normalizePath(value), catalogItems) || ''
-                )
-              }
+              value={selectedCatalogPaths.length ? selectedCatalogPaths : undefined}
+              onChange={(value) => setSelectedCatalogPaths(normalizePaths(value))}
             />
           </div>
           <div className={styles.filterItem}>
@@ -351,6 +357,7 @@ function ProductSpecPage() {
             <Button type="primary">查询</Button>
             <Button
               onClick={() => {
+                setSelectedCatalogPaths([]);
                 setSearchName('');
                 setFilterEnabled('');
               }}
@@ -366,7 +373,7 @@ function ProductSpecPage() {
           <div className={styles.toolbarLeft}>
             <Typography.Text className={styles.categoryTitle}>
               当前类目：
-              <Typography.Text bold>{selectedCatalog?.label || '全部类目'}</Typography.Text>
+              <Typography.Text bold>{selectedCatalogSummary}</Typography.Text>
             </Typography.Text>
           </div>
           <Button icon={<IconPlus />} type="primary" onClick={openAddModal}>
