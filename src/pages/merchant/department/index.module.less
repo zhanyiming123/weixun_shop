@@ -479,6 +479,69 @@
   }
 }
 
+.roleConfigTabs {
+  :global(.arco-tabs-content) {
+    padding-top: 16px;
+  }
+}
+
+.roleConfigTabPane {
+  min-height: 360px;
+}
+
+.storeRoleToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.storeRoleGrid {
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.storeRoleGridHeader,
+.storeRoleGridRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(140px, 0.9fr) minmax(0, 1fr) 72px;
+  align-items: stretch;
+}
+
+.storeRoleGridHeader {
+  background: #f5f7fb;
+  color: var(--color-text-1);
+  font-weight: 600;
+
+  span {
+    padding: 12px 14px;
+  }
+}
+
+.storeRoleGridRow {
+  border-top: 1px solid var(--color-border-2);
+}
+
+.storeRoleCell,
+.storeRoleActionCell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 14px;
+}
+
+.storeRoleManagerText {
+  color: var(--color-text-1);
+}
+
+.storeRoleActionCell {
+  justify-content: center;
+}
+
+.roleConfigEmpty {
+  padding: 48px 0;
+}
+
 .departmentCreateForm {
   :global(.arco-form-item),
   :global(.arco-form-item.arco-form-item-error) {
@@ -540,5 +603,28 @@
       border-right: 0;
       border-bottom: 1px solid var(--color-border-1);
     }
+  }
+
+  .storeRoleGridHeader,
+  .storeRoleGridRow {
+    grid-template-columns: 1fr;
+  }
+
+  .storeRoleGridHeader {
+    display: none;
+  }
+
+  .storeRoleGridRow {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .storeRoleCell,
+  .storeRoleActionCell {
+    padding: 0;
+  }
+
+  .storeRoleActionCell {
+    justify-content: flex-start;
   }
 }
