@@ -107,6 +107,9 @@ type CouponErrorKey =
   | 'validityConfig';
 
 type CouponFormErrors = Partial<Record<CouponErrorKey, string>>;
+type CouponGroupValidationOptions = {
+  live?: boolean;
+};
 
 function createDefaultFormValues(): CouponFormValues {
   return {
@@ -215,6 +218,85 @@ export function normalizeCreateModeFormValues(
     ...nextValues,
     stackingCouponType: getCreatePageDefaultStackingCouponType(isStoreSystem),
   };
+}
+
+export function getDiscountConfigError(
+  values: Pick<
+    CouponFormValues,
+    | 'discountType'
+    | 'fullReductionThreshold'
+    | 'fullReductionAmount'
+    | 'directReductionAmount'
+    | 'discountRate'
+  >,
+  options: CouponGroupValidationOptions = {}
+) {
+  const { live = false } = options;
+
+  if (values.discountType === 'fullReduction') {
+    if (
+      !live &&
+      (!values.fullReductionThreshold ||
+        values.fullReductionThreshold <= 0 ||
+        !values.fullReductionAmount ||
+        values.fullReductionAmount <= 0)
+    ) {
+      return '请填写正确的满减规则';
+    }
+
+    if (
+      typeof values.fullReductionThreshold === 'number' &&
+      typeof values.fullReductionAmount === 'number' &&
+      values.fullReductionAmount >= values.fullReductionThreshold
+    ) {
+      return '减免金额必须小于满减门槛';
+    }
+  }
+
+  if (live) {
+    return undefined;
+  }
+
+  if (values.discountType === 'directReduction') {
+    if (!values.directReductionAmount || values.directReductionAmount <= 0) {
+      return '请填写正确的直减金额';
+    }
+  }
+
+  if (values.discountType === 'discount') {
+    if (!values.discountRate || values.discountRate <= 0 || values.discountRate >= 10) {
+      return '请填写 0-10 之间的折扣值';
+    }
+  }
+
+  return undefined;
+}
+
+export function getCouponQuantityError(
+  values: Pick<CouponFormValues, 'issueCount' | 'limitPerUser'>,
+  options: CouponGroupValidationOptions = {}
+) {
+  const { live = false } = options;
+
+  if (
+    !live &&
+    (!values.issueCount ||
+      values.issueCount <= 0 ||
+      !values.limitPerUser ||
+      values.limitPerUser <= 0)
+  ) {
+    return '请填写正确的发放张数和每人限领数量';
+  }
+
+  if (
+    typeof values.issueCount === 'number' &&
+    typeof values.limitPerUser === 'number' &&
+    values.limitPerUser > values.issueCount
+  ) {
+    return '每人限领张数不能大于发放张数';
+  }
+
+  return undefined;
 }
 
 type CouponConditionSelection = CouponFormValues['conditionOwnershipSelections'][number];
@@ -647,6 +729,29 @@ export function CouponFormPage({
     });
   }
 
+  function syncError(key: CouponErrorKey, message?: string) {
+    setFormErrors((previous) => {
+      if (!message) {
+        if (!(key in previous)) {
+          return previous;
+        }
+
+        const next = { ...previous };
+        delete next[key];
+        return next;
+      }
+
+      if (previous[key] === message) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [key]: message,
+      };
+    });
+  }
+
   function createConditionCard(
     card?: Partial<CouponConditionCardDraft>
   ): CouponConditionCard {
@@ -1006,8 +1111,14 @@ export function CouponFormPage({
       return;
     }
 
+    const nextValue = typeof value === 'number' ? value : undefined;
+    const nextFormValues = {
+      ...formValues,
+      [field]: nextValue,
+    } as CouponFormValues;
+
     patchFormValues({
-      [field]: typeof value === 'number' ? value : undefined,
+      [field]: nextValue,
     } as Partial<CouponFormValues>);
 
     if (
@@ -1016,11 +1127,17 @@ export function CouponFormPage({
       field === 'directReductionAmount' ||
       field === 'discountRate'
     ) {
-      clearErrors('discountConfig');
+      syncError(
+        'discountConfig',
+        getDiscountConfigError(nextFormValues, { live: true })
+      );
     }
 
     if (field === 'issueCount' || field === 'limitPerUser') {
-      clearErrors('couponQuantity');
+      syncError(
+        'couponQuantity',
+        getCouponQuantityError(nextFormValues, { live: true })
+      );
     }
 
     if (field === 'validDays') {
@@ -1075,34 +1192,9 @@ export function CouponFormPage({
   function validateCreateForm() {
     const errors: CouponFormErrors = {};
 
-    if (formValues.discountType === 'fullReduction') {
-      if (
-        !formValues.fullReductionThreshold ||
-        formValues.fullReductionThreshold <= 0 ||
-        !formValues.fullReductionAmount ||
-        formValues.fullReductionAmount <= 0
-      ) {
-        errors.discountConfig = '请填写正确的满减规则';
-      }
-    }
-
-    if (formValues.discountType === 'directReduction') {
-      if (
-        !formValues.directReductionAmount ||
-        formValues.directReductionAmount <= 0
-      ) {
-        errors.discountConfig = '请填写正确的直减金额';
-      }
-    }
-
-    if (formValues.discountType === 'discount') {
-      if (
-        !formValues.discountRate ||
-        formValues.discountRate <= 0 ||
-        formValues.discountRate >= 10
-      ) {
-        errors.discountConfig = '请填写 0-10 之间的折扣值';
-      }
+    const discountConfigError = getDiscountConfigError(formValues);
+    if (discountConfigError) {
+      errors.discountConfig = discountConfigError;
     }
 
     if (!isStoreSystem && !formValues.storeIds.length) {
@@ -1141,13 +1233,9 @@ export function CouponFormPage({
       errors.name = '券名称支持 15 个字以内';
     }
 
-    if (
-      !formValues.issueCount ||
-      formValues.issueCount <= 0 ||
-      !formValues.limitPerUser ||
-      formValues.limitPerUser <= 0
-    ) {
-      errors.couponQuantity = '请填写正确的发放张数和每人限领数量';
+    const couponQuantityError = getCouponQuantityError(formValues);
+    if (couponQuantityError) {
+      errors.couponQuantity = couponQuantityError;
     }
 
     if (!isCreateMode && formValues.receiveTimeRange.length !== 2) {

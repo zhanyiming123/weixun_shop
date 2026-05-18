@@ -40,12 +40,17 @@ import {
 import { filterMerchantRoleItems } from '@/pages/merchant/role/tab-config';
 import {
   buildMerchantRoleOptions,
+  buildMerchantRoleLabelMap,
   buildMerchantStoreTreeData,
+  buildSelectableMerchantStoreTreeData,
   buildStoreRoleOptions,
+  collectConfiguredStoreIds,
   createEmptyMerchantRoleConfig,
   createMerchantStoreRoleBinding,
+  getMerchantRoleDisplay,
+  normalizeMerchantRoleIds,
   normalizeMerchantStoreScopeIds,
-  summarizeStoreManagers,
+  validateMerchantStoreRoleBindings,
   type MerchantRoleConfig,
   type MerchantStoreRoleBinding,
 } from './role-config';
@@ -775,6 +780,7 @@ function MerchantDepartmentPage() {
       ),
     []
   );
+  const merchantRoleLabelMap = useMemo(() => buildMerchantRoleLabelMap(), []);
   const roleConfigStoreTreeData = useMemo(
     () => buildMerchantStoreTreeData(storeItems),
     [storeItems]
@@ -785,6 +791,11 @@ function MerchantDepartmentPage() {
   );
   const merchantRoleOptionItems = useMemo(() => buildMerchantRoleOptions(), []);
   const storeRoleOptionItems = useMemo(() => buildStoreRoleOptions(), []);
+  const configuredRoleConfigStoreCount = useMemo(
+    () => collectConfiguredStoreIds(roleConfigDraft.storeRoleBindings, undefined, storeItems).size,
+    [roleConfigDraft.storeRoleBindings, storeItems]
+  );
+  const canAddStoreRoleBinding = configuredRoleConfigStoreCount < storeItems.length;
 
   const filteredTree = useMemo(
     () => filterDepartmentTree(departmentTree, departmentKeyword),
@@ -1018,12 +1029,14 @@ function MerchantDepartmentPage() {
           member.merchantRoleConfig.storeScopeIds,
           storeItems
         ),
-        merchantRoleId: String(member.merchantRoleConfig.merchantRoleId || '').trim(),
+        merchantRoleIds: normalizeMerchantRoleIds(
+          member.merchantRoleConfig.merchantRoleIds
+        ),
       },
       storeRoleBindings: member.storeRoleBindings.map((binding) => ({
         id: binding.id || createMerchantStoreRoleBinding().id,
         storeIds: normalizeMerchantStoreScopeIds(binding.storeIds, storeItems),
-        storeRoleId: String(binding.storeRoleId || '').trim(),
+        storeRoleIds: normalizeMerchantRoleIds(binding.storeRoleIds),
       })),
     };
   }
@@ -1071,6 +1084,10 @@ function MerchantDepartmentPage() {
   }
 
   function addStoreRoleBinding() {
+    if (!canAddStoreRoleBinding) {
+      return;
+    }
+
     setRoleConfigDraft((prev) => ({
       ...prev,
       storeRoleBindings: [...prev.storeRoleBindings, createMerchantStoreRoleBinding()],
@@ -1096,11 +1113,14 @@ function MerchantDepartmentPage() {
         roleConfigDraft.merchantRoleConfig.storeScopeIds,
         storeItems
       ),
-      merchantRoleId: roleConfigDraft.merchantRoleConfig.merchantRoleId.trim(),
+      merchantRoleIds: normalizeMerchantRoleIds(
+        roleConfigDraft.merchantRoleConfig.merchantRoleIds
+      ),
     };
     const hasMerchantStoreScope =
       normalizedMerchantRoleConfig.storeScopeIds.length > 0;
-    const hasMerchantRole = Boolean(normalizedMerchantRoleConfig.merchantRoleId);
+    const hasMerchantRole =
+      normalizedMerchantRoleConfig.merchantRoleIds.length > 0;
 
     if (hasMerchantStoreScope !== hasMerchantRole) {
       setActiveRoleConfigTab('merchant');
@@ -1108,18 +1128,20 @@ function MerchantDepartmentPage() {
       return;
     }
 
-    const normalizedStoreRoleBindings = roleConfigDraft.storeRoleBindings.map((binding) => ({
-      id: binding.id,
-      storeIds: normalizeMerchantStoreScopeIds(binding.storeIds, storeItems),
-      storeRoleId: binding.storeRoleId.trim(),
-    }));
-    const invalidStoreRoleBinding = normalizedStoreRoleBindings.find(
-      (binding) => !binding.storeIds.length || !binding.storeRoleId
+    const storeRoleBindingValidationResult = validateMerchantStoreRoleBindings(
+      roleConfigDraft.storeRoleBindings,
+      storeItems
     );
 
-    if (invalidStoreRoleBinding) {
+    if (storeRoleBindingValidationResult.errorCode === 'incomplete') {
       setActiveRoleConfigTab('store');
       Message.error('请完成每一条店铺角色配置后再保存');
+      return;
+    }
+
+    if (storeRoleBindingValidationResult.errorCode === 'duplicate') {
+      setActiveRoleConfigTab('store');
+      Message.error('同一店铺不可重复配置角色');
       return;
     }
 
@@ -1129,7 +1151,7 @@ function MerchantDepartmentPage() {
           ? {
               ...member,
               merchantRoleConfig: normalizedMerchantRoleConfig,
-              storeRoleBindings: normalizedStoreRoleBindings,
+              storeRoleBindings: storeRoleBindingValidationResult.normalizedBindings,
             }
           : member
       )
@@ -1333,19 +1355,6 @@ function MerchantDepartmentPage() {
     });
   }
 
-  function openEditMemberModal(record: MerchantDepartmentMember) {
-    setEditingMember(record);
-    memberForm.setFieldsValue({
-      name: record.name,
-      phone: record.phone,
-      employeeCode: record.employeeCode,
-      departmentIds: getMemberDepartmentIds(record),
-      storeIds: normalizeMemberStoreIds(record.storeIds),
-      role: record.role,
-    });
-    setMemberModalVisible(true);
-  }
-
   async function handleMemberModalOk() {
     try {
       const values = (await memberForm.validate()) as MemberFormValues;
@@ -1524,11 +1533,17 @@ function MerchantDepartmentPage() {
       },
     },
     {
-      title: '角色',
+      title: '电商管理角色',
       dataIndex: 'role',
       width: 150,
-      render: (value: string, record: MerchantDepartmentMember) =>
-        getMemberEffectiveRoleDisplay(record.status, value),
+      render: (_: string, record: MerchantDepartmentMember) =>
+        getMemberEffectiveRoleDisplay(
+          record.status,
+          getMerchantRoleDisplay(
+            record.merchantRoleConfig.merchantRoleIds,
+            merchantRoleLabelMap
+          )
+        ),
     },
     {
       title: '员工状态',
@@ -1553,7 +1568,6 @@ function MerchantDepartmentPage() {
       fixed: 'right' as const,
       render: (_: unknown, record: MerchantDepartmentMember) => (
         <span className={styles.tableActions}>
-          <Link onClick={() => openEditMemberModal(record)}>编辑</Link>
           <Link onClick={() => openRoleConfigModal(record)}>角色配置</Link>
           {isMemberMoreActionVisible('数据从属') && (
             <Link onClick={(event) => openMemberDataScope(event, record)}>
@@ -1927,7 +1941,7 @@ function MerchantDepartmentPage() {
       </Modal>
 
       <Modal
-        title={`角色配置${roleConfigTargetMember ? ` · ${roleConfigTargetMember.name}` : ''}`}
+        title="角色配置"
         visible={roleConfigVisible}
         onOk={saveRoleConfig}
         onCancel={closeRoleConfigModal}
@@ -1937,6 +1951,34 @@ function MerchantDepartmentPage() {
         focusLock
         autoFocus={false}
       >
+        {roleConfigTargetMember && (
+          <div className={styles.roleConfigMemberMeta}>
+            <div className={styles.roleConfigMemberMetaItem}>
+              <span className={styles.roleConfigMemberMetaLabel}>员工姓名</span>
+              <span className={styles.roleConfigMemberMetaValue}>
+                {roleConfigTargetMember.name}
+              </span>
+            </div>
+            <div className={styles.roleConfigMemberMetaItem}>
+              <span className={styles.roleConfigMemberMetaLabel}>员工账号</span>
+              <span className={styles.roleConfigMemberMetaValue}>
+                {roleConfigTargetMember.phone}
+              </span>
+            </div>
+            <div className={styles.roleConfigMemberMetaItem}>
+              <span className={styles.roleConfigMemberMetaLabel}>员工编号</span>
+              <span className={styles.roleConfigMemberMetaValue}>
+                {roleConfigTargetMember.employeeCode || '-'}
+              </span>
+            </div>
+            <div className={styles.roleConfigMemberMetaItem}>
+              <span className={styles.roleConfigMemberMetaLabel}>所属部门</span>
+              <span className={styles.roleConfigMemberMetaValue}>
+                {getMemberDepartmentNames(roleConfigTargetMember).join(' / ')}
+              </span>
+            </div>
+          </div>
+        )}
         <Tabs
           activeTab={activeRoleConfigTab}
           className={styles.roleConfigTabs}
@@ -1944,13 +1986,36 @@ function MerchantDepartmentPage() {
         >
           <TabPane key="merchant" title="电商管理角色">
             <div className={styles.roleConfigTabPane}>
-              <Form layout="vertical">
-                <Form.Item label="店铺范围">
+              <div className={styles.roleConfigInlineField}>
+                <span className={styles.roleConfigInlineLabel}>电商管理角色</span>
+                <div className={styles.roleConfigInlineControl}>
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    placeholder="请选择电商管理角色"
+                    maxTagCount="responsive"
+                    value={roleConfigDraft.merchantRoleConfig.merchantRoleIds}
+                    onChange={(value) =>
+                      updateMerchantRoleConfig({
+                        merchantRoleIds: normalizeMerchantRoleIds(value),
+                      })
+                    }
+                  >
+                    {merchantRoleOptionItems.map((item) => (
+                      <Option key={item.value} value={item.value}>
+                        {item.label}
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              <div className={styles.roleConfigInlineField}>
+                <span className={styles.roleConfigInlineLabel}>店铺范围</span>
+                <div className={styles.roleConfigInlineControl}>
                   <TreeSelect
                     allowClear
                     showSearch
                     treeCheckable
-                    treeCheckStrictly
                     maxTagCount="responsive"
                     placeholder="请选择店铺范围"
                     treeData={roleConfigStoreTreeData}
@@ -1965,32 +2030,21 @@ function MerchantDepartmentPage() {
                       })
                     }
                   />
-                </Form.Item>
-                <Form.Item label="电商管理角色">
-                  <Select
-                    allowClear
-                    placeholder="请选择电商管理角色"
-                    value={roleConfigDraft.merchantRoleConfig.merchantRoleId || undefined}
-                    onChange={(value) =>
-                      updateMerchantRoleConfig({
-                        merchantRoleId: String(value || '').trim(),
-                      })
-                    }
-                  >
-                    {merchantRoleOptionItems.map((item) => (
-                      <Option key={item.value} value={item.value}>
-                        {item.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Form>
+                  <div className={styles.roleConfigFieldHint}>
+                    当前店铺范围只针对电商管理角色中功能数据权限范围为“指定店铺”的功能模块生效。
+                  </div>
+                </div>
+              </div>
             </div>
           </TabPane>
           <TabPane key="store" title="店铺角色">
             <div className={styles.roleConfigTabPane}>
               <div className={styles.storeRoleToolbar}>
-                <Button type="primary" onClick={addStoreRoleBinding}>
+                <Button
+                  type="primary"
+                  disabled={!canAddStoreRoleBinding}
+                  onClick={addStoreRoleBinding}
+                >
                   新增配置
                 </Button>
               </div>
@@ -1998,8 +2052,7 @@ function MerchantDepartmentPage() {
               {roleConfigDraft.storeRoleBindings.length ? (
                 <div className={styles.storeRoleGrid}>
                   <div className={styles.storeRoleGridHeader}>
-                    <span>店铺名称</span>
-                    <span>负责人</span>
+                    <span>所在店铺</span>
                     <span>店铺角色</span>
                     <span>操作</span>
                   </div>
@@ -2013,7 +2066,11 @@ function MerchantDepartmentPage() {
                           treeCheckStrictly
                           maxTagCount="responsive"
                           placeholder="请选择店铺"
-                          treeData={roleConfigStoreTreeData}
+                          treeData={buildSelectableMerchantStoreTreeData(
+                            roleConfigDraft.storeRoleBindings,
+                            binding.id,
+                            storeItems
+                          )}
                           treeProps={{
                             defaultExpandedKeys: roleConfigStoreExpandedKeys,
                           }}
@@ -2029,18 +2086,15 @@ function MerchantDepartmentPage() {
                         />
                       </div>
                       <div className={styles.storeRoleCell}>
-                        <Typography.Text className={styles.storeRoleManagerText}>
-                          {summarizeStoreManagers(binding.storeIds, storeItems) || '-'}
-                        </Typography.Text>
-                      </div>
-                      <div className={styles.storeRoleCell}>
                         <Select
+                          mode="multiple"
                           allowClear
                           placeholder="请选择店铺角色"
-                          value={binding.storeRoleId || undefined}
+                          maxTagCount="responsive"
+                          value={binding.storeRoleIds}
                           onChange={(value) =>
                             updateStoreRoleBinding(binding.id, {
-                              storeRoleId: String(value || '').trim(),
+                              storeRoleIds: normalizeMerchantRoleIds(value),
                             })
                           }
                         >

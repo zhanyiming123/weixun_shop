@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_COUPON_FORM_VALUES } from '../data';
-import { normalizeCreateModeFormValues } from './index';
+import {
+  getCouponQuantityError,
+  getDiscountConfigError,
+  normalizeCreateModeFormValues,
+} from './index';
 
 describe('coupon create form value normalization', () => {
   it('removes stacking config in the merchant system create flow', () => {
@@ -98,5 +102,78 @@ describe('coupon create form value normalization', () => {
       discountType: 'fullReduction',
       directReductionAmount: undefined,
     });
+  });
+
+  it('rejects full reduction amounts that are greater than the threshold', () => {
+    expect(
+      getDiscountConfigError({
+        ...DEFAULT_COUPON_FORM_VALUES,
+        discountType: 'fullReduction',
+        fullReductionThreshold: 10,
+        fullReductionAmount: 100,
+      })
+    ).toBe('减免金额必须小于满减门槛');
+  });
+
+  it('rejects full reduction amounts that equal the threshold', () => {
+    expect(
+      getDiscountConfigError({
+        ...DEFAULT_COUPON_FORM_VALUES,
+        discountType: 'fullReduction',
+        fullReductionThreshold: 10,
+        fullReductionAmount: 10,
+      })
+    ).toBe('减免金额必须小于满减门槛');
+  });
+
+  it('shows the full reduction comparison error during live input', () => {
+    expect(
+      getDiscountConfigError(
+        {
+          ...DEFAULT_COUPON_FORM_VALUES,
+          discountType: 'fullReduction',
+          fullReductionThreshold: 10,
+          fullReductionAmount: 100,
+        },
+        { live: true }
+      )
+    ).toBe('减免金额必须小于满减门槛');
+  });
+
+  it('shows the full reduction equality error during live input', () => {
+    expect(
+      getDiscountConfigError(
+        {
+          ...DEFAULT_COUPON_FORM_VALUES,
+          discountType: 'fullReduction',
+          fullReductionThreshold: 10,
+          fullReductionAmount: 10,
+        },
+        { live: true }
+      )
+    ).toBe('减免金额必须小于满减门槛');
+  });
+
+  it('rejects per-user limits that exceed the issue count', () => {
+    expect(
+      getCouponQuantityError({
+        ...DEFAULT_COUPON_FORM_VALUES,
+        issueCount: 10,
+        limitPerUser: 20,
+      })
+    ).toBe('每人限领张数不能大于发放张数');
+  });
+
+  it('shows the quantity comparison error during live input', () => {
+    expect(
+      getCouponQuantityError(
+        {
+          ...DEFAULT_COUPON_FORM_VALUES,
+          issueCount: 10,
+          limitPerUser: 20,
+        },
+        { live: true }
+      )
+    ).toBe('每人限领张数不能大于发放张数');
   });
 });

@@ -6,7 +6,6 @@ import {
   Select,
   Table,
   Tabs,
-  Tag,
   Trigger,
   Typography,
   Tree,
@@ -28,7 +27,6 @@ import {
   MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS,
   getMerchantRolePermissionRootKeys,
   getMerchantRolePermissionTree,
-  hasMerchantRoleConfiguredDataPermissions,
 } from './data';
 import usePersistentState from '@/utils/usePersistentState';
 import {
@@ -166,9 +164,6 @@ function MerchantPermissionConfigCard({
   ]
     .filter(Boolean)
     .join(' ');
-  const isSelectedSystemConfigured =
-    currentPermissionConfig.functionPermissionKeys.length > 0 ||
-    hasMerchantRoleConfiguredDataPermissions(currentPermissionConfig);
 
   function handleBatchScopeApply(value?: EnterpriseRoleDataViewScope) {
     if (!onBatchDataViewScopeChange) {
@@ -312,30 +307,15 @@ function MerchantPermissionConfigCard({
           }
         >
           {MERCHANT_ROLE_PERMISSION_SYSTEM_OPTIONS.map((option) => {
-            const permissionConfig = permissionConfigs[option.value];
-            const configured =
-              permissionConfig.functionPermissionKeys.length > 0 ||
-              hasMerchantRoleConfiguredDataPermissions(permissionConfig);
-
             return (
               <MenuItem key={option.value}>
                 <span className={styles.systemMenuLabel}>
                   <span>{option.label}</span>
-                  {configured && (
-                    <Tag size="small" color="arcoblue">
-                      已配置
-                    </Tag>
-                  )}
                 </span>
               </MenuItem>
             );
           })}
         </Menu>
-        {!isSelectedSystemConfigured && (
-          <Typography.Text type="secondary" className={styles.systemHint}>
-            当前系统尚未配置功能权限或数据范围
-          </Typography.Text>
-        )}
       </div>
 
       <div className={styles.content}>

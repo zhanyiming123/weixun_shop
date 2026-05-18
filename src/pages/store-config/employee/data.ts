@@ -307,6 +307,7 @@ const STORE_ROLE_DATA_VIEW_SCOPE_PRIORITY: Record<
   custom_employee: 1,
   department: 2,
   department_cross_department: 2,
+  specific_store: 2,
   all: 3,
 };
 

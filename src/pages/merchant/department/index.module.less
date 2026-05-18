@@ -479,6 +479,35 @@
   }
 }
 
+.roleConfigMemberMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.roleConfigMemberMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.roleConfigMemberMetaLabel {
+  flex: none;
+  color: var(--color-text-3);
+}
+
+.roleConfigMemberMetaValue {
+  min-width: 0;
+  color: var(--color-text-1);
+  font-weight: 500;
+}
+
 .roleConfigTabs {
   :global(.arco-tabs-content) {
     padding-top: 16px;
@@ -487,6 +516,36 @@
 
 .roleConfigTabPane {
   min-height: 360px;
+}
+
+.roleConfigInlineField {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+
+  & + & {
+    margin-top: 20px;
+  }
+}
+
+.roleConfigInlineLabel {
+  flex: none;
+  width: 96px;
+  padding-top: 6px;
+  color: var(--color-text-2);
+  line-height: 22px;
+}
+
+.roleConfigInlineControl {
+  flex: 1;
+  min-width: 0;
+}
+
+.roleConfigFieldHint {
+  margin-top: 8px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .storeRoleToolbar {
@@ -504,7 +563,7 @@
 .storeRoleGridHeader,
 .storeRoleGridRow {
   display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(140px, 0.9fr) minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr) 72px;
   align-items: stretch;
 }
 
@@ -528,10 +587,6 @@
   align-items: center;
   min-width: 0;
   padding: 14px;
-}
-
-.storeRoleManagerText {
-  color: var(--color-text-1);
 }
 
 .storeRoleActionCell {
@@ -603,6 +658,21 @@
       border-right: 0;
       border-bottom: 1px solid var(--color-border-1);
     }
+  }
+
+  .roleConfigMemberMeta {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .roleConfigInlineField {
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  .roleConfigInlineLabel {
+    width: auto;
+    padding-top: 0;
   }
 
   .storeRoleGridHeader,

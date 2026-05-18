@@ -733,9 +733,10 @@ function EnterpriseRoleFormPage({ mode }: EnterpriseRoleFormPageProps) {
               <TextArea
                 className={styles.textarea}
                 disabled={isReadOnlyPage}
-                placeholder="至多输入50个汉字"
+                placeholder="至多输入 50 个字"
                 maxLength={50}
                 showWordLimit
+                wrapperStyle={{ width: '100%', maxWidth: isMerchantRolePage ? 560 : 360 }}
                 autoSize={{ minRows: 4, maxRows: 6 }}
               />
             </Form.Item>

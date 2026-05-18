@@ -16,6 +16,7 @@ export type EnterpriseRoleDataViewScope =
   | 'department_cross_department'
   | 'self'
   | 'self_cross_department'
+  | 'specific_store'
   | 'custom_employee';
 
 export type EnterpriseRoleDataPermissions = {
@@ -107,6 +108,7 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_LABEL_MAP: Record<
   department_cross_department: '本部门(小组)以及跨部门人员',
   self: '个人数据',
   self_cross_department: '本人以及跨部门人员',
+  specific_store: '指定店铺',
   custom_employee: '自定义员工范围',
 };
 
@@ -119,6 +121,7 @@ export const ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP: Record<
   department_cross_department: '可查看本部门（小组）及协作跨部门人员相关业务数据。',
   self: '仅可查看当前账号自己产生的业务数据。',
   self_cross_department: '可查看本人及协作跨部门人员相关业务数据。',
+  specific_store: '可查看当前配置指定店铺范围内的业务数据。',
   custom_employee: '允许为持有该角色的每个单独员工自定义配置能查看的其他员工业务数据。',
 };
 
@@ -133,6 +136,11 @@ export const MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS: EnterpriseRoleDataViewScopeO
       label: '本部门(小组)',
       value: 'department',
       description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.department,
+    },
+    {
+      label: '指定店铺',
+      value: 'specific_store',
+      description: ENTERPRISE_ROLE_DATA_VIEW_SCOPE_DESCRIPTION_MAP.specific_store,
     },
     {
       label: '全量数据',
@@ -170,6 +178,12 @@ export function getEnterpriseRoleDataViewScopeOptions(
   mode: EnterpriseRolePermissionMode = 'default'
 ) {
   if (mode === 'merchant') {
+    if (scope === 'store') {
+      return MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS.filter(
+        (option) => option.value !== 'specific_store'
+      );
+    }
+
     return MERCHANT_ROLE_DATA_VIEW_SCOPE_OPTIONS;
   }
 
@@ -869,6 +883,7 @@ export function normalizeEnterpriseRoleDataViewScope(
     value === 'department_cross_department' ||
     value === 'self' ||
     value === 'self_cross_department' ||
+    value === 'specific_store' ||
     value === 'custom_employee'
   ) {
     return value;
@@ -888,6 +903,10 @@ export function normalizeEnterpriseRoleDataViewScopeByScope(
     (mode === 'merchant' || scope === 'store') &&
     normalizedValue === 'custom_employee'
   ) {
+    return 'department';
+  }
+
+  if (scope === 'store' && normalizedValue === 'specific_store') {
     return 'department';
   }
 

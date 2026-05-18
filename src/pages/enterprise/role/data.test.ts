@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEnterpriseRoleCopyDraft,
   getMerchantRoleEnabledSystemNames,
+  getEnterpriseRoleDataViewScopeOptions,
   getMerchantRoleLegacyPermissionState,
   getMerchantRolePermissionConfigs,
   getMerchantRoleSystemNames,
@@ -9,6 +10,7 @@ import {
   getMerchantRolePermissionTree,
   getDefaultMerchantRolePermissionConfigs,
   isMerchantRolePermissionSystemConfigured,
+  normalizeEnterpriseRoleDataViewScopeByScope,
   normalizeEnterpriseRolePermissionKeys,
   patchMerchantRolePermissionConfigs,
 } from './data';
@@ -182,6 +184,25 @@ describe('merchant role permission tree', () => {
         'store'
       )
     ).toEqual(['店铺运营工作台']);
+  });
+
+  it('includes specific-store scope in merchant data scope options', () => {
+    expect(
+      getEnterpriseRoleDataViewScopeOptions('headquarter', 'merchant').map(
+        (option) => option.value
+      )
+    ).toEqual(['self', 'department', 'specific_store', 'all']);
+  });
+
+  it('keeps specific-store scope out of store-role merchant data scope options', () => {
+    expect(
+      getEnterpriseRoleDataViewScopeOptions('store', 'merchant').map(
+        (option) => option.value
+      )
+    ).toEqual(['self', 'department', 'all']);
+    expect(
+      normalizeEnterpriseRoleDataViewScopeByScope('specific_store', 'store', 'merchant')
+    ).toBe('department');
   });
 
   it('migrates legacy merchant role permissions into per-system configs', () => {
