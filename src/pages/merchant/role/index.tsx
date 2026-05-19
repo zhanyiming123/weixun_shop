@@ -104,11 +104,6 @@ function MerchantRolePage() {
     [currentRoles, page]
   );
 
-  function openEmployeeListModal(record: EnterpriseRoleItem) {
-    setEmployeeListRole(record);
-    setEmployeeListVisible(true);
-  }
-
   function resetRelatedModalState(removedRoleIds: string[]) {
     if (employeeListRole && removedRoleIds.includes(employeeListRole.id)) {
       setEmployeeListVisible(false);
@@ -253,19 +248,6 @@ function MerchantRolePage() {
       },
     },
     {
-      title: '员工数量',
-      dataIndex: 'employeeCount',
-      width: 110,
-      render: (value: number, record: EnterpriseRoleItem) => (
-        <Typography.Text
-          className={styles.employeeCountLink}
-          onClick={() => openEmployeeListModal(record)}
-        >
-          {`${value} 人`}
-        </Typography.Text>
-      ),
-    },
-    {
       title: '更新人',
       dataIndex: 'updatedBy',
       width: 120,
@@ -388,7 +370,7 @@ function MerchantRolePage() {
           data={pagedRoles}
           noDataElement="当前分类下暂无角色"
           pagination={false}
-          scroll={{ x: 1320 }}
+          scroll={{ x: 1210 }}
           tableLayoutFixed
           rowSelection={{
             type: 'checkbox',

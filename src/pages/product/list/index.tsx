@@ -71,6 +71,7 @@ import {
 import {
   resolveStoreSettingSourceSkuConfigState,
 } from './store-setting';
+import { getBatchSellStatusBlockedMessage } from './batch-actions';
 import { ProductService } from '@/services/ProductService';
 import type {
   ProductCarouselImage,
@@ -953,6 +954,13 @@ function ProductListPage() {
     try {
       const ids = selectedRowKeys.map(String);
       const tableDataMap = new Map(tableData.map((item) => [item.id, item]));
+      const blockedMessage = getBatchSellStatusBlockedMessage(ids, tableDataMap);
+
+      if (blockedMessage) {
+        Message.warning(blockedMessage);
+        return;
+      }
+
       const updatableIds = ids.filter((id) => tableDataMap.get(id)?.storeView.canManageStoreStatus);
       const skippedCount = ids.length - updatableIds.length;
 
@@ -1727,9 +1735,6 @@ function ProductListPage() {
             rowSelection={{
               selectedRowKeys,
               columnWidth: 48,
-              checkboxProps: (record) => ({
-                disabled: Boolean(currentStoreId) && record.storeView.isShared,
-              }),
               onChange: (keys) => setSelectedRowKeys(keys),
             }}
             scroll={{ x: 2300 }}

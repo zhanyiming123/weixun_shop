@@ -235,13 +235,9 @@ export default function MarketingProductSelector({
     () => filterTreeByConditions(data, appliedFilters),
     [appliedFilters, data]
   );
-  const filteredSelectedData = useMemo(
-    () => filterTreeByConditions(selectedData, appliedFilters),
-    [appliedFilters, selectedData]
-  );
-  const tableData = activeTab === 'all' ? filteredAllData : filteredSelectedData;
+  const tableData = activeTab === 'all' ? filteredAllData : selectedData;
   const allTabCount = countVisibleSku(filteredAllData);
-  const selectedTabCount = countVisibleSku(filteredSelectedData);
+  const selectedTabCount = countVisibleSku(selectedData);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE));
@@ -398,117 +394,122 @@ export default function MarketingProductSelector({
       onOk={() => onConfirm?.(draftSelectedSkuIds)}
     >
       <div className={styles.modalBody}>
-        <div className={styles.filterPanel}>
-          <div className={styles.filterGrid}>
-            <div className={styles.filterItem}>
-              <span className={styles.filterLabel}>商品搜索</span>
-              <Input
-                allowClear
-                className={styles.keywordInput}
-                placeholder="请输入商品名称 / 商品 ID"
-                value={filterFormValues.keyword}
-                onChange={(value) => patchFilterFormValues({ keyword: value })}
-                onPressEnter={handleQuery}
-              />
-            </div>
+        <Tabs
+          activeTab={activeTab}
+          className={styles.tabs}
+          destroyOnHide={false}
+          onChange={(key) => {
+            setActiveTab(key as MarketingProductSelectorTab);
+            setCurrentPage(1);
+          }}
+        >
+          <TabPane key="all" title={`全部商品(${allTabCount})`} />
+          <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
+        </Tabs>
 
-            <div className={styles.filterItem}>
-              <span className={styles.filterLabel}>商品类目</span>
-              <Cascader
-                allowClear
-                className={styles.cascaderControl}
-                options={productCatalogOptions}
-                placeholder="请选择商品类目"
-                value={
-                  filterFormValues.productCatalogId
-                    ? getProductCatalogPathById(
-                        filterFormValues.productCatalogId,
+        {activeTab === 'all' && (
+          <div className={styles.filterPanel}>
+            <div className={styles.filterGrid}>
+              <div className={styles.filterItem}>
+                <span className={styles.filterLabel}>商品搜索</span>
+                <Input
+                  allowClear
+                  className={styles.keywordInput}
+                  placeholder="请输入商品名称 / 商品 ID"
+                  value={filterFormValues.keyword}
+                  onChange={(value) => patchFilterFormValues({ keyword: value })}
+                  onPressEnter={handleQuery}
+                />
+              </div>
+
+              <div className={styles.filterItem}>
+                <span className={styles.filterLabel}>商品类目</span>
+                <Cascader
+                  allowClear
+                  className={styles.cascaderControl}
+                  options={productCatalogOptions}
+                  placeholder="请选择商品类目"
+                  value={
+                    filterFormValues.productCatalogId
+                      ? getProductCatalogPathById(
+                          filterFormValues.productCatalogId,
+                          catalogItems
+                        )
+                      : undefined
+                  }
+                  onChange={(value) => {
+                    const path = normalizePath(value);
+                    patchFilterFormValues({
+                      productCatalogId: getProductCatalogIdFromPath(
+                        path,
                         catalogItems
-                      )
-                    : undefined
-                }
-                onChange={(value) => {
-                  const path = normalizePath(value);
-                  patchFilterFormValues({
-                    productCatalogId: getProductCatalogIdFromPath(path, catalogItems),
-                  });
-                }}
-              />
-            </div>
+                      ),
+                    });
+                  }}
+                />
+              </div>
 
-            <div className={styles.filterItem}>
-              <span className={styles.filterLabel}>商品分类</span>
-              <Cascader
-                allowClear
-                className={styles.cascaderControl}
-                options={productOwnershipOptions}
-                placeholder="请选择商品分类"
-                value={
-                  filterFormValues.productOwnershipId
-                    ? getProductOwnershipPathById(
-                        filterFormValues.productOwnershipId,
+              <div className={styles.filterItem}>
+                <span className={styles.filterLabel}>商品分类</span>
+                <Cascader
+                  allowClear
+                  className={styles.cascaderControl}
+                  options={productOwnershipOptions}
+                  placeholder="请选择商品分类"
+                  value={
+                    filterFormValues.productOwnershipId
+                      ? getProductOwnershipPathById(
+                          filterFormValues.productOwnershipId,
+                          ownershipItems
+                        )
+                      : undefined
+                  }
+                  onChange={(value) => {
+                    const path = normalizePath(value);
+                    patchFilterFormValues({
+                      productOwnershipId: getProductOwnershipIdFromPath(
+                        path,
                         ownershipItems
-                      )
-                    : undefined
-                }
-                onChange={(value) => {
-                  const path = normalizePath(value);
-                  patchFilterFormValues({
-                    productOwnershipId: getProductOwnershipIdFromPath(
-                      path,
-                      ownershipItems
-                    ),
-                  });
-                }}
-              />
+                      ),
+                    });
+                  }}
+                />
+              </div>
+
+              <div className={styles.filterItem}>
+                <span className={styles.filterLabel}>商品状态</span>
+                <Select
+                  className={styles.cascaderControl}
+                  placeholder="请选择商品状态"
+                  value={filterFormValues.status || 'all'}
+                  onChange={(value) =>
+                    patchFilterFormValues({
+                      status:
+                        value === 'all'
+                          ? undefined
+                          : (value as ProductStatus | undefined),
+                    })
+                  }
+                >
+                  {PRODUCT_STATUS_OPTIONS.map((item) => (
+                    <Option key={item.label} value={item.value}>
+                      {item.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
             </div>
 
-            <div className={styles.filterItem}>
-              <span className={styles.filterLabel}>商品状态</span>
-              <Select
-                className={styles.cascaderControl}
-                placeholder="请选择商品状态"
-                value={filterFormValues.status || 'all'}
-                onChange={(value) =>
-                  patchFilterFormValues({
-                    status:
-                      value === 'all'
-                        ? undefined
-                        : (value as ProductStatus | undefined),
-                  })
-                }
-              >
-                {PRODUCT_STATUS_OPTIONS.map((item) => (
-                  <Option key={item.label} value={item.value}>
-                    {item.label}
-                  </Option>
-                ))}
-              </Select>
+            <div className={styles.filterActions}>
+              <Button type="primary" onClick={handleQuery}>
+                查询
+              </Button>
+              <Button onClick={handleReset}>重置</Button>
             </div>
           </div>
-
-          <div className={styles.filterActions}>
-            <Button type="primary" onClick={handleQuery}>
-              查询
-            </Button>
-            <Button onClick={handleReset}>重置</Button>
-          </div>
-        </div>
+        )}
 
         <div className={styles.tablePanel}>
-          <Tabs
-            activeTab={activeTab}
-            className={styles.tabs}
-            destroyOnHide={false}
-            onChange={(key) => {
-              setActiveTab(key as MarketingProductSelectorTab);
-              setCurrentPage(1);
-            }}
-          >
-            <TabPane key="all" title={`全部商品(${allTabCount})`} />
-            <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
-          </Tabs>
-
           <div className={styles.tableWrapper}>
             <Table
               className={styles.treeTable}
