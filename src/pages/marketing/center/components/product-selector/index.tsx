@@ -52,17 +52,17 @@ const DEFAULT_FILTER_VALUES: MarketingProductSelectorFilterValues = {
   status: undefined,
 };
 const TABLE_PAGE_SIZE = 10;
-const PRODUCT_STATUS_OPTIONS: Array<{
+export const PRODUCT_STATUS_OPTIONS: Array<{
   label: string;
   value: 'all' | ProductStatus;
 }> = [
   { label: '全部', value: 'all' },
-  { label: '销售中', value: 'on' },
-  { label: '仓库中', value: 'off' },
+  { label: '已上架', value: 'on' },
+  { label: '已下架', value: 'off' },
 ];
 
-function getProductStatusLabel(status: ProductStatus) {
-  return status === 'on' ? '销售中' : '仓库中';
+export function getProductStatusLabel(status: ProductStatus) {
+  return status === 'on' ? '已上架' : '已下架';
 }
 
 function getProductStatusColor(status: ProductStatus) {

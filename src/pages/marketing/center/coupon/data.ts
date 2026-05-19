@@ -1664,16 +1664,12 @@ function resolveProductOwnership(
 }
 
 function getSkuDisabledReason(product: ProductItem, stock: number, status: string) {
-  if (status === 'off') {
-    return '已下架';
+  if (product.status === 'off' || status === 'off') {
+    return '商品已下架';
   }
 
   if (stock <= 0) {
     return '库存不足';
-  }
-
-  if (product.status === 'off' && product.skus.length === 1) {
-    return '已下架';
   }
 
   return '';
@@ -1795,13 +1791,16 @@ export function buildMarketingProductSelectorSpus(
           product.specMode === 'multi' ? sku.specText || '默认规格' : '单规格',
         price: sku.price,
         stock: sku.stock,
-        status: product.status,
+        status: product.status === 'off' ? 'off' : sku.status,
         selectable: !disabledReason,
         disabledReason,
       };
     });
 
     const hasSelectableSku = children.some((item) => item.selectable);
+    const allChildrenArchived = children.every(
+      (item) => item.disabledReason === '商品已下架'
+    );
 
     return {
       key: `spu-${product.id}`,
@@ -1820,7 +1819,11 @@ export function buildMarketingProductSelectorSpus(
       stock: product.stock,
       status: product.status,
       selectable: hasSelectableSku,
-      disabledReason: hasSelectableSku ? '' : '该商品下无可选 SKU',
+      disabledReason: hasSelectableSku
+        ? ''
+        : allChildrenArchived
+          ? '商品已下架'
+          : '该商品下无可选 SKU',
       children,
     } as MarketingProductSelectorSpuItem;
   });
