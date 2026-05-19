@@ -1080,6 +1080,43 @@ describe('ProductService store configs', () => {
 });
 
 describe('ProductService store channel config', () => {
+  it('updates store channel status without changing store sell status', async () => {
+    const product = createShareProduct({
+      storeConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'unsellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    const updatedCount = await service.updateProductStoreChannelStatus({
+      productIds: ['product_1'],
+      storeId: 'store_target',
+      channelStatus: 'on',
+    });
+
+    expect(updatedCount).toBe(1);
+    expect(save).toHaveBeenCalledTimes(1);
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+
+    expect(savedProducts[0].storeConfigs).toEqual([
+      {
+        storeId: 'store_target',
+        sellStatus: 'unsellable',
+        channelStatus: 'on',
+      },
+    ]);
+  });
+
   it('updates self-built sales stores to match the product-pool management modal', async () => {
     const product = createShareProduct({
       storeConfigs: [
@@ -1254,6 +1291,64 @@ describe('ProductService store channel config', () => {
 });
 
 describe('ProductService query list filters', () => {
+  it('groups store products into tabs by channel status instead of sell status', () => {
+    const onProduct = createShareProduct({
+      id: 'product_channel_on',
+      sourceStoreId: 'store_target',
+      shareTargets: [],
+      storeConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'unsellable',
+          channelStatus: 'on',
+        },
+      ],
+    });
+    const offProduct = createShareProduct({
+      id: 'product_channel_off',
+      sourceStoreId: 'store_target',
+      shareTargets: [],
+      storeConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi.fn().mockReturnValue([onProduct, offProduct]),
+    };
+
+    const sellingResult = service.queryList({
+      productKind: 'standard',
+      tab: 'selling',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_target'],
+      page: 1,
+      pageSize: 20,
+    });
+    const warehouseResult = service.queryList({
+      productKind: 'standard',
+      tab: 'warehouse',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_target'],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(sellingResult.items.map((item) => item.id)).toEqual([
+      'product_channel_on',
+    ]);
+    expect(warehouseResult.items.map((item) => item.id)).toEqual([
+      'product_channel_off',
+    ]);
+  });
+
   it('filters by current store sell status', () => {
     const sellableProduct = createShareProduct({
       id: 'product_sellable',

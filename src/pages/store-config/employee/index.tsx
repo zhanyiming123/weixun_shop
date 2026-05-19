@@ -115,7 +115,7 @@ function buildOrgDepartmentLabelMap(
   return result;
 }
 
-function applyEmployeeFilters(
+export function applyEmployeeFilters(
   employees: StoreManagedEmployeeItem[],
   filters: {
     keyword: string;
@@ -131,7 +131,6 @@ function applyEmployeeFilters(
         employee.name,
         employee.account,
         employee.contactPhone,
-        STORE_EMPLOYEE_DEPARTMENT_LABEL,
       ]
         .join(' ')
         .toLowerCase()
@@ -988,7 +987,7 @@ function StoreEmployeePage() {
             <Input
               allowClear
               className={styles.filterInput}
-              placeholder="姓名/工号/手机号/所属部门"
+              placeholder="姓名/工号/手机号"
               prefix={<IconSearch />}
               value={draftFilters.keyword}
               onChange={(value) => updateDraftFilter('keyword', value)}
@@ -1023,9 +1022,6 @@ function StoreEmployeePage() {
         <div className={styles.tableToolbar}>
           <div>
             <Typography.Text className={styles.sectionTitle}>员工列表</Typography.Text>
-            <Typography.Text type="secondary">
-              共 {filteredEmployees.length} 名员工
-            </Typography.Text>
           </div>
           {isCreateActionVisible && (
             <Button type="primary" icon={<IconUserAdd />} onClick={openAddModal}>

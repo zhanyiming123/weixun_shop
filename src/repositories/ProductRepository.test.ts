@@ -208,6 +208,7 @@ describe('ProductRepository seeded mock recovery', () => {
             'G_1260601000000000011',
             'C_1260601000000000011',
             'G_1260601000000000012',
+            'G_1260601000000000013',
           ].includes(item.id)
       )
     );
@@ -222,6 +223,7 @@ describe('ProductRepository seeded mock recovery', () => {
         'G_1260601000000000011',
         'C_1260601000000000011',
         'G_1260601000000000012',
+        'G_1260601000000000013',
       ])
     );
     expect(
@@ -241,6 +243,11 @@ describe('ProductRepository seeded mock recovery', () => {
     ).toMatchObject({
       shareMode: 'shared_pool',
       storeIds: ['store_beijing'],
+    });
+    expect(
+      snapshot.find((item) => item.id === 'G_1260601000000000013')?.independentPriceRule
+    ).toMatchObject({
+      enabled: false,
     });
     expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
   });

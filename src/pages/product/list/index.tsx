@@ -38,6 +38,7 @@ import { handleUnavailableProductEdit } from '@/pages/product/edit-action';
 import {
   getPrimaryProductRowActionKeys,
 } from '@/pages/product/row-actions';
+import { getChannelStatusAction } from './channel-status-action';
 import {
   buildProductCatalogCascaderOptions,
   getProductCatalogFullLabel,
@@ -383,7 +384,7 @@ function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDr
 
 function getRecordDisplayStatus(record: ProductListItem): ProductStatus {
   if (record.storeView.currentStoreId) {
-    return record.storeView.currentStoreSellStatus === 'sellable' ? 'on' : 'off';
+    return record.storeView.currentStoreChannelStatus || 'off';
   }
 
   return record.status;
@@ -903,11 +904,6 @@ function ProductListPage() {
     nextStatus: ProductStatus,
     record: ProductListItem
   ) {
-    if (currentStoreId && getRecordSellStatus(record) === 'unsellable') {
-      Message.warning('请先将商品设为可售状态');
-      return;
-    }
-
     try {
       await updateProductStatus([record.id], nextStatus);
       Message.success(`${record.name}已${nextStatus === 'on' ? '上架' : '下架'}`);
@@ -923,24 +919,9 @@ function ProductListPage() {
 
     try {
       const ids = selectedRowKeys.map(String);
-      const tableDataMap = new Map(tableData.map((item) => [item.id, item]));
-      const updatableIds = currentStoreId
-        ? ids.filter((id) => tableDataMap.get(id)?.storeView.canManageStoreStatus)
-        : ids;
-      const skippedCount = ids.length - updatableIds.length;
-
-      if (!updatableIds.length) {
-        Message.warning('请先将商品设为可售状态');
-        return;
-      }
-
-      await updateProductStatus(updatableIds, nextStatus);
+      await updateProductStatus(ids, nextStatus);
       setSelectedRowKeys([]);
-      Message.success(
-        `已批量${nextStatus === 'on' ? '上架' : '下架'}${updatableIds.length}个商品${
-          skippedCount ? `，跳过${skippedCount}个不可售商品` : ''
-        }`
-      );
+      Message.success(`已批量${nextStatus === 'on' ? '上架' : '下架'}${ids.length}个商品`);
     } catch (error) {
       Message.error(getErrorMessage(error));
     }
@@ -1265,6 +1246,7 @@ function ProductListPage() {
       render: (_: unknown, record: ProductListItem) => {
         const currentSellStatus = getRecordSellStatus(record);
         const currentStatus = getRecordDisplayStatus(record);
+        const channelStatusAction = getChannelStatusAction(currentStatus);
         const rowActions: ProductRowActionItem[] = [
           {
             key: 'detail',
@@ -1325,10 +1307,9 @@ function ProductListPage() {
             : []),
           {
             key: 'channel-status',
-            label: currentStatus === 'on' ? '设为下架' : '设为上架',
-            disabled: currentStoreId ? currentSellStatus !== 'sellable' : false,
+            label: channelStatusAction.label,
             onClick: () =>
-              handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
+              handleRowStatusChange(channelStatusAction.nextStatus, record),
           },
           ...(currentStoreId
             ? [

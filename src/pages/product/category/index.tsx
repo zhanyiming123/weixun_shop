@@ -377,10 +377,10 @@ function CategoryPage() {
           )}
           <Form.Item
             field="name"
-            label="子分类名称"
-            rules={[{ required: true, message: '请输入子分类名称' }]}
+            label="分类名称"
+            rules={[{ required: true, message: '请输入分类名称' }]}
           >
-            <Input placeholder="请输入子分类名称" maxLength={20} showWordLimit />
+            <Input placeholder="请输入分类名称" maxLength={20} showWordLimit />
           </Form.Item>
           <Form.Item
             field="sort"

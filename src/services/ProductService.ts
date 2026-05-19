@@ -77,7 +77,7 @@ function getRangeBoundary(date: string, endOfDay = false) {
 
 function getProductListDisplayStatus(item: ProductListItem): ProductStatus {
   if (item.storeView.currentStoreId) {
-    return item.storeView.currentStoreSellStatus === 'sellable' ? 'on' : 'off';
+    return item.storeView.currentStoreChannelStatus || 'off';
   }
 
   return item.status;
@@ -788,7 +788,6 @@ export class ProductService {
 
           return {
             ...config,
-            sellStatus: input.channelStatus === 'on' ? 'sellable' : 'unsellable',
             channelStatus: input.channelStatus,
           };
         }

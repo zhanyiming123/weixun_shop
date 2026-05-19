@@ -167,6 +167,24 @@ describe('product domain rules', () => {
     expect(currentSku.currentStatus).toBe('on');
   });
 
+  it('keeps store sell status and channel status separate in list items', () => {
+    const product = createBaseProduct({
+      sourceStoreId: 'store_target',
+      storeConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'unsellable',
+          channelStatus: 'on',
+        },
+      ],
+    });
+
+    const item = buildProductListItem(product, 'store', ['store_target']);
+
+    expect(item.storeView.currentStoreSellStatus).toBe('unsellable');
+    expect(item.storeView.currentStoreChannelStatus).toBe('on');
+  });
+
   it('normalizes local sku items and filters duplicates and collisions', () => {
     expect(
       normalizeProductStoreLocalSkuItems(

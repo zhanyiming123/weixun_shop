@@ -1143,6 +1143,62 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
       },
     ],
   },
+  {
+    id: 'G_1260601000000000013',
+    name: '唯寻2026暑期商品共享池不可独立售价课',
+    productKind: 'standard',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'course',
+    inventoryUnit: '名额',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-G_1260601000000000013-1',
+        specText: '',
+        price: 799,
+        stock: 66,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 799,
+    stock: 66,
+    createdAt: '2026-05-03 09:00:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_guangzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'off',
+      },
+    ],
+    independentPriceRule: {
+      enabled: false,
+      skuRules: [],
+    },
+    storeChannelConfig: {
+      shareMode: 'shared_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_guangzhou'],
+      productPoolStoreConfigs: [],
+    },
+    shareTargets: [
+      {
+        storeId: 'store_guangzhou',
+        status: 'pending',
+        sharedAt: '2026-05-03 09:30:00',
+        sellableSkuIds: ['sku-G_1260601000000000013-1'],
+      },
+    ],
+  },
 ];
 
 export const MOCK_PRODUCTS = DEFAULT_PRODUCTS;

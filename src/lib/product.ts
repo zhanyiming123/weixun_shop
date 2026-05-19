@@ -1723,7 +1723,8 @@ export function buildProductListItem(
       currentStoreId,
       currentStoreSellStatus: currentStoreConfig?.sellStatus,
       currentStoreChannelStatus:
-        currentStoreConfig?.sellStatus === 'sellable' ? 'on' : 'off',
+        currentStoreConfig?.channelStatus ||
+        (currentStoreConfig?.sellStatus === 'sellable' ? 'on' : 'off'),
       resolvedSourceStoreId,
       sourceLabel:
         options.sourceStoreName ||

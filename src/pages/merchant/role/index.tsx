@@ -18,7 +18,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import styles from './index.module.less';
 import {
   EnterpriseRoleItem,
-  getMerchantRoleEnabledSystemNames,
   useEnterpriseRoleItems,
 } from '@/pages/enterprise/role/data';
 import {
@@ -222,32 +221,6 @@ function MerchantRolePage() {
       ),
     },
     {
-      title: '系统',
-      dataIndex: 'functionPermissionKeys',
-      width: 230,
-      render: (_: unknown, record: EnterpriseRoleItem) => {
-        const systems = getMerchantRoleEnabledSystemNames(record);
-        if (!systems.length) {
-          return <Typography.Text className={styles.roleDescription}>-</Typography.Text>;
-        }
-
-        return (
-          <span>
-            {systems.map((name) => (
-              <Tag
-                key={name}
-                size="small"
-                color={name === '电商管理工作台' ? 'arcoblue' : 'green'}
-                style={{ marginRight: 4, marginBottom: 2 }}
-              >
-                {name}
-              </Tag>
-            ))}
-          </span>
-        );
-      },
-    },
-    {
       title: '更新人',
       dataIndex: 'updatedBy',
       width: 120,
@@ -370,7 +343,7 @@ function MerchantRolePage() {
           data={pagedRoles}
           noDataElement="当前分类下暂无角色"
           pagination={false}
-          scroll={{ x: 1210 }}
+          scroll={{ x: 980 }}
           tableLayoutFixed
           rowSelection={{
             type: 'checkbox',

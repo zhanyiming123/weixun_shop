@@ -192,6 +192,10 @@ function AttributeTemplatePage() {
               allowClear
               className={styles.catalogCascader}
               mode="multiple"
+              maxTagCount={{
+                count: 'responsive',
+                render: () => '...',
+              }}
               options={catalogCascaderOptions}
               placeholder="请选择绑定类目"
               value={selectedCatalogPaths.length ? selectedCatalogPaths : undefined}

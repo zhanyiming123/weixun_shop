@@ -35,7 +35,6 @@ import {
 } from '@/pages/product/category/data';
 import {
   createDefaultFilterValues,
-  getProductIndependentPriceRule,
   resolveSourceStoreMetaById,
 } from '@/lib/product';
 import { formatPriceNumber } from '@/lib/format';
@@ -43,6 +42,10 @@ import { getErrorMessage } from '@/lib/errors';
 import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
 import ProductDetailModal from '@/pages/product/components/product-detail-modal';
 import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
+import {
+  canShowIndependentPriceTag,
+  getIndependentConfigLabel,
+} from '@/pages/product/share-pool/independent-config';
 import { readOrganizationItems } from '@/pages/enterprise/organization/data';
 import { readProductStoreItems } from '@/pages/product/store-config/data';
 import { ProductService } from '@/services/ProductService';
@@ -143,12 +146,6 @@ function formatPriceRange(prices: number[]) {
   return minPrice === maxPrice
     ? formatPriceNumber(minPrice)
     : `${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
-}
-
-function getIndependentConfigLabel(product: ProductSharePoolItem) {
-  return getProductIndependentPriceRule(product).enabled
-    ? '允许独立售价'
-    : '不支持独立售价';
 }
 
 function ProductSharePoolPage() {
@@ -592,11 +589,12 @@ function ProductSharePoolPage() {
                 title: '独立配置',
                 dataIndex: 'independent',
                 width: 180,
-                render: (_: unknown, record: ProductSharePoolItem) => (
-                  <Tag color={getProductIndependentPriceRule(record).enabled ? 'green' : 'gray'}>
-                    {getIndependentConfigLabel(record)}
-                  </Tag>
-                ),
+                render: (_: unknown, record: ProductSharePoolItem) =>
+                  canShowIndependentPriceTag(record) ? (
+                    <Tag color="green">{getIndependentConfigLabel(record)}</Tag>
+                  ) : (
+                    '--'
+                  ),
               },
               {
                 title: '创建时间',
