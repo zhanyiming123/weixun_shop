@@ -120,7 +120,9 @@ import {
 import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import type {
+  ProductBundleComponentItem,
   ProductCarouselImage,
+  ProductComboOptionItem,
   ProductIndependentPriceRule,
   ProductItem as DomainProductItem,
   ProductListItem as DomainProductListItem,
@@ -131,9 +133,9 @@ import { GlobalState } from '@/store';
 import { filterStoreItemsByIds } from '@/utils/organization';
 import { ProductService } from '@/services/ProductService';
 import CouponStoreSelector from '@/pages/marketing/center/components/store-selector';
-import BundleProductTable, {
-  BundleProductItem,
-} from '@/pages/product/components/bundle-product-table';
+import ComboProductConfigCard, {
+  createDefaultComboOption,
+} from '@/pages/product/components/combo-product-config-card';
 
 type CarouselImage = {
   uid: string;
@@ -645,7 +647,7 @@ function renderCatalogAttributeField(
 }
 
 function getBundleCombinationPrice(
-  components: BundleProductItem[],
+  components: ProductBundleComponentItem[],
   products: DomainProductListItem[]
 ) {
   const productMap = new Map(products.map((product) => [product.id, product]));
@@ -659,13 +661,64 @@ function getBundleCombinationPrice(
       return sum;
     }
 
-    const discountAmount =
-      typeof item.discountPrice === 'number' && Number.isFinite(item.discountPrice)
-        ? item.discountPrice
-        : 0;
-
-    return sum + Math.max(0, sku.price - discountAmount);
+    return sum + sku.price;
   }, 0);
+}
+
+function flattenComboOptions(
+  options: ProductComboOptionItem[] = []
+): ProductBundleComponentItem[] {
+  return options.flatMap((option) =>
+    option.items.map((item) => ({
+      productId: item.productId,
+      skuId: item.skuId,
+    }))
+  );
+}
+
+function buildLegacyComboOptions(
+  sourceProduct: ProductItem,
+  products: DomainProductListItem[],
+  fallbackProducts: ProductItem[]
+): ProductComboOptionItem[] {
+  if ((sourceProduct.comboOptions || []).length) {
+    return sourceProduct.comboOptions || [];
+  }
+
+  const legacyComponents = sourceProduct.bundleComponents || [];
+  if (!legacyComponents.length) {
+    return [createDefaultComboOption(1)];
+  }
+
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  const fallbackProductMap = new Map(
+    fallbackProducts.map((product) => [product.id, product])
+  );
+
+  return [
+    {
+      id: 'option_1',
+      title: '选项1',
+      required: true,
+      selectionLimit: legacyComponents.length,
+      items: legacyComponents.map((item) => {
+        const sku = productMap
+          .get(item.productId)
+          ?.skus.find((candidate) => candidate.id === item.skuId);
+        const fallbackSku = fallbackProductMap
+          .get(item.productId)
+          ?.skus.find((candidate) => candidate.id === item.skuId);
+
+        return {
+          productId: item.productId,
+          skuId: item.skuId,
+          comboPrice: sku?.price ?? fallbackSku?.price ?? 0,
+          quantity: 1,
+          required: true,
+        };
+      }),
+    },
+  ];
 }
 
 function getCatalogAttributeRules(attribute: ProductCatalogTemplateResolvedAttribute) {
@@ -788,7 +841,9 @@ function ProductCreatePage() {
   const [singleSpecFileList, setSingleSpecFileList] = useState<UploadItem[]>([]);
   const [singleSpecPrice, setSingleSpecPrice] = useState<number | undefined>();
   const [singleSpecStock, setSingleSpecStock] = useState<number | undefined>(0);
-  const [bundleComponents, setBundleComponents] = useState<BundleProductItem[]>([]);
+  const [comboOptions, setComboOptions] = useState<ProductComboOptionItem[]>([
+    createDefaultComboOption(1),
+  ]);
   const [standardProductOptions, setStandardProductOptions] = useState<
     DomainProductListItem[]
   >([]);
@@ -933,6 +988,11 @@ function ProductCreatePage() {
     );
   }, [currentStoreId, productService]);
 
+  const bundleComponents = useMemo(
+    () => flattenComboOptions(comboOptions),
+    [comboOptions]
+  );
+
   const bundleCombinationPrice = useMemo(
     () => getBundleCombinationPrice(bundleComponents, standardProductOptions),
     [bundleComponents, standardProductOptions]
@@ -953,7 +1013,7 @@ function ProductCreatePage() {
       setSingleSpecFileList([]);
       setSingleSpecPrice(undefined);
       setSingleSpecStock(0);
-      setBundleComponents([]);
+      setComboOptions([createDefaultComboOption(1)]);
       setStoreChannelEnabled(true);
       setStoreChannelSkuDraftMap({});
       setStoreChannelConfigDraft(createEmptyStoreChannelConfig());
@@ -1003,12 +1063,8 @@ function ProductCreatePage() {
     setSingleSpecFileList([]);
     setSingleSpecPrice(sourceProduct.price);
     setSingleSpecStock(sourceProduct.stock);
-    setBundleComponents(
-      (sourceProduct.bundleComponents || []).map((item) => ({
-        productId: item.productId,
-        skuId: item.skuId,
-        discountPrice: undefined,
-      }))
+    setComboOptions(
+      buildLegacyComboOptions(sourceProduct, standardProductOptions, productItems)
     );
     const sourceStoreChannelConfig = getProductStoreChannelConfig(
       sourceProduct as DomainProductItem
@@ -1098,7 +1154,14 @@ function ProductCreatePage() {
     );
     setStoreShareSettingMap(nextStoreShareSettingMap);
     setDraftStoreShareSettingMap(nextStoreShareSettingMap);
-  }, [pageMode, scopedStoreItems, sourceProduct, visibleStoreIds]);
+  }, [
+    pageMode,
+    productItems,
+    scopedStoreItems,
+    sourceProduct,
+    standardProductOptions,
+    visibleStoreIds,
+  ]);
 
   useEffect(() => {
     if (isEditMode || !isStoreScopedCreatePage) {
@@ -2417,6 +2480,12 @@ function ProductCreatePage() {
       fontSize: detailFontSize,
       lineHeight: detailLineHeight,
     };
+    const nextComboOptions = comboOptions.map((option) => ({
+      ...option,
+      items: option.items.map((item) => ({
+        ...item,
+      })),
+    }));
     const nextBundleComponents = bundleComponents.map(({ productId, skuId }) => ({
       productId,
       skuId,
@@ -2474,7 +2543,7 @@ function ProductCreatePage() {
 
       return {
         ...sourceProductBase,
-        productKind: sourceProductBase.productKind || 'standard',
+        productKind: 'combo',
         name: nextName,
         productCatalogId: nextCatalogId,
         productOwnershipId: nextOwnershipId,
@@ -2491,6 +2560,7 @@ function ProductCreatePage() {
         stock: nextStock,
         createdAt,
         ...nextSource,
+        comboOptions: nextComboOptions,
         bundleComponents: nextBundleComponents,
         carouselImages: nextCarouselImages,
         shareTargets: nextShareTargets,
@@ -2553,7 +2623,7 @@ function ProductCreatePage() {
       return {
         id: productId,
         name: nextName,
-        productKind: 'standard',
+        productKind: 'combo',
         productCatalogId: nextCatalogId,
         productOwnershipId: nextOwnershipId,
         productType: sourceProduct?.productType || 'virtual',
@@ -2570,6 +2640,7 @@ function ProductCreatePage() {
         stock: nextStock,
         createdAt,
         ...nextSource,
+        comboOptions: nextComboOptions,
         bundleComponents: nextBundleComponents,
         shareTargets: nextShareTargets,
         carouselImages: nextCarouselImages,
@@ -2674,7 +2745,7 @@ function ProductCreatePage() {
     return {
       id: productId,
       name: nextName,
-      productKind: 'standard',
+      productKind: 'combo',
       productCatalogId: nextCatalogId,
       productOwnershipId: nextOwnershipId,
       productType: sourceProduct?.productType || 'virtual',
@@ -2691,6 +2762,7 @@ function ProductCreatePage() {
       stock: nextStock,
       createdAt,
       ...nextSource,
+      comboOptions: nextComboOptions,
       bundleComponents: nextBundleComponents,
       shareTargets: nextShareTargets,
       carouselImages: nextCarouselImages,
@@ -2735,8 +2807,68 @@ function ProductCreatePage() {
       }
     }
 
-    if (!bundleComponents.length) {
-      Message.warning('请至少添加一个商品组成组合商品');
+    if (!comboOptions.length) {
+      Message.warning('请至少配置一个商品选项');
+      return;
+    }
+
+    const comboValidationError = comboOptions.reduce<string | undefined>(
+      (error, option, optionIndex) => {
+        if (error) {
+          return error;
+        }
+
+        if (!option.title.trim()) {
+          return `请填写选项${optionIndex + 1}的选项标题`;
+        }
+
+        if (!option.items.length) {
+          return `请至少为选项${optionIndex + 1}添加一个商品`;
+        }
+
+        if (option.selectionLimit < 1) {
+          return `选项${optionIndex + 1}的选择限制至少为 1`;
+        }
+
+        if (option.selectionLimit > option.items.length) {
+          return `选项${optionIndex + 1}的选择限制不能超过已添加商品数`;
+        }
+
+        const hasInvalidPrice = option.items.some(
+          (item) =>
+            typeof item.comboPrice !== 'number' ||
+            !Number.isFinite(item.comboPrice) ||
+            item.comboPrice < 0
+        );
+        if (hasInvalidPrice) {
+          return `请填写选项${optionIndex + 1}中商品的有效套餐售卖单价`;
+        }
+
+        const hasInvalidQuantity = option.items.some(
+          (item) =>
+            typeof item.quantity !== 'number' ||
+            !Number.isFinite(item.quantity) ||
+            item.quantity < 1
+        );
+        if (hasInvalidQuantity) {
+          return `请填写选项${optionIndex + 1}中商品的有效数量`;
+        }
+
+        const requiredQuantity = option.items.reduce(
+          (sum, item) => (item.required ? sum + item.quantity : sum),
+          0
+        );
+        if (requiredQuantity > option.selectionLimit) {
+          return `选项${optionIndex + 1}的必选商品数量不能超过选择限制`;
+        }
+
+        return undefined;
+      },
+      undefined
+    );
+
+    if (comboValidationError) {
+      Message.warning(comboValidationError);
       return;
     }
 
@@ -3599,7 +3731,9 @@ function ProductCreatePage() {
                   </Select.Option>
                 ))}
               </Select>
-              <div className={styles.fieldHelp}>当前默认选择"虚拟商品"，暂不支持修改。</div>
+              <div className={styles.fieldHelp}>
+                当前默认选择&quot;虚拟商品&quot;，暂不支持修改。
+              </div>
             </Form.Item>
 
             <Form.Item
@@ -3683,6 +3817,38 @@ function ProductCreatePage() {
                 value={productName}
                 onChange={setProductName}
                 allowClear
+              />
+            </Form.Item>
+
+            <Form.Item className={styles.fullWidth} label="库存单位" required>
+              <Select
+                className={styles.singleFieldControl}
+                disabled={isEditMode}
+                value={inventoryUnit}
+                onChange={setInventoryUnit}
+              >
+                {INVENTORY_UNIT_OPTIONS.map((item) => (
+                  <Select.Option key={item} value={item}>
+                    {item}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item className={styles.fullWidth} label="库存量">
+              <InputNumber
+                className={styles.singleFieldControl}
+                min={0}
+                precision={0}
+                placeholder="请输入库存量"
+                value={singleSpecStock}
+                onChange={(value) =>
+                  setSingleSpecStock(
+                    typeof value === 'number' && Number.isFinite(value)
+                      ? Math.max(0, Math.floor(value))
+                      : undefined
+                  )
+                }
               />
             </Form.Item>
 
@@ -3819,52 +3985,19 @@ function ProductCreatePage() {
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>
           <Typography.Title className={styles.sectionTitle} heading={6}>
-            规格与库存
+            配置商品
           </Typography.Title>
         </div>
 
         <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
-            <Form.Item className={styles.fullWidth} label="库存单位" required>
-              <Select
-                className={styles.singleFieldControl}
-                disabled={isEditMode}
-                value={inventoryUnit}
-                onChange={setInventoryUnit}
-              >
-                {INVENTORY_UNIT_OPTIONS.map((item) => (
-                  <Select.Option key={item} value={item}>
-                    {item}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item className={styles.fullWidth} label="库存量">
-              <InputNumber
-                className={styles.singleFieldControl}
-                min={0}
-                precision={0}
-                placeholder="请输入库存量"
-                value={singleSpecStock}
-                onChange={(value) =>
-                  setSingleSpecStock(
-                    typeof value === 'number' && Number.isFinite(value)
-                      ? Math.max(0, Math.floor(value))
-                      : undefined
-                  )
-                }
-              />
-            </Form.Item>
-
-            <Form.Item className={styles.fullWidth} label="选择商品" required>
-              <BundleProductTable
+            <Form.Item className={styles.fullWidth} label="商品配置" required>
+              <ComboProductConfigCard
                 products={standardProductOptions}
-                value={bundleComponents}
-                onChange={setBundleComponents}
+                value={comboOptions}
+                onChange={setComboOptions}
               />
             </Form.Item>
-
           </div>
         </Form>
       </Card>
@@ -4291,7 +4424,7 @@ function ProductCreatePage() {
                           </Button>
                         </div>
                         <Typography.Paragraph className={styles.storeSummaryHint}>
-                          可售店铺可配置"分享到店铺商品池/店铺商品共享池"；不可售店铺不参与分享。
+                          可售店铺可配置&quot;分享到店铺商品池/店铺商品共享池&quot;；不可售店铺不参与分享。
                         </Typography.Paragraph>
                       </div>
                     ) : (
@@ -4380,7 +4513,7 @@ function ProductCreatePage() {
                   已勾选 {selectedStoreKeys.length} 项
                 </Typography.Text>
                 <Typography.Text className={styles.storeConfigToolbarText}>
-                  勾选后可批量设置"是否可售"：
+                  勾选后可批量设置&quot;是否可售&quot;：
                 </Typography.Text>
                 <Select
                   allowClear

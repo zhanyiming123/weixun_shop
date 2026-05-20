@@ -73,6 +73,7 @@ import {
   resolveStoreSettingSourceSkuConfigState,
 } from './store-setting';
 import { getBatchSellStatusBlockedMessage } from './batch-actions';
+import { buildSkuStatusTarget } from './sku-status-target';
 import { ProductService } from '@/services/ProductService';
 import type {
   ProductCarouselImage,
@@ -687,7 +688,7 @@ function ProductListPage() {
   useEffect(() => {
     setSkuStatusSelectedRowKeys([]);
     setSkuStatusSubmitting(null);
-  }, [skuStatusTarget]);
+  }, [skuStatusTarget?.id]);
 
   function updateFormValue<K extends keyof ProductFilterValues>(
     field: K,
@@ -1079,21 +1080,37 @@ function ProductListPage() {
     setSkuStatusSubmitting(null);
   }
 
+  async function refreshSkuStatusModalTarget(productId: string) {
+    const product = await productService.getProductById(productId);
+    setSkuStatusTarget(
+      buildSkuStatusTarget(
+        product,
+        currentOrganization?.scope || 'headquarter',
+        visibleStoreIds,
+        allSourceStoreItems,
+        organizationItems
+      )
+    );
+  }
+
   async function handleSkuStatusBatchSubmit(action: ProductSkuStateAction) {
     if (!skuStatusTarget || !currentStoreId || !skuStatusSelectedRowKeys.length) {
       return;
     }
 
     try {
+      const targetProductId = skuStatusTarget.id;
+      const updatedSkuCount = skuStatusSelectedRowKeys.length;
       setSkuStatusSubmitting(action);
       await productService.updateProductSkuStatuses({
-        productId: skuStatusTarget.id,
+        productId: targetProductId,
         storeId: currentStoreId,
         skuIds: skuStatusSelectedRowKeys.map(String),
         action,
       });
-      Message.success(`已${SKU_STATE_ACTION_LABEL_MAP[action]}${skuStatusSelectedRowKeys.length}个SKU`);
-      closeSkuStatusModal();
+      await refreshSkuStatusModalTarget(targetProductId);
+      setSkuStatusSubmitting(null);
+      Message.success(`已${SKU_STATE_ACTION_LABEL_MAP[action]}${updatedSkuCount}个SKU`);
       setRefreshKey((value) => value + 1);
     } catch (error) {
       setSkuStatusSubmitting(null);

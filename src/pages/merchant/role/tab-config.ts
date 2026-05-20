@@ -72,3 +72,7 @@ export function getMerchantRoleListTabPath(
 ) {
   return `${pathname}?tab=${tab}`;
 }
+
+export function supportsMerchantRoleBatchSelection(tab: MerchantRoleTab) {
+  return tab === 'merchant';
+}

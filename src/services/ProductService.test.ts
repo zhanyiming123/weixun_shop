@@ -1008,6 +1008,177 @@ describe('ProductService store configs', () => {
     ).rejects.toThrowError('普通商品编辑时不允许修改库存单位');
   });
 
+  it('preserves combo options when saving combo products', async () => {
+    const product = createShareProduct({
+      id: 'combo_1',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主选项',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_standard_1',
+              skuId: 'sku_standard_1',
+              comboPrice: 299,
+              quantity: 1,
+              required: true,
+            },
+          ],
+        },
+      ],
+      bundleComponents: [
+        {
+          productId: 'product_standard_1',
+          skuId: 'sku_standard_1',
+        },
+      ],
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.saveProduct({
+      ...product,
+      comboOptions: [
+        ...product.comboOptions!,
+        {
+          id: 'option_2',
+          title: '加购项',
+          required: false,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_standard_2',
+              skuId: 'sku_standard_2',
+              comboPrice: 99,
+              quantity: 2,
+              required: false,
+            },
+          ],
+        },
+      ],
+      bundleComponents: [
+        {
+          productId: 'product_standard_1',
+          skuId: 'sku_standard_1',
+        },
+        {
+          productId: 'product_standard_2',
+          skuId: 'sku_standard_2',
+        },
+      ],
+    });
+
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    expect(savedProducts[0].productKind).toBe('combo');
+    expect(savedProducts[0].comboOptions).toEqual([
+      {
+        id: 'option_1',
+        title: '主选项',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'product_standard_1',
+            skuId: 'sku_standard_1',
+            comboPrice: 299,
+            quantity: 1,
+            required: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '加购项',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'product_standard_2',
+            skuId: 'sku_standard_2',
+            comboPrice: 99,
+            quantity: 2,
+            required: false,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps migrated combo option payload when saving legacy bundle component edits', async () => {
+    const product = createShareProduct({
+      id: 'combo_legacy_1',
+      productKind: 'combo',
+      comboOptions: undefined,
+      bundleComponents: [
+        {
+          productId: 'legacy_product_1',
+          skuId: 'legacy_sku_1',
+        },
+      ],
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.saveProduct({
+      ...product,
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'legacy_product_1',
+              skuId: 'legacy_sku_1',
+              comboPrice: 100,
+              quantity: 1,
+              required: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    expect(savedProducts[0].comboOptions).toEqual([
+      {
+        id: 'option_1',
+        title: '选项1',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'legacy_product_1',
+            skuId: 'legacy_sku_1',
+            comboPrice: 100,
+            quantity: 1,
+            required: true,
+          },
+        ],
+      },
+    ]);
+    expect(savedProducts[0].bundleComponents).toEqual([
+      {
+        productId: 'legacy_product_1',
+        skuId: 'legacy_sku_1',
+      },
+    ]);
+  });
+
   it('updates product store configs and turns unsellable stores to off', async () => {
     const product = createShareProduct({
       storeConfigs: [

@@ -585,6 +585,7 @@ function MerchantSystemMenuConfigPage() {
             <Form.Item
               field="statusEnabled"
               label={getNodeStatusFieldLabel(activeModalAction)}
+              triggerPropName="checked"
             >
               <Switch checkedText="启用" uncheckedText="禁用" />
             </Form.Item>

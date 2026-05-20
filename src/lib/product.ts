@@ -2,6 +2,7 @@ import type {
   OrganizationScope,
   ProductBundleComponentItem,
   ProductCarouselImage,
+  ProductComboOptionItem,
   ProductFilterValues,
   ProductIndependentPriceRule,
   ProductIndependentStockRule,
@@ -128,6 +129,79 @@ export function normalizeBundleComponents(
     seen.add(key);
 
     return [{ productId, skuId }];
+  });
+}
+
+export function normalizeProductComboOptions(
+  options?: ProductComboOptionItem[]
+): ProductComboOptionItem[] {
+  if (!Array.isArray(options)) {
+    return [];
+  }
+
+  const usedSkuKeys = new Set<string>();
+
+  return options.flatMap((option, optionIndex) => {
+    const id =
+      typeof option?.id === 'string' && option.id.trim()
+        ? option.id.trim()
+        : `option_${optionIndex + 1}`;
+    const title = typeof option?.title === 'string' ? option.title.trim() : '';
+    const selectionLimitRaw = Number(option?.selectionLimit);
+    const selectionLimit = Number.isFinite(selectionLimitRaw)
+      ? Math.max(1, Math.floor(selectionLimitRaw))
+      : 1;
+    const items = Array.isArray(option?.items)
+      ? option.items.flatMap((item) => {
+          const productId =
+            typeof item?.productId === 'string' ? item.productId.trim() : '';
+          const skuId = typeof item?.skuId === 'string' ? item.skuId.trim() : '';
+
+          if (!productId || !skuId) {
+            return [];
+          }
+
+          const skuKey = `${productId}:${skuId}`;
+          if (usedSkuKeys.has(skuKey)) {
+            return [];
+          }
+
+          usedSkuKeys.add(skuKey);
+
+          const comboPriceRaw = Number(item?.comboPrice);
+          const quantityRaw = Number(item?.quantity);
+
+          return [
+            {
+              productId,
+              skuId,
+              comboPrice:
+                Number.isFinite(comboPriceRaw) && comboPriceRaw >= 0
+                  ? comboPriceRaw
+                  : 0,
+              quantity:
+                Number.isFinite(quantityRaw) && quantityRaw > 0
+                  ? Math.max(1, Math.floor(quantityRaw))
+                  : 1,
+              required: item?.required !== false,
+            },
+          ];
+        })
+      : [];
+
+    if (!title || !items.length) {
+      return [];
+    }
+
+    return [
+      {
+        id,
+        title,
+        required: option?.required !== false,
+        selectionLimit: Math.min(selectionLimit, items.length),
+        items,
+      },
+    ];
   });
 }
 

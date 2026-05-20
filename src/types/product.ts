@@ -190,6 +190,22 @@ export type ProductBundleComponentItem = {
   skuId: string;
 };
 
+export type ProductComboOptionProductItem = {
+  productId: string;
+  skuId: string;
+  comboPrice?: number;
+  quantity: number;
+  required: boolean;
+};
+
+export type ProductComboOptionItem = {
+  id: string;
+  title: string;
+  required: boolean;
+  selectionLimit: number;
+  items: ProductComboOptionProductItem[];
+};
+
 export type ProductPurchaseLimit = {
   enabled: boolean;
   count?: number;
@@ -231,6 +247,7 @@ export type ProductItem = {
   sourceStoreId?: string;
   storeConfigs: ProductStoreConfigItem[];
   bundleComponents?: ProductBundleComponentItem[];
+  comboOptions?: ProductComboOptionItem[];
   shareTargets?: ProductShareTargetItem[];
   carouselImages?: ProductCarouselImage[];
   purchaseLimit?: ProductPurchaseLimit;

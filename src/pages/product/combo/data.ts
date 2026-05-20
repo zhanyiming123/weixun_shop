@@ -4,6 +4,7 @@ import usePersistentState, {
   writePersistentValue,
 } from '@/utils/usePersistentState';
 import {
+  normalizeProductComboOptions,
   normalizeProductCarouselImages,
   normalizeProductIndependentPriceRule,
   normalizeProductIndependentStockRule,
@@ -13,6 +14,7 @@ import {
 import { DEFAULT_PRODUCTS as REPOSITORY_DEFAULT_PRODUCTS } from '@/repositories/product/defaultProducts';
 import type {
   ProductCarouselImage,
+  ProductComboOptionItem,
   ProductDetailContent,
   ProductShareTargetItem,
   ProductIndependentPriceRule,
@@ -51,7 +53,7 @@ export type ProductSkuItem = {
 export type ProductItem = {
   id: string;
   name: string;
-  productKind?: 'standard' | 'bundle';
+  productKind?: 'standard' | 'combo' | 'bundle';
   productCatalogId: string;
   productOwnershipId: string;
   productType: ProductType;
@@ -72,6 +74,7 @@ export type ProductItem = {
     productId: string;
     skuId: string;
   }>;
+  comboOptions?: ProductComboOptionItem[];
   shareTargets?: ProductShareTargetItem[];
   carouselImages?: ProductCarouselImage[];
   purchaseLimit?: ProductPurchaseLimit;
@@ -919,6 +922,10 @@ export function normalizeProductItem(product: ProductItem): ProductItem {
     ),
     storeChannelRules: undefined,
     carouselImages: normalizeProductCarouselImages(product.carouselImages || []),
+    comboOptions:
+      product.productKind === 'combo'
+        ? normalizeProductComboOptions(product.comboOptions || [])
+        : undefined,
     storeConfigs: Array.from(storeConfigMap.values()),
     storeOverrides,
   };

@@ -40,6 +40,7 @@ import {
   normalizeMerchantRoleTab,
   MERCHANT_ROLE_TYPE_LABEL_MAP,
   getMerchantRoleTypeByScope,
+  supportsMerchantRoleBatchSelection,
 } from './tab-config';
 
 const TabPane = Tabs.TabPane;
@@ -102,6 +103,7 @@ function MerchantRolePage() {
     () => currentRoles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [currentRoles, page]
   );
+  const canBatchSelectRoles = supportsMerchantRoleBatchSelection(activeTab);
 
   function resetRelatedModalState(removedRoleIds: string[]) {
     if (employeeListRole && removedRoleIds.includes(employeeListRole.id)) {
@@ -345,16 +347,20 @@ function MerchantRolePage() {
           pagination={false}
           scroll={{ x: 980 }}
           tableLayoutFixed
-          rowSelection={{
-            type: 'checkbox',
-            selectedRowKeys,
-            onChange: (keys) => setSelectedRowKeys(keys as string[]),
-          }}
+          rowSelection={
+            canBatchSelectRoles
+              ? {
+                  type: 'checkbox',
+                  selectedRowKeys,
+                  onChange: (keys) => setSelectedRowKeys(keys as string[]),
+                }
+              : undefined
+          }
         />
 
         <div className={styles.tableFooter}>
           <div className={styles.tableFooterLeft}>
-            {selectedRowKeys.length > 0 && (
+            {canBatchSelectRoles && selectedRowKeys.length > 0 && (
               <Popconfirm
                 title={`确定删除选中的 ${selectedRowKeys.length} 个角色吗？`}
                 onOk={handleBatchDelete}

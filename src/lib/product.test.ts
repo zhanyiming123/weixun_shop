@@ -9,6 +9,7 @@ import {
   markShareTargetReferenced,
   normalizeProductKind,
   normalizeProductIndependentStockRule,
+  normalizeProductComboOptions,
   normalizeProductShareTargets,
   normalizeProductStoreLocalSkuItems,
   normalizeProductStoreChannelConfig,
@@ -141,6 +142,117 @@ describe('product domain rules', () => {
         },
       ],
     });
+  });
+
+  it('normalizes combo options and removes invalid or duplicated sku items', () => {
+    const normalized = normalizeProductComboOptions([
+      {
+        id: ' option_1 ',
+        title: ' 必选主项 ',
+        required: true,
+        selectionLimit: 3.8,
+        items: [
+          {
+            productId: ' product_1 ',
+            skuId: ' sku_1 ',
+            comboPrice: 199.5,
+            quantity: 2.7,
+            required: true,
+          },
+          {
+            productId: 'product_1',
+            skuId: 'sku_1',
+            comboPrice: 88,
+            quantity: 1,
+            required: false,
+          },
+          {
+            productId: 'product_2',
+            skuId: 'sku_2',
+            comboPrice: -20,
+            quantity: -3,
+            required: false,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '  ',
+        required: false,
+        selectionLimit: 2,
+        items: [
+          {
+            productId: 'product_3',
+            skuId: 'sku_3',
+            comboPrice: 99,
+            quantity: 1,
+            required: true,
+          },
+        ],
+      },
+      {
+        id: '',
+        title: '加购项',
+        required: false,
+        selectionLimit: 10,
+        items: [
+          {
+            productId: 'product_2',
+            skuId: 'sku_2',
+            comboPrice: 59,
+            quantity: 1,
+            required: false,
+          },
+          {
+            productId: 'product_4',
+            skuId: 'sku_4',
+            comboPrice: 39,
+            quantity: 0,
+            required: false,
+          },
+        ],
+      },
+    ]);
+
+    expect(normalized).toEqual([
+      {
+        id: 'option_1',
+        title: '必选主项',
+        required: true,
+        selectionLimit: 2,
+        items: [
+          {
+            productId: 'product_1',
+            skuId: 'sku_1',
+            comboPrice: 199.5,
+            quantity: 2,
+            required: true,
+          },
+          {
+            productId: 'product_2',
+            skuId: 'sku_2',
+            comboPrice: 0,
+            quantity: 1,
+            required: false,
+          },
+        ],
+      },
+      {
+        id: 'option_3',
+        title: '加购项',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'product_4',
+            skuId: 'sku_4',
+            comboPrice: 39,
+            quantity: 1,
+            required: false,
+          },
+        ],
+      },
+    ]);
   });
 
   it('resolves SKU price/stock overrides for target store while deriving display status from sell status', () => {

@@ -6,6 +6,7 @@ import {
   getMerchantRoleScopeByType,
   getMerchantRoleTypeByScope,
   normalizeMerchantRoleTab,
+  supportsMerchantRoleBatchSelection,
 } from './tab-config';
 
 describe('merchant role tab config', () => {
@@ -131,5 +132,10 @@ describe('merchant role tab config', () => {
     expect(getMerchantRoleListTabPath('/merchant/role', 'store')).toBe(
       '/merchant/role?tab=store'
     );
+  });
+
+  it('enables batch selection only for the merchant tab', () => {
+    expect(supportsMerchantRoleBatchSelection('merchant')).toBe(true);
+    expect(supportsMerchantRoleBatchSelection('store')).toBe(false);
   });
 });

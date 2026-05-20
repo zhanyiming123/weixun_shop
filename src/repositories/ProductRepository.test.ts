@@ -198,6 +198,98 @@ describe('ProductRepository seeded mock recovery', () => {
     expect(unlimitedProduct?.limitCount).toBeUndefined();
   });
 
+  it('normalizes and preserves combo options for combo products', () => {
+    persistentStateMocks.readPersistentValue.mockReturnValue([
+      {
+        ...DEFAULT_PRODUCTS.find((item) => item.productKind === 'combo'),
+        id: 'custom_combo_1',
+        name: '组合配置商品',
+        productKind: 'combo',
+        comboOptions: [
+          {
+            id: ' option_a ',
+            title: ' 主选项 ',
+            required: true,
+            selectionLimit: 3,
+            items: [
+              {
+                productId: ' product_1 ',
+                skuId: ' sku_1 ',
+                comboPrice: 399,
+                quantity: 2,
+                required: true,
+              },
+              {
+                productId: 'product_1',
+                skuId: 'sku_1',
+                comboPrice: 299,
+                quantity: 1,
+                required: false,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const repository = new ProductRepository();
+    const comboProduct = repository
+      .readSnapshot()
+      .find((item) => item.id === 'custom_combo_1');
+
+    expect(comboProduct?.comboOptions).toEqual([
+      {
+        id: 'option_a',
+        title: '主选项',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'product_1',
+            skuId: 'sku_1',
+            comboPrice: 399,
+            quantity: 2,
+            required: true,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('does not keep combo options on non-combo products', () => {
+    persistentStateMocks.readPersistentValue.mockReturnValue([
+      {
+        ...DEFAULT_PRODUCTS[0],
+        id: 'custom_standard_with_combo',
+        productKind: 'standard',
+        comboOptions: [
+          {
+            id: 'option_1',
+            title: '不应保留',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_1',
+                skuId: 'sku_1',
+                comboPrice: 100,
+                quantity: 1,
+                required: true,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const repository = new ProductRepository();
+    const standardProduct = repository
+      .readSnapshot()
+      .find((item) => item.id === 'custom_standard_with_combo');
+
+    expect(standardProduct?.comboOptions).toBeUndefined();
+  });
+
   it('backfills newly seeded shared-pool products into stale persisted snapshots', () => {
     persistentStateMocks.readPersistentValue.mockReturnValue(
       DEFAULT_PRODUCTS.filter(

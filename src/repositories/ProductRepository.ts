@@ -3,6 +3,7 @@ import type { ProductItem, ProductSourceType, ProductStoreConfigItem } from '@/t
 import { DEFAULT_PRODUCTS } from '@/repositories/product/defaultProducts';
 import {
   normalizeBundleComponents,
+  normalizeProductComboOptions,
   normalizeProductCarouselImages,
   normalizeProductKind,
   normalizeProductIndependentPriceRule,
@@ -154,6 +155,9 @@ function normalizeProductItem(product: ProductItem): ProductItem {
   const normalizedBundleComponents = normalizeBundleComponents(
     product.bundleComponents || []
   );
+  const normalizedComboOptions = normalizeProductComboOptions(
+    product.comboOptions || []
+  );
   const seedShareTargets =
     DEFAULT_SHARE_TARGETS_BY_PRODUCT_ID.get(product.id) || [];
   const localShareTargets = Array.isArray(product.shareTargets) ? product.shareTargets : [];
@@ -245,7 +249,10 @@ function normalizeProductItem(product: ProductItem): ProductItem {
         : skuSummary.status
     ) as ProductItem['status'],
     bundleComponents:
-      productKind === 'bundle' ? normalizedBundleComponents : [],
+      productKind === 'bundle' || productKind === 'combo'
+        ? normalizedBundleComponents
+        : [],
+    comboOptions: productKind === 'combo' ? normalizedComboOptions : undefined,
     shareTargets: normalizedShareTargets,
   };
 }
