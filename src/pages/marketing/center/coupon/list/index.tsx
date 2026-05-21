@@ -45,6 +45,7 @@ type CouponListPageProps = {
 };
 
 export function getCouponListDiscountLabel(_discountType: CouponDiscountType) {
+  void _discountType;
   return '满减';
 }
 
@@ -220,9 +221,6 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
 
   function renderActionLinks(record: CouponListItem) {
     const actionNodes: Record<CouponActionKey, React.ReactNode> = {
-      view: (
-        <Link onClick={() => setDetailCouponId(record.id)}>查看</Link>
-      ),
       edit: (
         <Link
           onClick={() =>

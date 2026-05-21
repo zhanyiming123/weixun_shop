@@ -1,6 +1,6 @@
 import { CouponListItem } from '../data';
 
-export type CouponActionKey = 'view' | 'edit' | 'copy' | 'void';
+export type CouponActionKey = 'edit' | 'copy' | 'void';
 
 export function getCouponActionKeys(
   record: Pick<CouponListItem, 'ownershipType' | 'status'>,
@@ -10,12 +10,12 @@ export function getCouponActionKeys(
     isStoreSystem && record.ownershipType === 'platform';
 
   if (isStorePlatformCoupon) {
-    return ['view', 'copy'];
+    return ['copy'];
   }
 
   if (record.status === 'notStarted' || record.status === 'active') {
-    return ['view', 'edit', 'copy', 'void'];
+    return ['edit', 'copy', 'void'];
   }
 
-  return ['view', 'copy'];
+  return ['copy'];
 }

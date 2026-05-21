@@ -11,7 +11,7 @@ describe('coupon list action rules', () => {
         },
         true
       )
-    ).toEqual(['view', 'edit', 'copy', 'void']);
+    ).toEqual(['edit', 'copy', 'void']);
 
     expect(
       getCouponActionKeys(
@@ -21,10 +21,10 @@ describe('coupon list action rules', () => {
         },
         true
       )
-    ).toEqual(['view', 'edit', 'copy', 'void']);
+    ).toEqual(['edit', 'copy', 'void']);
   });
 
-  it('shows only view and copy for expired or voided shop coupons', () => {
+  it('shows only copy for expired or voided shop coupons', () => {
     expect(
       getCouponActionKeys(
         {
@@ -33,7 +33,7 @@ describe('coupon list action rules', () => {
         },
         true
       )
-    ).toEqual(['view', 'copy']);
+    ).toEqual(['copy']);
 
     expect(
       getCouponActionKeys(
@@ -43,10 +43,10 @@ describe('coupon list action rules', () => {
         },
         true
       )
-    ).toEqual(['view', 'copy']);
+    ).toEqual(['copy']);
   });
 
-  it('shows only view and copy for platform coupons in the store system', () => {
+  it('shows only copy for platform coupons in the store system', () => {
     expect(
       getCouponActionKeys(
         {
@@ -55,6 +55,6 @@ describe('coupon list action rules', () => {
         },
         true
       )
-    ).toEqual(['view', 'copy']);
+    ).toEqual(['copy']);
   });
 });
