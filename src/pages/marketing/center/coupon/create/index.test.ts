@@ -4,6 +4,7 @@ import {
   getCouponQuantityError,
   getDiscountConfigError,
   normalizeCreateModeFormValues,
+  resolveCreateApplicableStoreSelection,
 } from './index';
 
 describe('coupon create form value normalization', () => {
@@ -101,6 +102,32 @@ describe('coupon create form value normalization', () => {
     ).toMatchObject({
       discountType: 'fullReduction',
       directReductionAmount: undefined,
+    });
+  });
+
+  it('defaults create-mode applicable stores to all stores when none are preset', () => {
+    expect(
+      resolveCreateApplicableStoreSelection(
+        [],
+        ['store_guangzhou', 'store_suzhou']
+      )
+    ).toEqual({
+      scope: 'all',
+      storeIds: ['store_guangzhou', 'store_suzhou'],
+      partialStoreIds: [],
+    });
+  });
+
+  it('keeps create-mode applicable stores as partial when a subset is preset', () => {
+    expect(
+      resolveCreateApplicableStoreSelection(
+        ['store_suzhou'],
+        ['store_guangzhou', 'store_suzhou']
+      )
+    ).toEqual({
+      scope: 'partial',
+      storeIds: ['store_suzhou'],
+      partialStoreIds: ['store_suzhou'],
     });
   });
 

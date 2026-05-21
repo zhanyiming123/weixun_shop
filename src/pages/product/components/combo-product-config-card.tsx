@@ -4,6 +4,7 @@ import {
   Empty,
   Input,
   InputNumber,
+  Modal,
   Radio,
   Select,
   Switch,
@@ -29,7 +30,7 @@ import {
 } from '@/pages/product/category/data';
 import styles from './combo-product-config-card.module.less';
 
-const MAX_OPTION_COUNT = 4;
+const MAX_OPTION_COUNT = 5;
 const SELECTION_LIMIT_OPTIONS = Array.from({ length: 10 }, (_, index) => index + 1);
 
 type ComboProductConfigCardProps = {
@@ -239,11 +240,21 @@ export default function ComboProductConfigCard({
       return;
     }
 
-    onChange(value.filter((option) => option.id !== optionId));
-    if (activeOptionId === optionId) {
-      setActiveOptionId(undefined);
-      setSelectorVisible(false);
-    }
+    const targetOption = value.find((option) => option.id === optionId);
+
+    Modal.confirm({
+      title: '确认删除选项',
+      content: `删除后将同步清空「${targetOption?.title || '当前选项'}」下已配置的商品，是否继续？`,
+      okText: '确认删除',
+      cancelText: '取消',
+      onOk: () => {
+        onChange(value.filter((option) => option.id !== optionId));
+        if (activeOptionId === optionId) {
+          setActiveOptionId(undefined);
+          setSelectorVisible(false);
+        }
+      },
+    });
   }
 
   function handleAddProducts(optionId: string) {
@@ -476,6 +487,7 @@ export default function ComboProductConfigCard({
               </Typography.Title>
               {value.length > 1 && (
                 <Button
+                  status="danger"
                   type="text"
                   className={styles.deleteOptionButton}
                   onClick={() => handleDeleteOption(option.id)}

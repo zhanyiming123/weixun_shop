@@ -953,7 +953,7 @@ function ProductCreatePage() {
   }, [detailHtml]);
 
   useEffect(() => {
-    if (!currentStoreId) {
+    if (!currentOrganization?.scope) {
       setStandardProductOptions([]);
       return;
     }
@@ -972,21 +972,14 @@ function ProductCreatePage() {
         maxPrice: undefined,
         createdAtRange: [],
       },
-      organizationScope: 'store',
-      visibleStoreIds: [currentStoreId],
+      organizationScope: currentOrganization.scope,
+      visibleStoreIds,
       page: 1,
       pageSize: 500,
     });
 
-    setStandardProductOptions(
-      queryResult.items.filter(
-        (item) =>
-          item.productKind === 'standard' &&
-          item.storeView.isSelfBuilt &&
-          item.sourceStoreId === currentStoreId
-      )
-    );
-  }, [currentStoreId, productService]);
+    setStandardProductOptions(queryResult.items);
+  }, [currentOrganization?.scope, productService, visibleStoreIds]);
 
   const bundleComponents = useMemo(
     () => flattenComboOptions(comboOptions),

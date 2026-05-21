@@ -111,6 +111,14 @@ type CouponGroupValidationOptions = {
   live?: boolean;
 };
 
+type ApplicableStoreScope = 'all' | 'partial';
+
+type CreateApplicableStoreSelection = {
+  scope: ApplicableStoreScope;
+  storeIds: string[];
+  partialStoreIds: string[];
+};
+
 function createDefaultFormValues(): CouponFormValues {
   return {
     ...DEFAULT_COUPON_FORM_VALUES,
@@ -217,6 +225,30 @@ export function normalizeCreateModeFormValues(
   return {
     ...nextValues,
     stackingCouponType: getCreatePageDefaultStackingCouponType(isStoreSystem),
+  };
+}
+
+export function resolveCreateApplicableStoreSelection(
+  storeIds: string[],
+  allStoreIds: string[]
+): CreateApplicableStoreSelection {
+  const normalizedStoreIds = normalizeCouponStoreIds(storeIds, allStoreIds);
+
+  if (
+    !normalizedStoreIds.length ||
+    isAllCouponStoresSelected(normalizedStoreIds, allStoreIds)
+  ) {
+    return {
+      scope: 'all',
+      storeIds: [...allStoreIds],
+      partialStoreIds: [],
+    };
+  }
+
+  return {
+    scope: 'partial',
+    storeIds: normalizedStoreIds,
+    partialStoreIds: normalizedStoreIds,
   };
 }
 
@@ -446,6 +478,9 @@ export function CouponFormPage({
   );
   const conditionCardIdRef = useRef(1);
   const [formValues, setFormValues] = useState<CouponFormValues>(createDefaultFormValues);
+  const [createApplicableStoreScope, setCreateApplicableStoreScope] =
+    useState<ApplicableStoreScope>('all');
+  const [partialApplicableStoreIds, setPartialApplicableStoreIds] = useState<string[]>([]);
   const [conditionCards, setConditionCards] = useState<CouponConditionCard[]>(() => [
     createConditionCardState(1, createEmptyConditionCardDraft()),
   ]);
@@ -499,6 +534,7 @@ export function CouponFormPage({
     mode
   );
   const shouldShowStackingConfig = isStoreSystem;
+  const allStoreIds = useMemo(() => storeItems.map((item) => item.id), [storeItems]);
 
   const closeCouponView = useCallback(() => {
     if (onClose) {
@@ -540,8 +576,17 @@ export function CouponFormPage({
     if (isCreateMode) {
       if (!sourceId) {
         const nextFormValues = createDefaultFormValues();
+        const applicableStoreSelection = resolveCreateApplicableStoreSelection(
+          nextFormValues.storeIds,
+          allStoreIds
+        );
         setCouponRecord(undefined);
-        setFormValues(nextFormValues);
+        setFormValues({
+          ...nextFormValues,
+          storeIds: applicableStoreSelection.storeIds,
+        });
+        setCreateApplicableStoreScope(applicableStoreSelection.scope);
+        setPartialApplicableStoreIds(applicableStoreSelection.partialStoreIds);
         setConditionCards(buildInitialConditionCards(nextFormValues));
         setFormErrors({});
         return;
@@ -558,8 +603,17 @@ export function CouponFormPage({
         sourceValues,
         isStoreSystem
       );
+      const applicableStoreSelection = resolveCreateApplicableStoreSelection(
+        nextFormValues.storeIds,
+        allStoreIds
+      );
       setCouponRecord(undefined);
-      setFormValues(nextFormValues);
+      setFormValues({
+        ...nextFormValues,
+        storeIds: applicableStoreSelection.storeIds,
+      });
+      setCreateApplicableStoreScope(applicableStoreSelection.scope);
+      setPartialApplicableStoreIds(applicableStoreSelection.partialStoreIds);
       setConditionCards(buildInitialConditionCards(nextFormValues));
       setFormErrors({});
       return;
@@ -608,8 +662,10 @@ export function CouponFormPage({
     setConditionCards(buildInitialConditionCards(nextFormValues));
     setFormErrors({});
   }, [
+    allStoreIds,
     closeCouponView,
     couponId,
+    history,
     isCreateMode,
     isEditMode,
     isStoreSystem,
@@ -620,12 +676,12 @@ export function CouponFormPage({
 
   const selectedSkuCount = formValues.selectedSkuIds.length;
   const selectedStoreIds = useMemo(
-    () =>
-      normalizeCouponStoreIds(
-        formValues.storeIds,
-        storeItems.map((item) => item.id)
-      ),
-    [formValues.storeIds, storeItems]
+    () => normalizeCouponStoreIds(formValues.storeIds, allStoreIds),
+    [allStoreIds, formValues.storeIds]
+  );
+  const areAllStoresSelected = useMemo(
+    () => isAllCouponStoresSelected(selectedStoreIds, allStoreIds),
+    [allStoreIds, selectedStoreIds]
   );
   const selectedStoreNames = useMemo(() => {
     const nameMap = new Map(storeItems.map((item) => [item.id, item.name]));
@@ -639,29 +695,28 @@ export function CouponFormPage({
       return '未选择店铺';
     }
 
-    return isAllCouponStoresSelected(
-      selectedStoreIds,
-      storeItems.map((item) => item.id)
-    )
+    return isCreateMode && createApplicableStoreScope === 'partial'
+      ? `已选 ${selectedStoreIds.length} 家店铺`
+      : areAllStoresSelected
       ? '全部店铺'
       : `已选 ${selectedStoreIds.length} 家店铺`;
-  }, [selectedStoreIds, storeItems]);
+  }, [
+    areAllStoresSelected,
+    createApplicableStoreScope,
+    isCreateMode,
+    selectedStoreIds.length,
+  ]);
   const storeSummaryDescription = useMemo(() => {
     if (!selectedStoreIds.length) {
       return getApplicableStoresEmptyDescription(mode);
     }
 
-    if (
-      isAllCouponStoresSelected(
-        selectedStoreIds,
-        storeItems.map((item) => item.id)
-      )
-    ) {
+    if (!isCreateMode && areAllStoresSelected) {
       return `当前共覆盖 ${storeItems.length} 家店铺`;
     }
 
     return selectedStoreNames.join('、');
-  }, [mode, selectedStoreIds, selectedStoreNames, storeItems]);
+  }, [areAllStoresSelected, isCreateMode, mode, selectedStoreIds, selectedStoreNames, storeItems]);
   const createModeStackingLabel = isStoreSystem ? '是否叠加平台券' : '是否叠加店铺券';
   const productScopeOptions = useMemo(
     () =>
@@ -1156,17 +1211,42 @@ export function CouponFormPage({
     setStoreModalVisible(true);
   }
 
+  function handleApplicableStoreScopeChange(value: string) {
+    if (!canEditStoreIds) {
+      return;
+    }
+
+    const nextScope = value as ApplicableStoreScope;
+    setCreateApplicableStoreScope(nextScope);
+
+    if (nextScope === 'all') {
+      patchFormValues({
+        storeIds: [...allStoreIds],
+      });
+      clearErrors('storeIds');
+      return;
+    }
+
+    const nextStoreIds = normalizeCouponStoreIds(partialApplicableStoreIds, allStoreIds);
+    patchFormValues({
+      storeIds: nextStoreIds,
+    });
+
+    if (nextStoreIds.length) {
+      clearErrors('storeIds');
+    }
+  }
+
   function handleStoreModalConfirm(nextStoreIds: string[]) {
     if (!canEditStoreIds) {
       setStoreModalVisible(false);
       return;
     }
 
+    const normalizedStoreIds = normalizeCouponStoreIds(nextStoreIds, allStoreIds);
+    setPartialApplicableStoreIds(normalizedStoreIds);
     patchFormValues({
-      storeIds: normalizeCouponStoreIds(
-        nextStoreIds,
-        storeItems.map((item) => item.id)
-      ),
+      storeIds: normalizedStoreIds,
     });
     clearErrors('storeIds');
     setStoreModalVisible(false);
@@ -1443,23 +1523,56 @@ export function CouponFormPage({
 
             {showApplicableStoresSection && (
               <Form.Item required label="适用店铺">
-                <div className={styles.storeSelectorTrigger}>
-                  <div className={styles.storeSelectorSummary}>
-                    <div
-                      className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
-                        }`}
+                {isCreateMode ? (
+                  <div className={styles.scopeBlock}>
+                    <Radio.Group
+                      value={createApplicableStoreScope}
+                      disabled={!canEditStoreIds}
+                      onChange={handleApplicableStoreScopeChange}
                     >
-                      {storeSummaryTitle}
-                    </div>
-                    <div className={styles.storeSelectorDescription}>
-                      {storeSummaryDescription}
-                    </div>
-                  </div>
+                      <Radio value="all">全部店铺</Radio>
+                      <Radio value="partial">部分店铺</Radio>
+                    </Radio.Group>
 
-                  <Button type="outline" onClick={openStoreModal}>
-                    {applicableStoresActionText}
-                  </Button>
-                </div>
+                    {createApplicableStoreScope === 'partial' && (
+                      <div className={styles.storeSelectorTrigger}>
+                        <div className={styles.storeSelectorSummary}>
+                          <div
+                            className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
+                              }`}
+                          >
+                            {storeSummaryTitle}
+                          </div>
+                          <div className={styles.storeSelectorDescription}>
+                            {storeSummaryDescription}
+                          </div>
+                        </div>
+
+                        <Button type="outline" onClick={openStoreModal}>
+                          {applicableStoresActionText}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={styles.storeSelectorTrigger}>
+                    <div className={styles.storeSelectorSummary}>
+                      <div
+                        className={`${styles.storeSelectorTitle} ${selectedStoreIds.length ? '' : styles.storeSelectorTitleEmpty
+                          }`}
+                      >
+                        {storeSummaryTitle}
+                      </div>
+                      <div className={styles.storeSelectorDescription}>
+                        {storeSummaryDescription}
+                      </div>
+                    </div>
+
+                    <Button type="outline" onClick={openStoreModal}>
+                      {applicableStoresActionText}
+                    </Button>
+                  </div>
+                )}
                 {formErrors.storeIds && (
                   <div className={styles.fieldError}>{formErrors.storeIds}</div>
                 )}
@@ -1999,6 +2112,7 @@ export function CouponFormPage({
           readonly={!canEditStoreIds}
           title={applicableStoresModalTitle}
           entityLabel="店铺"
+          hideModeSwitch
           simple
           selectedStoreIds={selectedStoreIds}
           onCancel={() => setStoreModalVisible(false)}

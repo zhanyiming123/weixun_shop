@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Input,
@@ -33,6 +33,7 @@ type CouponStoreSelectorProps = {
   entityLabel?: string;
   title?: string;
   simple?: boolean;
+  hideModeSwitch?: boolean;
   onCancel: () => void;
   onConfirm: (storeIds: string[]) => void;
 };
@@ -63,6 +64,7 @@ function CouponStoreSelector({
   entityLabel = '店铺',
   title = '选择店铺',
   simple = false,
+  hideModeSwitch = false,
   onCancel,
   onConfirm,
 }: CouponStoreSelectorProps) {
@@ -104,13 +106,13 @@ function CouponStoreSelector({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
-  function resetFilters() {
+  const resetFilters = useCallback(() => {
     setStoreDepartmentFilter('all');
     setStoreTypeFilter(effectiveStoreTypes.length === 1 ? effectiveStoreTypes[0] : 'all');
     setStoreKeyword('');
     setCurrentPage(1);
     setPageSize(PAGE_SIZE_OPTIONS[0]);
-  }
+  }, [effectiveStoreTypes]);
 
   useEffect(() => {
     if (!visible) {
@@ -124,13 +126,15 @@ function CouponStoreSelector({
 
     setDraftSelectedStoreIds(normalizedSelectedStoreIds);
     setSelectorMode(
-      normalizedSelectedStoreIds.length &&
-        isAllStoresSelected(normalizedSelectedStoreIds, allStoreIds)
-        ? 'all'
-        : 'specific'
+      hideModeSwitch
+        ? 'specific'
+        : normalizedSelectedStoreIds.length &&
+            isAllStoresSelected(normalizedSelectedStoreIds, allStoreIds)
+          ? 'all'
+          : 'specific'
     );
     resetFilters();
-  }, [allStoreIds, effectiveStoreTypes, selectedStoreIds, visible]);
+  }, [allStoreIds, hideModeSwitch, resetFilters, selectedStoreIds, visible]);
 
   const tableData = useMemo(() => {
     const keyword = storeKeyword.trim().toLowerCase();
@@ -165,7 +169,12 @@ function CouponStoreSelector({
   }, [simple, storeDepartmentFilter, storeItems, storeKeyword, storeTypeFilter]);
 
   const effectiveSelectedStoreIds =
-    selectorMode === 'all' ? allStoreIds : draftSelectedStoreIds;
+    !hideModeSwitch && selectorMode === 'all' ? allStoreIds : draftSelectedStoreIds;
+  const modeHintText = hideModeSwitch
+    ? `已选择 ${effectiveSelectedStoreIds.length} 家${entityLabel}`
+    : selectorMode === 'all'
+      ? `当前将覆盖全部 ${allStoreIds.length} 家${entityLabel}`
+      : `已选择 ${effectiveSelectedStoreIds.length} 家${entityLabel}`;
 
   const defaultColumns = [
     {
@@ -271,7 +280,7 @@ function CouponStoreSelector({
     }
 
     const nextSelectedStoreIds =
-      selectorMode === 'all'
+      !hideModeSwitch && selectorMode === 'all'
         ? [...allStoreIds]
         : normalizeSelectedStoreIds(draftSelectedStoreIds, allStoreIds);
 
@@ -294,26 +303,33 @@ function CouponStoreSelector({
       onCancel={onCancel}
     >
       <div className={styles.modalContent}>
-        <div className={styles.modeRow}>
-          <Radio.Group
-            disabled={readonly}
-            type="button"
-            value={selectorMode}
-            onChange={handleModeChange}
-          >
-            <Radio value="all">全部{entityLabel}</Radio>
-            <Radio value="specific">指定{entityLabel}</Radio>
-          </Radio.Group>
+        {!hideModeSwitch ? (
+          <div className={styles.modeRow}>
+            <Radio.Group
+              disabled={readonly}
+              type="button"
+              value={selectorMode}
+              onChange={handleModeChange}
+            >
+              <Radio value="all">全部{entityLabel}</Radio>
+              <Radio value="specific">指定{entityLabel}</Radio>
+            </Radio.Group>
 
-          <Typography.Text className={styles.modeHint}>
-            {selectorMode === 'all'
-              ? `当前将覆盖全部 ${allStoreIds.length} 家${entityLabel}`
-              : `已选择 ${effectiveSelectedStoreIds.length} 家${entityLabel}`}
-          </Typography.Text>
-        </div>
+            <Typography.Text className={styles.modeHint}>{modeHintText}</Typography.Text>
+          </div>
+        ) : !simple ? (
+          <div className={styles.modeHintRow}>
+            <Typography.Text className={styles.modeHint}>{modeHintText}</Typography.Text>
+          </div>
+        ) : null}
 
         {simple ? (
           <div className={styles.simpleFilterRow}>
+            {hideModeSwitch && (
+              <Typography.Text className={styles.simpleModeHint}>
+                {modeHintText}
+              </Typography.Text>
+            )}
             <Input
               allowClear
               className={styles.searchInput}
@@ -410,10 +426,10 @@ function CouponStoreSelector({
             preserveSelectedRowKeys: true,
             selectedRowKeys: effectiveSelectedStoreIds,
             checkboxProps: () => ({
-              disabled: readonly || selectorMode === 'all',
+              disabled: readonly || (!hideModeSwitch && selectorMode === 'all'),
             }),
             onChange: (keys) => {
-              if (readonly || selectorMode === 'all') {
+              if (readonly || (!hideModeSwitch && selectorMode === 'all')) {
                 return;
               }
 

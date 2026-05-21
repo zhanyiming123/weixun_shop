@@ -12,6 +12,11 @@
   flex-wrap: wrap;
 }
 
+.modeHintRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .modeHint {
   color: var(--color-text-2);
 }
@@ -25,11 +30,19 @@
 
 .simpleFilterRow {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 
-  .searchInput {
-    max-width: 320px;
-  }
+.simpleModeHint {
+  flex: none;
+  color: var(--color-text-2);
+}
+
+.simpleFilterRow .searchInput {
+  width: 320px;
+  margin-left: auto;
 }
 
 .filterActions {
@@ -122,8 +135,15 @@
     grid-template-columns: 1fr;
   }
 
+  .simpleFilterRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .simpleFilterRow .searchInput {
+    width: 100%;
     max-width: none;
+    margin-left: 0;
   }
 
   .footerActions {
