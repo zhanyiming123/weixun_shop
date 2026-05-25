@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import qs from 'query-string';
 import {
   Button,
@@ -54,7 +54,6 @@ import {
 } from '../category/data';
 import {
   createDefaultFilterValues,
-  DEFAULT_INVENTORY_UNIT,
   getProductCurrentStoreId,
   getProductStoreOverride,
   resolveSourceStoreMetaById,
@@ -73,6 +72,7 @@ import {
 } from './store-setting';
 import { ProductService } from '@/services/ProductService';
 import type {
+  ProductComboDisplayOption,
   ProductCarouselImage,
   ProductFilterValues,
   ProductListItem,
@@ -91,6 +91,10 @@ import type {
 } from '@/types/product';
 import { GlobalState } from '@/store';
 import { filterStoreItemsByIds } from '@/utils/organization';
+import {
+  formatComboStockDisplay,
+  formatComboSubProductSummary,
+} from './sub-product-display';
 
 type ProductCreateActionMode = 'edit' | 'copy';
 type ProductSourceFilterOption = {
@@ -349,6 +353,84 @@ function getCurrentSkuPriceRange(record: ProductListItem) {
 function getOriginalSkuPriceRange(record: ProductListItem) {
   return formatPriceRange(
     record.storeView.originalSkus.map((item) => item.price)
+  );
+}
+
+function renderComboSubProductTooltip(
+  options: ProductComboDisplayOption[] = []
+) {
+  return (
+    <div className={styles.subProductTooltip}>
+      {options.map((option) => (
+        <div key={option.key} className={styles.subProductTooltipSection}>
+          <div className={styles.subProductTooltipHeader}>
+            <span className={styles.subProductTooltipTitle}>{option.title}</span>
+            <span className={styles.subProductTooltipLimit}>
+              选 {option.selectionLimit} 份
+            </span>
+          </div>
+          <div className={styles.subProductTooltipNames}>
+            {option.productNames.map((name, index) => (
+              <span key={`${option.key}_${name}_${index}`} className={styles.subProductTooltipName}>
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ComboSubProductSummaryCell({
+  options,
+}: {
+  options: ProductComboDisplayOption[];
+}) {
+  const summary = useMemo(
+    () => formatComboSubProductSummary(options),
+    [options]
+  );
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const [isOverflowed, setIsOverflowed] = useState(false);
+
+  useEffect(() => {
+    function syncOverflowState() {
+      const target = summaryRef.current;
+
+      if (!target) {
+        setIsOverflowed(false);
+        return;
+      }
+
+      setIsOverflowed(
+        target.scrollHeight > target.clientHeight + 1 ||
+          target.scrollWidth > target.clientWidth + 1
+      );
+    }
+
+    syncOverflowState();
+    window.addEventListener('resize', syncOverflowState);
+
+    return () => {
+      window.removeEventListener('resize', syncOverflowState);
+    };
+  }, [summary]);
+
+  const content = (
+    <div ref={summaryRef} className={styles.subProductSummary}>
+      {summary}
+    </div>
+  );
+
+  if (!isOverflowed) {
+    return content;
+  }
+
+  return (
+    <Tooltip position="tl" color="#ffffff" content={renderComboSubProductTooltip(options)}>
+      {content}
+    </Tooltip>
   );
 }
 
@@ -699,6 +781,13 @@ function ProductListPage() {
 
   function handleSearchTypeChange(value: string) {
     updateFormValue('searchType', value as ProductSearchType);
+  }
+
+  function handleSubProductSearchTypeChange(value: string) {
+    updateFormValue(
+      'subProductSearchType',
+      value as ProductFilterValues['subProductSearchType']
+    );
   }
 
   function handleRangeChange(dateString: string[]) {
@@ -1076,14 +1165,6 @@ function ProductListPage() {
     }
   }
 
-  function openSkuStatusModal(product: ProductListItem) {
-    if (!currentStoreId) {
-      return;
-    }
-
-    setSkuStatusTarget(product);
-  }
-
   function closeSkuStatusModal() {
     setSkuStatusTarget(null);
     setSkuStatusSelectedRowKeys([]);
@@ -1137,6 +1218,18 @@ function ProductListPage() {
           </Typography.Text>
         </div>
       ),
+    },
+    {
+      title: '子商品',
+      dataIndex: 'comboDisplayOptions',
+      width: 320,
+      render: (value: ProductComboDisplayOption[] | undefined) => {
+        if (!(value || []).length) {
+          return <Typography.Text type="secondary">--</Typography.Text>;
+        }
+
+        return <ComboSubProductSummaryCell options={value || []} />;
+      },
     },
     {
       title: '商品类目',
@@ -1238,9 +1331,7 @@ function ProductListPage() {
       title: '库存',
       dataIndex: 'stock',
       width: 120,
-      render: (value: number, record: ProductListItem) =>
-        `${value} ${record.inventoryUnit || DEFAULT_INVENTORY_UNIT}`,
-      sorter: (a: ProductListItem, b: ProductListItem) => a.stock - b.stock,
+      render: () => formatComboStockDisplay(),
     },
     {
       title: '创建时间',
@@ -1322,25 +1413,6 @@ function ProductListPage() {
             onClick: () =>
               handleRowStatusChange(currentStatus === 'on' ? 'off' : 'on', record),
           },
-          ...(currentStoreId
-            ? [
-                {
-                  key: 'sku-manage',
-                  label: 'SKU管理',
-                  onClick: () => openSkuStatusModal(record),
-                },
-              ]
-            : []),
-          ...(!record.storeView.isShared
-            ? [
-                {
-                  key: 'stock',
-                  label: '库存',
-                  onClick: () =>
-                    showPendingMessage(`${record.name}库存管理暂未实现`),
-                },
-              ]
-            : []),
           {
             key: 'share',
             label: '分享',
@@ -1534,6 +1606,28 @@ function ProductListPage() {
                   placeholder="请输入搜索内容"
                   value={formValues.keyword}
                   onChange={(value) => updateFormValue('keyword', value)}
+                />
+              </Input.Group>
+            </div>
+
+            <div className={styles.filterItem}>
+              <div className={styles.filterLabel}>子商品搜索</div>
+              <Input.Group className={styles.searchGroup} compact>
+                <Select
+                  bordered
+                  className={styles.searchTypeSelect}
+                  value={formValues.subProductSearchType}
+                  onChange={handleSubProductSearchTypeChange}
+                >
+                  <Option value="subProductName">子商品名称</Option>
+                  <Option value="subProductCode">子商品 ID</Option>
+                </Select>
+                <Input
+                  allowClear
+                  className={styles.keywordInput}
+                  placeholder="请输入搜索内容"
+                  value={formValues.subProductKeyword}
+                  onChange={(value) => updateFormValue('subProductKeyword', value)}
                 />
               </Input.Group>
             </div>

@@ -61,6 +61,8 @@ export const PRODUCT_SOURCE_OPTIONS = [
 export const DEFAULT_FILTER_VALUES: ProductFilterValues = {
   searchType: 'productName',
   keyword: '',
+  subProductSearchType: 'subProductName',
+  subProductKeyword: '',
   sellStatus: undefined,
   productCatalogId: undefined,
   productOwnershipId: undefined,
@@ -170,6 +172,11 @@ export function normalizeProductComboOptions(
 
           const comboPriceRaw = Number(item?.comboPrice);
           const quantityRaw = Number(item?.quantity);
+          const stockRaw = Number(item?.stock);
+          const normalizedStock =
+            Number.isFinite(stockRaw) && stockRaw > 0
+              ? Math.max(1, Math.floor(stockRaw))
+              : undefined;
 
           return [
             {
@@ -183,7 +190,9 @@ export function normalizeProductComboOptions(
                 Number.isFinite(quantityRaw) && quantityRaw > 0
                   ? Math.max(1, Math.floor(quantityRaw))
                   : 1,
+              ...(typeof normalizedStock === 'number' ? { stock: normalizedStock } : {}),
               required: item?.required !== false,
+              listed: item?.listed !== false,
             },
           ];
         })

@@ -4,6 +4,7 @@ import {
   Empty,
   Input,
   InputNumber,
+  Message,
   Modal,
   Radio,
   Select,
@@ -28,12 +29,24 @@ import {
   readProductOwnershipItems,
   getProductOwnershipPathById,
 } from '@/pages/product/category/data';
+import {
+  canRemoveComboOptionProduct,
+  canEnableComboOptionProductRequired,
+  createComboOptionProductItem,
+  getComboOptionSelectionLimitError,
+  getDisableComboOptionProductListedError,
+  normalizeComboOptionSelectionLimit,
+  preserveNonRemovableComboOptionSkuIds,
+  syncComboOptionProductRequiredState,
+} from './combo-product-config-card.utils';
 import styles from './combo-product-config-card.module.less';
 
 const MAX_OPTION_COUNT = 5;
 const SELECTION_LIMIT_OPTIONS = Array.from({ length: 10 }, (_, index) => index + 1);
 
 type ComboProductConfigCardProps = {
+  allowDeleteOption?: boolean;
+  nonRemovableSkuIds?: string[];
   products: ProductListItem[];
   value: ProductComboOptionItem[];
   onChange: (value: ProductComboOptionItem[]) => void;
@@ -51,6 +64,7 @@ type OptionTableRow = {
   comboPrice?: number;
   quantity: number;
   required: boolean;
+  listed: boolean;
 };
 
 function createOptionId() {
@@ -138,6 +152,8 @@ function buildSelectorData(
 }
 
 export default function ComboProductConfigCard({
+  allowDeleteOption = true,
+  nonRemovableSkuIds = [],
   products,
   value,
   onChange,
@@ -178,14 +194,33 @@ export default function ComboProductConfigCard({
   }, [products]);
   const [selectorVisible, setSelectorVisible] = useState(false);
   const [activeOptionId, setActiveOptionId] = useState<string>();
+  const normalizedValue = useMemo(
+    () =>
+      value.map((option) => ({
+        ...option,
+        items: syncComboOptionProductRequiredState(option.required, option.items),
+      })),
+    [value]
+  );
 
   const activeOption = useMemo(
-    () => value.find((item) => item.id === activeOptionId),
-    [activeOptionId, value]
+    () => normalizedValue.find((item) => item.id === activeOptionId),
+    [activeOptionId, normalizedValue]
+  );
+  const nonRemovableSkuIdSet = useMemo(
+    () => new Set(nonRemovableSkuIds),
+    [nonRemovableSkuIds]
   );
   const currentSelectedSkuIds = useMemo(
     () => activeOption?.items.map((item) => item.skuId) || [],
     [activeOption]
+  );
+  const currentOptionNonRemovableSkuIds = useMemo(
+    () =>
+      activeOption?.items
+        .map((item) => item.skuId)
+        .filter((skuId) => nonRemovableSkuIdSet.has(skuId)) || [],
+    [activeOption, nonRemovableSkuIdSet]
   );
   const currentSelectedSkuIdSet = useMemo(
     () => new Set(currentSelectedSkuIds),
@@ -194,11 +229,11 @@ export default function ComboProductConfigCard({
   const lockedSkuIdSet = useMemo(
     () =>
       new Set(
-        value
+        normalizedValue
           .filter((item) => item.id !== activeOptionId)
           .flatMap((item) => item.items.map((productItem) => productItem.skuId))
       ),
-    [activeOptionId, value]
+    [activeOptionId, normalizedValue]
   );
   const selectorData = useMemo(
     () =>
@@ -215,7 +250,7 @@ export default function ComboProductConfigCard({
   function patchOptions(
     updater: (previous: ProductComboOptionItem[]) => ProductComboOptionItem[]
   ) {
-    onChange(updater(value));
+    onChange(updater(normalizedValue));
   }
 
   function patchOption(
@@ -228,19 +263,22 @@ export default function ComboProductConfigCard({
   }
 
   function handleAddOption() {
-    if (value.length >= MAX_OPTION_COUNT) {
+    if (normalizedValue.length >= MAX_OPTION_COUNT) {
       return;
     }
 
-    onChange([...value, createDefaultComboOption(value.length + 1)]);
+    onChange([
+      ...normalizedValue,
+      createDefaultComboOption(normalizedValue.length + 1),
+    ]);
   }
 
   function handleDeleteOption(optionId: string) {
-    if (value.length <= 1) {
+    if (normalizedValue.length <= 1) {
       return;
     }
 
-    const targetOption = value.find((option) => option.id === optionId);
+    const targetOption = normalizedValue.find((option) => option.id === optionId);
 
     Modal.confirm({
       title: '确认删除选项',
@@ -248,7 +286,7 @@ export default function ComboProductConfigCard({
       okText: '确认删除',
       cancelText: '取消',
       onOk: () => {
-        onChange(value.filter((option) => option.id !== optionId));
+        onChange(normalizedValue.filter((option) => option.id !== optionId));
         if (activeOptionId === optionId) {
           setActiveOptionId(undefined);
           setSelectorVisible(false);
@@ -268,11 +306,16 @@ export default function ComboProductConfigCard({
       return;
     }
 
+    const normalizedNextSkuIds = preserveNonRemovableComboOptionSkuIds(
+      nextSkuIds,
+      currentOptionNonRemovableSkuIds
+    );
+
     patchOption(activeOptionId, (option) => {
-      const nextSkuIdSet = new Set(nextSkuIds);
+      const nextSkuIdSet = new Set(normalizedNextSkuIds);
       const keptItems = option.items.filter((item) => nextSkuIdSet.has(item.skuId));
       const keptSkuIdSet = new Set(keptItems.map((item) => item.skuId));
-      const addedItems = nextSkuIds
+      const addedItems = normalizedNextSkuIds
         .filter((skuId) => !keptSkuIdSet.has(skuId))
         .flatMap((skuId) => {
           const matchedEntry = skuLookupById.get(skuId);
@@ -282,22 +325,17 @@ export default function ComboProductConfigCard({
           }
 
           return [
-            {
-              productId: matchedEntry.product.id,
-              skuId: matchedEntry.sku.id,
-              comboPrice: undefined,
-              quantity: 1,
-              required: option.required,
-            },
+            createComboOptionProductItem(matchedEntry.product.id, matchedEntry.sku.id),
           ];
         });
       const nextItems = [...keptItems, ...addedItems];
 
       return {
         ...option,
-        selectionLimit: nextItems.length
-          ? Math.min(option.selectionLimit, nextItems.length)
-          : 1,
+        selectionLimit: normalizeComboOptionSelectionLimit({
+          ...option,
+          items: nextItems,
+        }),
         items: nextItems,
       };
     });
@@ -306,7 +344,7 @@ export default function ComboProductConfigCard({
   }
 
   const optionTables = useMemo(() => {
-    return value.reduce<Record<string, OptionTableRow[]>>((result, option) => {
+    return normalizedValue.reduce<Record<string, OptionTableRow[]>>((result, option) => {
       result[option.id] = option.items.map((item) => {
         const matchedEntry = productSkuMap.get(`${item.productId}:${item.skuId}`);
         const product = matchedEntry?.product || productMap.get(item.productId);
@@ -325,13 +363,14 @@ export default function ComboProductConfigCard({
           comboPrice: item.comboPrice,
           quantity: item.quantity,
           required: item.required,
+          listed: item.listed !== false,
         };
       });
       return result;
     }, {});
-  }, [productMap, productSkuMap, value]);
+  }, [normalizedValue, productMap, productSkuMap]);
 
-  function getColumns(optionId: string) {
+  function getColumns(option: ProductComboOptionItem) {
     return [
       {
         title: '商品信息',
@@ -365,7 +404,7 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: '套餐售卖单价',
+        title: '组合售卖价',
         dataIndex: 'comboPrice',
         width: 180,
         render: (price: number | undefined, record: OptionTableRow) => (
@@ -382,9 +421,9 @@ export default function ComboProductConfigCard({
                 nextValue >= 0
                   ? nextValue
                   : undefined;
-              patchOption(optionId, (option) => ({
-                ...option,
-                items: option.items.map((item) =>
+              patchOption(option.id, (currentOption) => ({
+                ...currentOption,
+                items: currentOption.items.map((item) =>
                   item.skuId === record.skuId
                     ? { ...item, comboPrice: normalizedValue }
                     : item
@@ -411,9 +450,9 @@ export default function ComboProductConfigCard({
                 nextValue > 0
                   ? Math.max(1, Math.floor(nextValue))
                   : 1;
-              patchOption(optionId, (option) => ({
-                ...option,
-                items: option.items.map((item) =>
+              patchOption(option.id, (currentOption) => ({
+                ...currentOption,
+                items: currentOption.items.map((item) =>
                   item.skuId === record.skuId
                     ? { ...item, quantity: normalizedValue }
                     : item
@@ -429,16 +468,60 @@ export default function ComboProductConfigCard({
         width: 120,
         render: (required: boolean, record: OptionTableRow) => (
           <Switch
-            checked={required}
+            checked={option.required ? required : false}
             checkedText="必选"
             uncheckedText="非必选"
+            disabled={!option.required}
             onChange={(checked) => {
-              patchOption(optionId, (option) => ({
-                ...option,
-                items: option.items.map((item) =>
+              if (checked) {
+                if (!canEnableComboOptionProductRequired(option, record.skuId)) {
+                  Message.warning('已达到当前选项卡的选择数量限制');
+                  return;
+                }
+              }
+
+              patchOption(option.id, (currentOption) => ({
+                ...currentOption,
+                items: currentOption.items.map((item) =>
                   item.skuId === record.skuId
-                    ? { ...item, required: checked }
+                    ? {
+                        ...item,
+                        required: checked,
+                        listed: checked ? true : item.listed,
+                      }
                     : item
+                ),
+              }));
+            }}
+          />
+        ),
+      },
+      {
+        title: '上架',
+        dataIndex: 'listed',
+        width: 120,
+        render: (listed: boolean, record: OptionTableRow) => (
+          <Switch
+            checked={listed}
+            checkedText="上架"
+            uncheckedText="下架"
+            onChange={(checked) => {
+              if (!checked) {
+                const errorMessage = getDisableComboOptionProductListedError(
+                  option,
+                  record.skuId
+                );
+
+                if (errorMessage) {
+                  Message.warning(errorMessage);
+                  return;
+                }
+              }
+
+              patchOption(option.id, (currentOption) => ({
+                ...currentOption,
+                items: currentOption.items.map((item) =>
+                  item.skuId === record.skuId ? { ...item, listed: checked } : item
                 ),
               }));
             }}
@@ -454,14 +537,18 @@ export default function ComboProductConfigCard({
             type="text"
             size="small"
             className={styles.removeButton}
+            disabled={!canRemoveComboOptionProduct(record.skuId, nonRemovableSkuIds)}
             onClick={() => {
-              patchOption(optionId, (option) => {
-                const nextItems = option.items.filter((item) => item.skuId !== record.skuId);
+              patchOption(option.id, (currentOption) => {
+                const nextItems = currentOption.items.filter(
+                  (item) => item.skuId !== record.skuId
+                );
                 return {
-                  ...option,
-                  selectionLimit: nextItems.length
-                    ? Math.min(option.selectionLimit, nextItems.length)
-                    : 1,
+                  ...currentOption,
+                  selectionLimit: normalizeComboOptionSelectionLimit({
+                    ...currentOption,
+                    items: nextItems,
+                  }),
                   items: nextItems,
                 };
               });
@@ -476,7 +563,7 @@ export default function ComboProductConfigCard({
 
   return (
     <div className={styles.container}>
-      {value.map((option, index) => {
+      {normalizedValue.map((option, index) => {
         const tableRows = optionTables[option.id] || [];
 
         return (
@@ -485,7 +572,7 @@ export default function ComboProductConfigCard({
               <Typography.Title className={styles.optionHeading} heading={6}>
                 选项{index + 1}
               </Typography.Title>
-              {value.length > 1 && (
+              {allowDeleteOption && normalizedValue.length > 1 && (
                 <Button
                   status="danger"
                   type="text"
@@ -507,6 +594,10 @@ export default function ComboProductConfigCard({
                     patchOption(option.id, (previous) => ({
                       ...previous,
                       required: nextValue === 'required',
+                      items: syncComboOptionProductRequiredState(
+                        nextValue === 'required',
+                        previous.items
+                      ),
                     }))
                   }
                 >
@@ -537,12 +628,23 @@ export default function ComboProductConfigCard({
                   <Select
                     className={styles.limitSelect}
                     value={option.selectionLimit}
-                    onChange={(nextValue) =>
+                    onChange={(nextValue) => {
+                      const nextSelectionLimit = Number(nextValue) || 1;
+                      const validationError = getComboOptionSelectionLimitError(
+                        option,
+                        nextSelectionLimit
+                      );
+
+                      if (validationError) {
+                        Message.warning(validationError);
+                        return;
+                      }
+
                       patchOption(option.id, (previous) => ({
                         ...previous,
-                        selectionLimit: Number(nextValue) || 1,
-                      }))
-                    }
+                        selectionLimit: nextSelectionLimit,
+                      }));
+                    }}
                   >
                     {SELECTION_LIMIT_OPTIONS.map((count) => (
                       <Select.Option key={count} value={count}>
@@ -563,7 +665,7 @@ export default function ComboProductConfigCard({
             <Table
               className={styles.table}
               rowKey="key"
-              columns={getColumns(option.id)}
+              columns={getColumns(option)}
               data={tableRows}
               pagination={false}
               scroll={{ x: 980 }}
@@ -582,10 +684,10 @@ export default function ComboProductConfigCard({
         <Button
           type="outline"
           icon={<IconPlus />}
-          disabled={value.length >= MAX_OPTION_COUNT}
+          disabled={normalizedValue.length >= MAX_OPTION_COUNT}
           onClick={handleAddOption}
         >
-          新增选项（{value.length}/{MAX_OPTION_COUNT}）
+          新增选项（{normalizedValue.length}/{MAX_OPTION_COUNT}）
         </Button>
       </div>
 

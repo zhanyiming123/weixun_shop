@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import qs from 'query-string';
 import {
+  Alert,
   Button,
   Card,
   Cascader,
@@ -50,6 +51,14 @@ import {
   type ProductChannelShareMode,
   type StoreShareSettingItem,
 } from './share-config';
+import {
+  buildComboCreateStoreChannelProductPoolVisibleColumns,
+  COMBO_CREATE_STORE_CHANNEL_PRODUCT_POOL_SHOW_SELLABLE_SKU,
+} from './store-channel-product-pool-modal';
+import {
+  buildComboCreateStoreChannelShareModePatch,
+  COMBO_CREATE_SHARED_POOL_SHOW_SELLABLE_SKU,
+} from './store-channel-shared-pool-config';
 import {
   buildStoreChannelPayloadFromSkuMetaItems,
   buildStoreChannelCreateSkuPayload,
@@ -136,6 +145,11 @@ import CouponStoreSelector from '@/pages/marketing/center/components/store-selec
 import ComboProductConfigCard, {
   createDefaultComboOption,
 } from '@/pages/product/components/combo-product-config-card';
+import { syncComboOptionProductRequiredState } from '@/pages/product/components/combo-product-config-card.utils';
+import {
+  shouldShowComboInventoryFields,
+  type ProductCreateMode,
+} from './inventory-field-visibility';
 
 type CarouselImage = {
   uid: string;
@@ -150,7 +164,6 @@ type SpecItem = {
 };
 
 type SpecMode = 'single' | 'multi';
-type ProductCreateMode = 'create' | 'edit' | 'copy';
 type ProductCreateLocationState = {
   mode?: Exclude<ProductCreateMode, 'create'>;
   sourceProduct?: ProductItem;
@@ -676,6 +689,24 @@ function flattenComboOptions(
   );
 }
 
+function getSourceComboOptionSkuIds(sourceProduct?: ProductItem) {
+  if (!sourceProduct) {
+    return [];
+  }
+
+  if ((sourceProduct.comboOptions || []).length) {
+    return uniqueStringArray(
+      sourceProduct.comboOptions.flatMap((option) =>
+        option.items.map((item) => item.skuId)
+      )
+    );
+  }
+
+  return uniqueStringArray(
+    (sourceProduct.bundleComponents || []).map((item) => item.skuId)
+  );
+}
+
 function buildLegacyComboOptions(
   sourceProduct: ProductItem,
   products: DomainProductListItem[],
@@ -715,6 +746,7 @@ function buildLegacyComboOptions(
           comboPrice: sku?.price ?? fallbackSku?.price ?? 0,
           quantity: 1,
           required: true,
+          listed: true,
         };
       }),
     },
@@ -792,6 +824,7 @@ function ProductCreatePage() {
     return rawMode === 'edit' || rawMode === 'copy' ? rawMode : 'create';
   }, [location.state, locationQuery.mode]);
   const isEditMode = pageMode === 'edit';
+  const showInventoryFields = shouldShowComboInventoryFields(pageMode);
   const isStoreScopedCreatePage =
     currentOrganization?.scope === 'store' && pageMode === 'create';
   const channelEnabled =
@@ -813,6 +846,10 @@ function ProductCreatePage() {
       location.state?.sourceProduct
     );
   }, [location.state, productItems, sourceProductId]);
+  const sourceComboOptionSkuIds = useMemo(
+    () => (isEditMode ? getSourceComboOptionSkuIds(sourceProduct) : []),
+    [isEditMode, sourceProduct]
+  );
   const isStoreScopedOwnedEditPage =
     currentOrganization?.scope === 'store' &&
     isEditMode &&
@@ -2475,7 +2512,10 @@ function ProductCreatePage() {
     };
     const nextComboOptions = comboOptions.map((option) => ({
       ...option,
-      items: option.items.map((item) => ({
+      items: syncComboOptionProductRequiredState(
+        option.required,
+        option.items
+      ).map((item) => ({
         ...item,
       })),
     }));
@@ -3553,6 +3593,10 @@ function ProductCreatePage() {
       ),
     },
   ];
+  const visibleStoreChannelProductPoolColumns =
+    buildComboCreateStoreChannelProductPoolVisibleColumns(
+      storeChannelProductPoolColumns
+    );
   const independentPriceRuleColumns = [
     {
       title: 'SKU 名称',
@@ -3813,37 +3857,41 @@ function ProductCreatePage() {
               />
             </Form.Item>
 
-            <Form.Item className={styles.fullWidth} label="库存单位" required>
-              <Select
-                className={styles.singleFieldControl}
-                disabled={isEditMode}
-                value={inventoryUnit}
-                onChange={setInventoryUnit}
-              >
-                {INVENTORY_UNIT_OPTIONS.map((item) => (
-                  <Select.Option key={item} value={item}>
-                    {item}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+            {showInventoryFields ? (
+              <>
+                <Form.Item className={styles.fullWidth} label="库存单位" required>
+                  <Select
+                    className={styles.singleFieldControl}
+                    disabled={isEditMode}
+                    value={inventoryUnit}
+                    onChange={setInventoryUnit}
+                  >
+                    {INVENTORY_UNIT_OPTIONS.map((item) => (
+                      <Select.Option key={item} value={item}>
+                        {item}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
 
-            <Form.Item className={styles.fullWidth} label="库存量">
-              <InputNumber
-                className={styles.singleFieldControl}
-                min={0}
-                precision={0}
-                placeholder="请输入库存量"
-                value={singleSpecStock}
-                onChange={(value) =>
-                  setSingleSpecStock(
-                    typeof value === 'number' && Number.isFinite(value)
-                      ? Math.max(0, Math.floor(value))
-                      : undefined
-                  )
-                }
-              />
-            </Form.Item>
+                <Form.Item className={styles.fullWidth} label="库存量">
+                  <InputNumber
+                    className={styles.singleFieldControl}
+                    min={0}
+                    precision={0}
+                    placeholder="请输入库存量"
+                    value={singleSpecStock}
+                    onChange={(value) =>
+                      setSingleSpecStock(
+                        typeof value === 'number' && Number.isFinite(value)
+                          ? Math.max(0, Math.floor(value))
+                          : undefined
+                      )
+                    }
+                  />
+                </Form.Item>
+              </>
+            ) : null}
 
             {productCatalogId && currentCatalogAttributes.length > 0 && (
               <Form.Item className={styles.fullWidth} label="商品类目属性">
@@ -3985,7 +4033,15 @@ function ProductCreatePage() {
         <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
             <Form.Item className={styles.fullWidth} label="商品配置" required>
+              <Alert
+                className={styles.comboConfigAlert}
+                type="warning"
+                showIcon
+                content="这里已添加商品的源商品不可售或者下架不影响当前组合商品中的可售和上下架状态"
+              />
               <ComboProductConfigCard
+                allowDeleteOption={!isEditMode}
+                nonRemovableSkuIds={sourceComboOptionSkuIds}
                 products={standardProductOptions}
                 value={comboOptions}
                 onChange={setComboOptions}
@@ -4237,6 +4293,7 @@ function ProductCreatePage() {
                 <div className={styles.storeChannelSwitchRow}>
                   <Switch
                     checked={storeChannelEnabled}
+                    disabled={isEditMode}
                     onChange={setStoreChannelEnabled}
                   />
                   <span className={styles.storeChannelSwitchText}>
@@ -4250,17 +4307,15 @@ function ProductCreatePage() {
                   <Form.Item className={styles.fullWidth} label="生效商品池">
                     <>
                       <Radio.Group
+                        disabled={isEditMode}
                         value={storeChannelConfigDraft.shareMode}
                         onChange={(value) =>
-                          patchStoreChannelConfig({
-                            shareMode: value as StoreChannelConfigDraftItem['shareMode'],
-                            storeScope:
-                              value === 'product_pool' ? 'specificStores' : 'allStores',
-                            storeIds:
-                              value === 'product_pool'
-                                ? storeChannelConfigDraft.storeIds
-                                : [],
-                          })
+                          patchStoreChannelConfig(
+                            buildComboCreateStoreChannelShareModePatch(
+                              value as StoreChannelConfigDraftItem['shareMode'],
+                              storeChannelConfigDraft.storeIds
+                            )
+                          )
                         }
                       >
                         <Radio value="product_pool">商品库</Radio>
@@ -4298,28 +4353,30 @@ function ProductCreatePage() {
 
                   {storeChannelConfigDraft.shareMode === 'shared_pool' && (
                     <>
-                      <Form.Item className={styles.fullWidth} label="可售 SKU">
-                        <TreeSelect
-                          multiple
-                          treeCheckable
-                          allowClear
-                          placeholder="请选择可售 SKU（默认全部）"
-                          treeData={storeChannelProductPoolSkuTreeData}
-                          value={buildTreeSelectDisplaySkuKeys(
-                            storeChannelConfigDraft.sharedPoolSellableSkuKeys || [],
-                            storeChannelAvailableSkuKeys
-                          )}
-                          onChange={(value) => {
-                            const nextKeys = normalizeTreeSelectSkuKeys(
-                              value,
+                      {COMBO_CREATE_SHARED_POOL_SHOW_SELLABLE_SKU ? (
+                        <Form.Item className={styles.fullWidth} label="可售 SKU">
+                          <TreeSelect
+                            multiple
+                            treeCheckable
+                            allowClear
+                            placeholder="请选择可售 SKU（默认全部）"
+                            treeData={storeChannelProductPoolSkuTreeData}
+                            value={buildTreeSelectDisplaySkuKeys(
+                              storeChannelConfigDraft.sharedPoolSellableSkuKeys || [],
                               storeChannelAvailableSkuKeys
-                            );
-                            patchStoreChannelConfig({
-                              sharedPoolSellableSkuKeys: nextKeys,
-                            });
-                          }}
-                        />
-                      </Form.Item>
+                            )}
+                            onChange={(value) => {
+                              const nextKeys = normalizeTreeSelectSkuKeys(
+                                value,
+                                storeChannelAvailableSkuKeys
+                              );
+                              patchStoreChannelConfig({
+                                sharedPoolSellableSkuKeys: nextKeys,
+                              });
+                            }}
+                          />
+                        </Form.Item>
+                      ) : null}
                       <Form.Item className={styles.fullWidth} label="自主定价">
                         <div className={styles.storeChannelSwitchRow}>
                           <Switch
@@ -4632,20 +4689,22 @@ function ProductCreatePage() {
                     </Select.Option>
                   ))}
                 </Select>
-                <TreeSelect
-                  multiple
-                  treeCheckable
-                  allowClear
-                  className={styles.storeConfigBatchTreeSelect}
-                  placeholder="可售 SKU"
-                  treeData={storeChannelProductPoolSkuTreeData}
-                  value={
-                    storeChannelProductPoolBatchSellableSkuKeys.length
-                      ? storeChannelProductPoolBatchSellableSkuKeys
-                      : storeChannelAvailableSkuKeys
-                  }
-                  onChange={handleStoreChannelProductPoolBatchSellableSkuKeysChange}
-                />
+                {COMBO_CREATE_STORE_CHANNEL_PRODUCT_POOL_SHOW_SELLABLE_SKU ? (
+                  <TreeSelect
+                    multiple
+                    treeCheckable
+                    allowClear
+                    className={styles.storeConfigBatchTreeSelect}
+                    placeholder="可售 SKU"
+                    treeData={storeChannelProductPoolSkuTreeData}
+                    value={
+                      storeChannelProductPoolBatchSellableSkuKeys.length
+                        ? storeChannelProductPoolBatchSellableSkuKeys
+                        : storeChannelAvailableSkuKeys
+                    }
+                    onChange={handleStoreChannelProductPoolBatchSellableSkuKeysChange}
+                  />
+                ) : null}
                 <Select
                   allowClear
                   className={styles.storeConfigBatchSelect}
@@ -4661,7 +4720,7 @@ function ProductCreatePage() {
               <Table
                 rowKey="id"
                 className={styles.storeConfigTable}
-                columns={storeChannelProductPoolColumns}
+                columns={visibleStoreChannelProductPoolColumns}
                 data={storeChannelProductPoolTableData}
                 noDataElement="暂无店铺数据"
                 pagination={{

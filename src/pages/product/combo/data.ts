@@ -34,7 +34,11 @@ import { ProductStoreConfigItem } from '../store-config/data';
  * - src/services/ProductService.ts
  */
 
-export type ProductSearchType = 'productName' | 'productId';
+export type ProductSearchType =
+  | 'productName'
+  | 'productId'
+  | 'subProductName'
+  | 'subProductCode';
 export type ProductStatus = 'on' | 'off';
 export type ProductType = 'virtual' | 'course' | 'service';
 export type ProductSpecMode = 'single' | 'multi';

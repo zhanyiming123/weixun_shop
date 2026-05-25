@@ -250,6 +250,7 @@ describe('ProductRepository seeded mock recovery', () => {
             comboPrice: 399,
             quantity: 2,
             required: true,
+            listed: true,
           },
         ],
       },
@@ -341,6 +342,150 @@ describe('ProductRepository seeded mock recovery', () => {
     ).toMatchObject({
       enabled: false,
     });
+    expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
+  });
+
+  it('backfills newly seeded combo mock products for self-built and referenced scenarios', () => {
+    const seededComboMockIds = [
+      'C_1260601000000000031',
+      'C_1260601000000000032',
+      'C_1260601000000000033',
+      'C_1260601000000000034',
+      'C_1260601000000000035',
+      'C_1260601000000000036',
+    ];
+    const selfBuiltComboIds = seededComboMockIds.slice(0, 3);
+    const referencedComboIds = seededComboMockIds.slice(3);
+
+    persistentStateMocks.readPersistentValue.mockReturnValue(
+      DEFAULT_PRODUCTS.filter((item) => !seededComboMockIds.includes(item.id))
+    );
+
+    const repository = new ProductRepository();
+    const snapshot = repository.readSnapshot();
+
+    expect(snapshot.map((item) => item.id)).toEqual(
+      expect.arrayContaining(seededComboMockIds)
+    );
+    expect(
+      seededComboMockIds.every((id) => {
+        const product = snapshot.find((item) => item.id === id);
+        return product?.productKind === 'combo' && Boolean(product.comboOptions?.length);
+      })
+    ).toBe(true);
+    expect(
+      selfBuiltComboIds.every(
+        (id) => snapshot.find((item) => item.id === id)?.sourceStoreId === 'store_shenzhen'
+      )
+    ).toBe(true);
+    expect(
+      referencedComboIds.every((id) =>
+        snapshot
+          .find((item) => item.id === id)
+          ?.shareTargets?.some(
+            (target) =>
+              target.storeId === 'store_shenzhen' && target.status === 'referenced'
+          )
+      )
+    ).toBe(true);
+    expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
+  });
+
+  it('refreshes seeded combo mock products from stale persisted local snapshots', () => {
+    persistentStateMocks.readPersistentValue.mockReturnValue([
+      {
+        ...DEFAULT_PRODUCTS.find((item) => item.id === 'C_1260601000000000031'),
+        sourceStoreId: 'store_guangzhou',
+        storeConfigs: [
+          {
+            storeId: 'store_guangzhou',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+          },
+        ],
+      },
+      {
+        ...DEFAULT_PRODUCTS.find((item) => item.id === 'C_1260601000000000034'),
+        shareTargets: [
+          {
+            storeId: 'store_guangzhou',
+            status: 'referenced',
+            sharedAt: '2026-05-11 10:50:00',
+            referencedAt: '2026-05-11 11:00:00',
+          },
+        ],
+      },
+      {
+        ...DEFAULT_PRODUCTS.find((item) => item.id === 'C_1260601000000000036'),
+        sourceStoreId: 'store_shenzhen',
+        storeConfigs: [
+          {
+            storeId: 'store_shenzhen',
+            sellStatus: 'sellable',
+            channelStatus: 'on',
+          },
+        ],
+      },
+    ]);
+
+    const repository = new ProductRepository();
+    const snapshot = repository.readSnapshot();
+
+    expect(
+      snapshot.find((item) => item.id === 'C_1260601000000000031')
+    ).toMatchObject({
+      sourceStoreId: 'store_shenzhen',
+    });
+    expect(
+      snapshot.find((item) => item.id === 'C_1260601000000000034')?.shareTargets
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          storeId: 'store_shenzhen',
+          status: 'referenced',
+        }),
+      ])
+    );
+    expect(
+      snapshot.find((item) => item.id === 'C_1260601000000000036')
+    ).toMatchObject({
+      sourceStoreId: 'store_suzhou',
+    });
+    expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
+  });
+
+  it('backfills guangzhou seeded combo sub-products from stale persisted snapshots', () => {
+    const guangzhouComboIds = [
+      'C_1260601000000000001',
+      'C_1260601000000000002',
+      'C_1260601000000000003',
+      'C_1260601000000000004',
+      'C_1260601000000000010',
+    ];
+
+    persistentStateMocks.readPersistentValue.mockReturnValue(
+      DEFAULT_PRODUCTS.map((item) => {
+        if (!guangzhouComboIds.includes(item.id)) {
+          return item;
+        }
+
+        const { comboOptions: _comboOptions, ...legacyComboProduct } = item;
+        return {
+          ...legacyComboProduct,
+          bundleComponents: [],
+        };
+      })
+    );
+
+    const repository = new ProductRepository();
+    const snapshot = repository.readSnapshot();
+
+    expect(
+      guangzhouComboIds.every((id) => {
+        const product = snapshot.find((item) => item.id === id);
+        return product?.productKind === 'combo' && Boolean(product.comboOptions?.length);
+      })
+    ).toBe(true);
     expect(persistentStateMocks.writePersistentValue).toHaveBeenCalled();
   });
 

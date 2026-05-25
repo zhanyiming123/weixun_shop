@@ -1,4 +1,8 @@
-export type ProductSearchType = 'productName' | 'productId';
+export type ProductSearchType =
+  | 'productName'
+  | 'productId'
+  | 'subProductName'
+  | 'subProductCode';
 export type ProductStatus = 'on' | 'off';
 export type ProductType = 'virtual' | 'course' | 'service';
 export type ProductSpecMode = 'single' | 'multi';
@@ -195,7 +199,9 @@ export type ProductComboOptionProductItem = {
   skuId: string;
   comboPrice?: number;
   quantity: number;
+  stock?: number;
   required: boolean;
+  listed: boolean;
 };
 
 export type ProductComboOptionItem = {
@@ -204,6 +210,13 @@ export type ProductComboOptionItem = {
   required: boolean;
   selectionLimit: number;
   items: ProductComboOptionProductItem[];
+};
+
+export type ProductComboDisplayOption = {
+  key: string;
+  title: string;
+  selectionLimit: number;
+  productNames: string[];
 };
 
 export type ProductPurchaseLimit = {
@@ -297,12 +310,18 @@ export type ProductStoreView = {
 };
 
 export type ProductListItem = ProductItem & {
+  comboDisplayOptions?: ProductComboDisplayOption[];
   storeView: ProductStoreView;
 };
 
 export type ProductFilterValues = {
   searchType: ProductSearchType;
   keyword: string;
+  subProductSearchType?: Extract<
+    ProductSearchType,
+    'subProductName' | 'subProductCode'
+  >;
+  subProductKeyword?: string;
   sellStatus?: ProductStoreSellStatus;
   productCatalogId?: string;
   productOwnershipId?: string;

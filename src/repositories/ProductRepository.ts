@@ -44,6 +44,14 @@ const RETIRED_SEED_PRODUCT_IDS = new Set([
   'B_1260420000000000009',
   'B_1260420000000000010',
 ]);
+const REFRESHED_SEED_PRODUCT_IDS = new Set([
+  'C_1260601000000000031',
+  'C_1260601000000000032',
+  'C_1260601000000000033',
+  'C_1260601000000000034',
+  'C_1260601000000000035',
+  'C_1260601000000000036',
+]);
 const DEFAULT_SHARE_TARGETS_BY_PRODUCT_ID = new Map(
   DEFAULT_PRODUCTS.filter((item) => (item.shareTargets || []).length > 0).map((item) => [
     item.id,
@@ -270,6 +278,10 @@ function mergeSeedProductItem(product: ProductItem) {
 
   if (!seedProduct) {
     return product;
+  }
+
+  if (REFRESHED_SEED_PRODUCT_IDS.has(product.id)) {
+    return seedProduct;
   }
 
   const sourceType = isProductSourceType(product.sourceType)

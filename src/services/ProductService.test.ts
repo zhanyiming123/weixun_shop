@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ProductService } from '@/services/ProductService';
+import { DEFAULT_PRODUCTS } from '@/repositories/product/defaultProducts';
 import type { ProductFilterValues, ProductItem } from '@/types/product';
 
 function createShareProduct(overrides: Partial<ProductItem> = {}): ProductItem {
@@ -63,6 +64,8 @@ function createListFilters(
   return {
     searchType: 'productName',
     keyword: '',
+    subProductSearchType: 'subProductName',
+    subProductKeyword: '',
     sellStatus: undefined,
     productCatalogId: undefined,
     productOwnershipId: undefined,
@@ -1025,6 +1028,7 @@ describe('ProductService store configs', () => {
               comboPrice: 299,
               quantity: 1,
               required: true,
+              listed: true,
             },
           ],
         },
@@ -1060,6 +1064,7 @@ describe('ProductService store configs', () => {
               comboPrice: 99,
               quantity: 2,
               required: false,
+              listed: true,
             },
           ],
         },
@@ -1091,6 +1096,7 @@ describe('ProductService store configs', () => {
             comboPrice: 299,
             quantity: 1,
             required: true,
+            listed: true,
           },
         ],
       },
@@ -1106,6 +1112,7 @@ describe('ProductService store configs', () => {
             comboPrice: 99,
             quantity: 2,
             required: false,
+            listed: true,
           },
         ],
       },
@@ -1462,6 +1469,554 @@ describe('ProductService store channel config', () => {
 });
 
 describe('ProductService query list filters', () => {
+  it('supports filtering combo products by sub-product name', () => {
+    const standardProductA = createShareProduct({
+      id: 'standard_child_a',
+      name: '托福听力提分班',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_a_1',
+          specText: '默认规格',
+          price: 699,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+    });
+    const standardProductB = createShareProduct({
+      id: 'standard_child_b',
+      name: 'SAT写作冲刺营',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_b_1',
+          specText: '默认规格',
+          price: 899,
+          stock: 18,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProductA = createShareProduct({
+      id: 'combo_product_a',
+      name: '托福提升组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_a',
+              skuId: 'sku_child_a_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const comboProductB = createShareProduct({
+      id: 'combo_product_b',
+      name: 'SAT冲刺组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_b',
+              skuId: 'sku_child_b_1',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([
+          standardProductA,
+          standardProductB,
+          comboProductA,
+          comboProductB,
+        ]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters({
+        subProductSearchType: 'subProductName',
+        subProductKeyword: '托福听力',
+      }),
+      organizationScope: 'headquarter',
+      visibleStoreIds: [],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['combo_product_a']);
+  });
+
+  it('supports filtering combo products by sub-product code', () => {
+    const standardProductA = createShareProduct({
+      id: 'standard_child_a',
+      name: '托福听力提分班',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_a_1',
+          specText: '默认规格',
+          price: 699,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+    });
+    const standardProductB = createShareProduct({
+      id: 'standard_child_b',
+      name: 'SAT写作冲刺营',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_b_1',
+          specText: '默认规格',
+          price: 899,
+          stock: 18,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProductA = createShareProduct({
+      id: 'combo_product_a',
+      name: '托福提升组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_a',
+              skuId: 'sku_child_a_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const comboProductB = createShareProduct({
+      id: 'combo_product_b',
+      name: 'SAT冲刺组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_b',
+              skuId: 'sku_child_b_1',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([
+          standardProductA,
+          standardProductB,
+          comboProductA,
+          comboProductB,
+        ]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters({
+        subProductSearchType: 'subProductCode',
+        subProductKeyword: 'sku_child_b_1',
+      }),
+      organizationScope: 'headquarter',
+      visibleStoreIds: [],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['combo_product_b']);
+  });
+
+  it('supports applying combo product and sub-product filters together', () => {
+    const standardProductA = createShareProduct({
+      id: 'standard_child_a',
+      name: '托福听力提分班',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_a_1',
+          specText: '默认规格',
+          price: 699,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+    });
+    const standardProductB = createShareProduct({
+      id: 'standard_child_b',
+      name: 'SAT写作冲刺营',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_b_1',
+          specText: '默认规格',
+          price: 899,
+          stock: 18,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProductA = createShareProduct({
+      id: 'combo_product_a',
+      name: '托福提升组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_a',
+              skuId: 'sku_child_a_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const comboProductB = createShareProduct({
+      id: 'combo_product_b',
+      name: '托福冲刺组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_b',
+              skuId: 'sku_child_b_1',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([
+          standardProductA,
+          standardProductB,
+          comboProductA,
+          comboProductB,
+        ]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters({
+        searchType: 'productName',
+        keyword: '托福提升',
+        subProductSearchType: 'subProductName',
+        subProductKeyword: '托福听力',
+      }),
+      organizationScope: 'headquarter',
+      visibleStoreIds: [],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['combo_product_a']);
+  });
+
+  it('builds structured combo sub-product display options for combo list rows', () => {
+    const standardProductA = createShareProduct({
+      id: 'standard_child_a',
+      name: '托福听力提分班',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_a_1',
+          specText: '默认规格',
+          price: 699,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+    });
+    const standardProductB = createShareProduct({
+      id: 'standard_child_b',
+      name: 'SAT写作冲刺营',
+      productKind: 'standard',
+      skus: [
+        {
+          id: 'sku_child_b_1',
+          specText: '默认规格',
+          price: 899,
+          stock: 18,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProduct = createShareProduct({
+      id: 'combo_product_a',
+      name: '提分组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '选项卡标题名1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_a',
+              skuId: 'sku_child_a_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+            {
+              productId: 'standard_child_b',
+              skuId: 'sku_child_b_1',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([standardProductA, standardProductB, comboProduct]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'headquarter',
+      visibleStoreIds: [],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items[0].comboDisplayOptions).toEqual([
+      {
+        key: 'option_1',
+        title: '选项卡标题名1',
+        selectionLimit: 1,
+        productNames: ['托福听力提分班', 'SAT写作冲刺营'],
+      },
+    ]);
+  });
+
+  it('falls back to seeded child product names for combo list rows in store scope', () => {
+    const offscopeChildProduct = createShareProduct({
+      id: 'standard_child_outscope',
+      name: '雅思口语冲刺营',
+      sourceStoreId: 'store_hangzhou',
+      storeConfigs: [
+        {
+          storeId: 'store_hangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+      shareTargets: [],
+      skus: [
+        {
+          id: 'sku_child_outscope_1',
+          specText: '默认规格',
+          price: 599,
+          stock: 12,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProduct = createShareProduct({
+      id: 'combo_product_store_scope',
+      name: '口语强化组合',
+      sourceStoreId: 'store_shenzhen',
+      storeConfigs: [
+        {
+          storeId: 'store_shenzhen',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+      shareTargets: [],
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '模考次数',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_outscope',
+              skuId: 'sku_child_outscope_1',
+              comboPrice: 599,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi
+        .fn()
+        .mockReturnValue([offscopeChildProduct, comboProduct]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_shenzhen'],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items[0].comboDisplayOptions).toEqual([
+      {
+        key: 'option_1',
+        title: '模考次数',
+        selectionLimit: 1,
+        productNames: ['雅思口语冲刺营'],
+      },
+    ]);
+  });
+
+  it('shows six seeded combo mocks in shenzhen store scope', () => {
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi.fn().mockReturnValue(DEFAULT_PRODUCTS),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_shenzhen'],
+      page: 1,
+      pageSize: 50,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        'C_1260601000000000031',
+        'C_1260601000000000032',
+        'C_1260601000000000033',
+        'C_1260601000000000034',
+        'C_1260601000000000035',
+        'C_1260601000000000036',
+      ])
+    );
+  });
+
+  it('builds combo sub-product summaries for seeded guangzhou store combos', () => {
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi.fn().mockReturnValue(DEFAULT_PRODUCTS),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_guangzhou'],
+      page: 1,
+      pageSize: 50,
+    });
+
+    const guangzhouComboIds = [
+      'C_1260601000000000001',
+      'C_1260601000000000002',
+      'C_1260601000000000003',
+      'C_1260601000000000004',
+      'C_1260601000000000010',
+    ];
+    const guangzhouCombos = result.items.filter((item) =>
+      guangzhouComboIds.includes(item.id)
+    );
+
+    expect(guangzhouCombos).toHaveLength(guangzhouComboIds.length);
+    expect(
+      guangzhouCombos.every((item) => Boolean(item.comboDisplayOptions?.length))
+    ).toBe(true);
+  });
+
   it('groups store products into tabs by channel status instead of sell status', () => {
     const onProduct = createShareProduct({
       id: 'product_channel_on',

@@ -36,6 +36,7 @@ import {
   readProductStoreItems,
 } from '@/pages/product/store-config/data';
 import type {
+  ProductComboDisplayOption,
   ProductKind,
   PublishProductsToStoresInput,
   ProductFilterValues,
@@ -98,19 +99,45 @@ function filterProductsByTab(products: ProductListItem[], tab: ProductTab) {
 function applyFilters<T extends ProductListItem>(
   products: T[],
   filters: ProductFilterValues,
-  visibleStoreIds: string[] = []
+  visibleStoreIds: string[] = [],
+  relatedProductMap: Map<string, ProductListItem> = new Map()
 ) {
   const keyword = filters.keyword.trim().toLowerCase();
+  const subProductKeyword = (filters.subProductKeyword || '').trim().toLowerCase();
   const sourceStoreIdSet = new Set(filters.sourceStoreIds || []);
   const visibleStoreIdSet = new Set(visibleStoreIds || []);
 
   return products.filter((item) => {
     if (keyword) {
-      const target =
-        filters.searchType === 'productId'
-          ? item.id.toLowerCase()
-          : `${item.name} ${item.storeView.currentName}`.toLowerCase();
+      let target = `${item.name} ${item.storeView.currentName}`.toLowerCase();
+
+      if (filters.searchType === 'productId') {
+        target = item.id.toLowerCase();
+      }
+
       if (!target.includes(keyword)) {
+        return false;
+      }
+    }
+
+    if (subProductKeyword) {
+      const comboTargets = (item.comboOptions || []).flatMap((option) =>
+        option.items.flatMap((optionItem) => {
+          const relatedProduct = relatedProductMap.get(optionItem.productId);
+
+          if (filters.subProductSearchType === 'subProductCode') {
+            return [
+              `${optionItem.productId} ${optionItem.skuId} ${relatedProduct?.id || ''}`.toLowerCase(),
+            ];
+          }
+
+          return [
+            `${relatedProduct?.name || ''} ${relatedProduct?.storeView.currentName || ''}`.toLowerCase(),
+          ];
+        })
+      );
+
+      if (!comboTargets.join(' ').includes(subProductKeyword)) {
         return false;
       }
     }
@@ -207,10 +234,29 @@ function normalizeProductFilters(
     filters.createdAtRange[1]
       ? [filters.createdAtRange[0], filters.createdAtRange[1]]
       : [];
+  const isLegacySubProductSearch =
+    filters.searchType === 'subProductName' ||
+    filters.searchType === 'subProductCode';
 
   return {
     searchType: filters.searchType === 'productId' ? 'productId' : 'productName',
-    keyword: typeof filters.keyword === 'string' ? filters.keyword : '',
+    keyword:
+      typeof filters.keyword === 'string' && !isLegacySubProductSearch
+        ? filters.keyword
+        : '',
+    subProductSearchType:
+      filters.subProductSearchType === 'subProductCode' ||
+      filters.subProductSearchType === 'subProductName'
+        ? filters.subProductSearchType
+        : filters.searchType === 'subProductCode'
+          ? 'subProductCode'
+          : 'subProductName',
+    subProductKeyword:
+      typeof filters.subProductKeyword === 'string'
+        ? filters.subProductKeyword
+        : isLegacySubProductSearch && typeof filters.keyword === 'string'
+          ? filters.keyword
+          : '',
     sellStatus:
       filters.sellStatus === 'sellable' || filters.sellStatus === 'unsellable'
         ? filters.sellStatus
@@ -261,6 +307,38 @@ function paginateProducts<T>(products: T[], page: number, pageSize: number) {
   const start = (normalizedPage - 1) * normalizedPageSize;
 
   return products.slice(start, start + normalizedPageSize);
+}
+
+function buildComboDisplayOptions(
+  product: ProductListItem,
+  relatedProductMap: Map<string, ProductListItem>,
+  fallbackProductMap: Map<string, ProductItem>
+): ProductComboDisplayOption[] | undefined {
+  if (product.productKind !== 'combo') {
+    return undefined;
+  }
+
+  const displayOptions = (product.comboOptions || [])
+    .map((option, optionIndex) => ({
+      key: option.id || `option_${optionIndex + 1}`,
+      title: option.title || `选项${optionIndex + 1}`,
+      selectionLimit: option.selectionLimit,
+      productNames: option.items
+        .map((item) => {
+          const relatedProduct = relatedProductMap.get(item.productId);
+          const fallbackProduct = fallbackProductMap.get(item.productId);
+          return (
+            relatedProduct?.storeView.currentName ||
+            relatedProduct?.name ||
+            fallbackProduct?.name ||
+            item.productId
+          );
+        })
+        .filter(Boolean),
+    }))
+    .filter((option) => option.productNames.length);
+
+  return displayOptions.length ? displayOptions : undefined;
 }
 
 function formatOverrideUpdatedAt(date = new Date()) {
@@ -341,6 +419,7 @@ export class ProductService {
   queryList(input: ProductListQuery): ProductListResult {
     const allProducts = this.repository.readSnapshot();
     const runtimeProducts = allProducts.map((item) => applyBundleRuntime(item, allProducts));
+    const runtimeProductMap = new Map(runtimeProducts.map((item) => [item.id, item]));
     const allStoreItems = readProductStoreItems();
     const sourceStoreItems = allStoreItems.filter((item) => item.type === 'store');
     const organizationItems = readOrganizationItems().filter(
@@ -352,22 +431,39 @@ export class ProductService {
         : runtimeProducts.filter((item) =>
           hasProductStoreIntersection(item.storeConfigs, input.visibleStoreIds)
         );
-    const scopedProductsByKind = input.productKind
-      ? scopedProducts.filter(
-          (item) => normalizeProductKind(item.productKind) === normalizeProductKind(input.productKind)
-        )
-      : scopedProducts;
-    const projectedProducts = scopedProductsByKind.map((item) =>
+    const projectedScopedProducts = scopedProducts.map((item) =>
       buildProductListItem(item, input.organizationScope, input.visibleStoreIds, {
         ...resolveProductSourceStoreMeta(item, sourceStoreItems, organizationItems),
         salesStatusCounts: getSalesStatusCounts(item, input.visibleStoreIds),
       })
     );
+    const projectedProductMap = new Map(
+      projectedScopedProducts.map((item) => [item.id, item])
+    );
+    const displayReadyProducts = projectedScopedProducts.map((item) => ({
+      ...item,
+      comboDisplayOptions: buildComboDisplayOptions(
+        item,
+        projectedProductMap,
+        runtimeProductMap
+      ),
+    }));
+    const displayReadyProductMap = new Map(
+      displayReadyProducts.map((item) => [item.id, item])
+    );
+    const projectedProducts = input.productKind
+      ? displayReadyProducts.filter(
+          (item) =>
+            normalizeProductKind(item.productKind) ===
+            normalizeProductKind(input.productKind)
+        )
+      : displayReadyProducts;
 
     const filteredProducts = applyFilters(
       projectedProducts,
       input.filters,
-      input.visibleStoreIds
+      input.visibleStoreIds,
+      displayReadyProductMap
     );
     const scopedProductsByDemo = filterDataByScope<
       ProductListItem & { operatorId?: string; creatorId?: string }
@@ -438,7 +534,12 @@ export class ProductService {
       : shareableItems;
     const normalizedFilters = normalizeProductFilters(input.filters);
     const filteredByFilters = normalizedFilters
-      ? applyFilters(filteredByKind, normalizedFilters, [currentStoreId])
+      ? applyFilters(
+          filteredByKind,
+          normalizedFilters,
+          [currentStoreId],
+          new Map(filteredByKind.map((item) => [item.id, item]))
+        )
       : filteredByKind;
     const legacyKeyword = (input.keyword || '').trim().toLowerCase();
     const filteredByKeyword =

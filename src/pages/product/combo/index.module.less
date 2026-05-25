@@ -178,6 +178,72 @@
   line-height: 22px;
 }
 
+.subProductSummary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-2);
+  line-height: 22px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  cursor: default;
+}
+
+.subProductTooltip {
+  display: flex;
+  max-width: 420px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subProductTooltipSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.subProductTooltipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subProductTooltipTitle {
+  color: var(--color-text-1);
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.subProductTooltipLimit {
+  flex: none;
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.subProductTooltipNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subProductTooltipName {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 18px;
+  background: var(--color-fill-2);
+}
+
 .sourceStoreCell {
   display: flex;
   flex-wrap: wrap;

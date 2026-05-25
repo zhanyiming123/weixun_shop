@@ -729,6 +729,62 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         },
       ],
     },
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-1',
+      },
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-2',
+      },
+      {
+        productId: 'G_1260601000000000026',
+        skuId: 'sku-G_1260601000000000026-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '雅思冲刺课',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-1',
+            comboPrice: 899,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-2',
+            comboPrice: 959,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '陪跑服务',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000026',
+            skuId: 'sku-G_1260601000000000026-1',
+            comboPrice: 299,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
   },
   {
     id: 'C_1260601000000000002',
@@ -759,6 +815,50 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         storeId: 'store_guangzhou',
         sellStatus: 'sellable',
         channelStatus: 'on',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260408000000000003',
+        skuId: 'sku-G_1260408000000000003-1',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '答疑服务',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260408000000000003',
+            skuId: 'sku-G_1260408000000000003-1',
+            comboPrice: 219,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划咨询',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 499,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
       },
     ],
   },
@@ -813,6 +913,62 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         referencedAt: '2026-04-25 16:35:00',
       },
     ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-1',
+      },
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-2',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '托福模考',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-1',
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-2',
+            comboPrice: 1199,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划咨询',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 499,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
   },
   {
     id: 'C_1260601000000000004',
@@ -856,6 +1012,631 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         status: 'referenced',
         sharedAt: '2026-04-26 15:10:00',
         referencedAt: '2026-04-26 15:18:00',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000025',
+        skuId: 'sku-G_1260601000000000025-1',
+      },
+      {
+        productId: 'G_1260601000000000023',
+        skuId: 'sku-G_1260601000000000023-2',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: 'AP 备考课',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000025',
+            skuId: 'sku-G_1260601000000000025-1',
+            comboPrice: 829,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '数学强化',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000023',
+            skuId: 'sku-G_1260601000000000023-2',
+            comboPrice: 469,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000031',
+    name: '深圳自建·雅思口语写作冲刺组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000031-1',
+        specText: '',
+        price: 1099,
+        stock: 54,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1099,
+    stock: 54,
+    createdAt: '2026-05-10 10:10:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    storeConfigs: [
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'mall_online',
+        sellStatus: 'sellable',
+        channelStatus: 'off',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-1',
+      },
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-2',
+      },
+      {
+        productId: 'G_1260601000000000026',
+        skuId: 'sku-G_1260601000000000026-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '雅思冲刺课',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-1',
+            comboPrice: 799,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-2',
+            comboPrice: 859,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '陪跑服务',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000026',
+            skuId: 'sku-G_1260601000000000026-1',
+            comboPrice: 199,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000032',
+    name: '深圳自建·托福模考陪练组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000032-1',
+        specText: '',
+        price: 1399,
+        stock: 48,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1399,
+    stock: 48,
+    createdAt: '2026-05-10 11:20:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    storeConfigs: [
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'mall_mini_program',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-1',
+      },
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-2',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '模考次数',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-1',
+            comboPrice: 629,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-2',
+            comboPrice: 999,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划答疑',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 299,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000033',
+    name: '深圳自建·AP实验与数学双修组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_08',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000033-1',
+        specText: '',
+        price: 1288,
+        stock: 40,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1288,
+    stock: 40,
+    createdAt: '2026-05-10 14:05:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shenzhen',
+    storeConfigs: [
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'mall_online',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000025',
+        skuId: 'sku-G_1260601000000000025-1',
+      },
+      {
+        productId: 'G_1260601000000000023',
+        skuId: 'sku-G_1260601000000000023-2',
+      },
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '学科强化',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000025',
+            skuId: 'sku-G_1260601000000000025-1',
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000023',
+            skuId: 'sku-G_1260601000000000023-2',
+            comboPrice: 399,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '模考服务',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-1',
+            comboPrice: 199,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000034',
+    name: '[引用] 苏州·托福提分陪跑组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000034-1',
+        specText: '',
+        price: 1188,
+        stock: 36,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1188,
+    stock: 36,
+    createdAt: '2026-05-11 10:20:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'off',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000013',
+        skuId: 'sku-G_1260601000000000013-1',
+      },
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-1',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '课程主包',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000013',
+            skuId: 'sku-G_1260601000000000013-1',
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-1',
+            comboPrice: 599,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划咨询',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 199,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_shenzhen',
+        status: 'referenced',
+        sharedAt: '2026-05-11 10:50:00',
+        referencedAt: '2026-05-11 11:00:00',
+        sellableSkuIds: ['sku-C_1260601000000000034-1'],
+        allowSelfPrice: true,
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000035',
+    name: '[引用] 上海·暑期提分组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_06_02_01',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000035-1',
+        specText: '',
+        price: 1299,
+        stock: 44,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1299,
+    stock: 44,
+    createdAt: '2026-05-11 14:35:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_shanghai',
+    storeConfigs: [
+      {
+        storeId: 'store_shanghai',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'off',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-1',
+      },
+      {
+        productId: 'G_1260601000000000021',
+        skuId: 'sku-G_1260601000000000021-2',
+      },
+      {
+        productId: 'G_1260601000000000024',
+        skuId: 'sku-G_1260601000000000024-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '暑期正课',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-1',
+            comboPrice: 759,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+          {
+            productId: 'G_1260601000000000021',
+            skuId: 'sku-G_1260601000000000021-2',
+            comboPrice: 819,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '模考陪练',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000024',
+            skuId: 'sku-G_1260601000000000024-1',
+            comboPrice: 249,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_shenzhen',
+        status: 'referenced',
+        sharedAt: '2026-05-11 15:05:00',
+        referencedAt: '2026-05-11 15:18:00',
+        sellableSkuIds: ['sku-C_1260601000000000035-1'],
+      },
+    ],
+  },
+  {
+    id: 'C_1260601000000000036',
+    name: '[引用] 苏州·AP实验规划组合',
+    productKind: 'combo',
+    productCatalogId: 'international',
+    productOwnershipId: 'item_03_03_08',
+    productType: 'course',
+    inventoryUnit: '套',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku-C_1260601000000000036-1',
+        specText: '',
+        price: 1499,
+        stock: 28,
+        status: 'on',
+        isDefaultSelected: true,
+      },
+    ],
+    status: 'on',
+    price: 1499,
+    stock: 28,
+    createdAt: '2026-05-12 09:25:00',
+    sourceType: 'store',
+    sourceStoreId: 'store_suzhou',
+    storeConfigs: [
+      {
+        storeId: 'store_suzhou',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_shenzhen',
+        sellStatus: 'sellable',
+        channelStatus: 'off',
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000025',
+        skuId: 'sku-G_1260601000000000025-1',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: '实验强化',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000025',
+            skuId: 'sku-G_1260601000000000025-1',
+            comboPrice: 899,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划答疑',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 299,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ],
+    shareTargets: [
+      {
+        storeId: 'store_shenzhen',
+        status: 'referenced',
+        sharedAt: '2026-05-12 09:50:00',
+        referencedAt: '2026-05-12 10:05:00',
+        sellableSkuIds: ['sku-C_1260601000000000036-1'],
+        allowSelfPrice: true,
       },
     ],
   },
@@ -974,6 +1755,50 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
         status: 'pending',
         sharedAt: '2026-05-01 12:00:00',
         sellableSkuIds: ['sku-C_1260601000000000010-1'],
+      },
+    ],
+    bundleComponents: [
+      {
+        productId: 'G_1260601000000000010',
+        skuId: 'sku-G_1260601000000000010-1',
+      },
+      {
+        productId: 'G_1260601000000000022',
+        skuId: 'sku-G_1260601000000000022-1',
+      },
+    ],
+    comboOptions: [
+      {
+        id: 'option_1',
+        title: 'AMC 主课',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000010',
+            skuId: 'sku-G_1260601000000000010-1',
+            comboPrice: 599,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+      {
+        id: 'option_2',
+        title: '规划咨询',
+        required: false,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'G_1260601000000000022',
+            skuId: 'sku-G_1260601000000000022-1',
+            comboPrice: 399,
+            quantity: 1,
+            required: false,
+            listed: true,
+          },
+        ],
       },
     ],
   },
