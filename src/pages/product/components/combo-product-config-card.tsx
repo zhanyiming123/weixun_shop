@@ -325,7 +325,11 @@ export default function ComboProductConfigCard({
           }
 
           return [
-            createComboOptionProductItem(matchedEntry.product.id, matchedEntry.sku.id),
+            createComboOptionProductItem(
+              matchedEntry.product.id,
+              matchedEntry.sku.id,
+              matchedEntry.sku.price
+            ),
           ];
         });
       const nextItems = [...keptItems, ...addedItems];

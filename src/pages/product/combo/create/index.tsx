@@ -373,6 +373,33 @@ const PRODUCT_FORM_LAYOUT = {
   wrapperCol: { flex: '1' },
   requiredSymbol: true,
 };
+const ONLINE_MALL_EXAMPLE_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f8fafc" />
+        <stop offset="100%" stop-color="#eef2ff" />
+      </linearGradient>
+    </defs>
+    <rect width="960" height="720" rx="24" fill="url(#bg)" />
+    <rect x="48" y="48" width="864" height="80" rx="20" fill="#ffffff" />
+    <rect x="88" y="76" width="220" height="24" rx="12" fill="#dbeafe" />
+    <rect x="708" y="74" width="152" height="28" rx="14" fill="#e5e7eb" />
+    <rect x="48" y="160" width="280" height="512" rx="24" fill="#ffffff" />
+    <rect x="360" y="160" width="552" height="512" rx="24" fill="#ffffff" />
+    <rect x="80" y="204" width="216" height="216" rx="18" fill="#e0e7ff" />
+    <rect x="392" y="208" width="240" height="28" rx="14" fill="#c7d2fe" />
+    <rect x="392" y="256" width="472" height="18" rx="9" fill="#e5e7eb" />
+    <rect x="392" y="292" width="420" height="18" rx="9" fill="#e5e7eb" />
+    <rect x="392" y="338" width="180" height="40" rx="20" fill="#2563eb" />
+    <rect x="392" y="414" width="488" height="12" rx="6" fill="#e5e7eb" />
+    <rect x="392" y="442" width="456" height="12" rx="6" fill="#e5e7eb" />
+    <rect x="392" y="470" width="432" height="12" rx="6" fill="#e5e7eb" />
+    <text x="480" y="600" text-anchor="middle" font-size="30" font-family="Arial, sans-serif" fill="#64748b">
+      Online Mall Preview Placeholder
+    </text>
+  </svg>
+`)}`;
 
 function buildCopyProductName(name: string) {
   const maxLength = 15;
@@ -939,6 +966,7 @@ function ProductCreatePage() {
   const [detailBlockType, setDetailBlockType] = useState('p');
   const [detailFontSize, setDetailFontSize] = useState('16');
   const [detailLineHeight, setDetailLineHeight] = useState('1.75');
+  const [onlineMallExampleVisible, setOnlineMallExampleVisible] = useState(false);
   const [productStoreConfigs, setProductStoreConfigs] = useState<
     ProductStoreConfigItem[]
   >([]);
@@ -4039,6 +4067,13 @@ function ProductCreatePage() {
                 showIcon
                 content="这里已添加商品的源商品不可售或者下架不影响当前组合商品中的可售和上下架状态"
               />
+              <Button
+                type="text"
+                className={styles.comboExampleButton}
+                onClick={() => setOnlineMallExampleVisible(true)}
+              >
+                查看线上商城展示示例
+              </Button>
               <ComboProductConfigCard
                 allowDeleteOption={!isEditMode}
                 nonRemovableSkuIds={sourceComboOptionSkuIds}
@@ -4050,6 +4085,24 @@ function ProductCreatePage() {
           </div>
         </Form>
       </Card>
+
+      <Modal
+        title="线上商城展示示例"
+        visible={onlineMallExampleVisible}
+        autoFocus={false}
+        focusLock
+        footer={null}
+        style={{ width: 760 }}
+        onCancel={() => setOnlineMallExampleVisible(false)}
+      >
+        <div className={styles.comboExampleModalBody}>
+          <img
+            className={styles.comboExampleImage}
+            src={ONLINE_MALL_EXAMPLE_PLACEHOLDER}
+            alt="线上商城展示示例占位图"
+          />
+        </div>
+      </Modal>
 
       <Card className={styles.sectionCard}>
         <div className={styles.sectionHeader}>

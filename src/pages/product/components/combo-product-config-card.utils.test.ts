@@ -13,13 +13,13 @@ import {
 } from './combo-product-config-card.utils';
 
 describe('combo product config card helpers', () => {
-  it('creates added combo products as optional by default', () => {
+  it('creates added combo products with source price as combo price by default', () => {
     expect(DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED).toBe(false);
     expect(DEFAULT_COMBO_OPTION_PRODUCT_LISTED).toBe(true);
-    expect(createComboOptionProductItem('product_1', 'sku_1')).toEqual({
+    expect(createComboOptionProductItem('product_1', 'sku_1', 199)).toEqual({
       productId: 'product_1',
       skuId: 'sku_1',
-      comboPrice: undefined,
+      comboPrice: 199,
       quantity: 1,
       required: false,
       listed: true,

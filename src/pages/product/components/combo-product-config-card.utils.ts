@@ -8,12 +8,13 @@ export const DEFAULT_COMBO_OPTION_PRODUCT_LISTED = true;
 
 export function createComboOptionProductItem(
   productId: string,
-  skuId: string
+  skuId: string,
+  comboPrice?: number
 ): ProductComboOptionProductItem {
   return {
     productId,
     skuId,
-    comboPrice: undefined,
+    comboPrice,
     quantity: 1,
     required: DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED,
     listed: DEFAULT_COMBO_OPTION_PRODUCT_LISTED,
