@@ -5,7 +5,7 @@ import {
 } from './store-channel-product-pool-modal';
 
 describe('buildComboCreateStoreChannelProductPoolVisibleColumns', () => {
-  it('hides the sellable sku column for combo-create sales-store modal', () => {
+  it('keeps the sellable sku column for combo-create sales-store modal', () => {
     const columns = [
       { dataIndex: 'name', title: '店铺名称' },
       { dataIndex: 'sellStatus', title: '可售状态' },
@@ -15,11 +15,7 @@ describe('buildComboCreateStoreChannelProductPoolVisibleColumns', () => {
 
     const result = buildComboCreateStoreChannelProductPoolVisibleColumns(columns);
 
-    expect(COMBO_CREATE_STORE_CHANNEL_PRODUCT_POOL_SHOW_SELLABLE_SKU).toBe(false);
-    expect(result).toEqual([
-      { dataIndex: 'name', title: '店铺名称' },
-      { dataIndex: 'sellStatus', title: '可售状态' },
-      { dataIndex: 'allowSelfPrice', title: '自主定价' },
-    ]);
+    expect(COMBO_CREATE_STORE_CHANNEL_PRODUCT_POOL_SHOW_SELLABLE_SKU).toBe(true);
+    expect(result).toEqual(columns);
   });
 });

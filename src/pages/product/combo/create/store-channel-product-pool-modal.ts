@@ -1,5 +1,5 @@
 export const COMBO_CREATE_STORE_CHANNEL_PRODUCT_POOL_SHOW_SELLABLE_SKU =
-  false;
+  true;
 
 export function buildComboCreateStoreChannelProductPoolVisibleColumns<
   T extends { dataIndex?: string }

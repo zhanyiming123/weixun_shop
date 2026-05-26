@@ -970,6 +970,12 @@ function mergeSeedProductItem(product: ProductItem) {
     storeConfigs: hasItems(product.storeConfigs)
       ? product.storeConfigs
       : seedProduct.storeConfigs,
+    comboOptions:
+      product.productKind === 'combo' && hasItems(seedProduct.comboOptions)
+        ? hasItems(product.comboOptions)
+          ? product.comboOptions
+          : seedProduct.comboOptions
+        : product.comboOptions,
   };
 }
 
