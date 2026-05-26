@@ -309,6 +309,13 @@ function paginateProducts<T>(products: T[], page: number, pageSize: number) {
   return products.slice(start, start + normalizedPageSize);
 }
 
+function normalizeComboSubProductName(name: string) {
+  return name
+    .replace(/^\[引用\]\s*/, '')
+    .replace(/^.+?(?:店铺)?自建·/, '')
+    .trim();
+}
+
 function buildComboDisplayOptions(
   product: ProductListItem,
   relatedProductMap: Map<string, ProductListItem>,
@@ -327,12 +334,13 @@ function buildComboDisplayOptions(
         .map((item) => {
           const relatedProduct = relatedProductMap.get(item.productId);
           const fallbackProduct = fallbackProductMap.get(item.productId);
-          return (
+          const rawName =
             relatedProduct?.storeView.currentName ||
             relatedProduct?.name ||
             fallbackProduct?.name ||
-            item.productId
-          );
+            '';
+
+          return rawName ? normalizeComboSubProductName(rawName) : item.productId;
         })
         .filter(Boolean),
     }))

@@ -1954,6 +1954,94 @@ describe('ProductService query list filters', () => {
     ]);
   });
 
+  it('strips ownership prefixes from combo child names', () => {
+    const referencedChildProduct = createShareProduct({
+      id: 'standard_child_referenced',
+      name: '[引用] SAT写作冲刺营',
+      skus: [
+        {
+          id: 'sku_child_referenced_1',
+          specText: '默认规格',
+          price: 699,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+    });
+    const selfBuiltChildProduct = createShareProduct({
+      id: 'standard_child_self_built',
+      name: '广州自建·雅思冲刺课',
+      skus: [
+        {
+          id: 'sku_child_self_built_1',
+          specText: '默认规格',
+          price: 899,
+          stock: 18,
+          status: 'on',
+        },
+      ],
+    });
+    const comboProduct = createShareProduct({
+      id: 'combo_product_name_cleanup',
+      name: '暑期提分组合',
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '雅思冲刺课',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'standard_child_self_built',
+              skuId: 'sku_child_self_built_1',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+            {
+              productId: 'standard_child_referenced',
+              skuId: 'sku_child_referenced_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi.fn().mockReturnValue([
+        referencedChildProduct,
+        selfBuiltChildProduct,
+        comboProduct,
+      ]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'headquarter',
+      visibleStoreIds: [],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items[0].comboDisplayOptions).toEqual([
+      {
+        key: 'option_1',
+        title: '雅思冲刺课',
+        selectionLimit: 1,
+        productNames: ['雅思冲刺课', 'SAT写作冲刺营'],
+      },
+    ]);
+  });
+
   it('shows six seeded combo mocks in shenzhen store scope', () => {
     const service = new ProductService() as any;
 
