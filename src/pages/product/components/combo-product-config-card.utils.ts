@@ -1,11 +1,51 @@
 import type {
   ProductComboOptionItem,
   ProductComboOptionProductItem,
+  ProductListItem,
 } from '@/types/product';
 
 export const DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED = false;
 export const DEFAULT_COMBO_OPTION_PRODUCT_LISTED = true;
 export type ComboOptionProductMoveDirection = 'up' | 'down';
+
+export type ComboTrialRow = {
+  key: string;
+  leftSkuId: string;
+  rightSkuId: string;
+  leftProductName: string;
+  rightProductName: string;
+  leftSpecText: string;
+  rightSpecText: string;
+  leftUnitPrice: number;
+  rightUnitPrice: number;
+  leftQuantity: number;
+  rightQuantity: number;
+  leftSubtotal: number;
+  rightSubtotal: number;
+  totalPrice: number;
+  isDefaultCombination: boolean;
+};
+
+export type ComboTrialResult = {
+  supported: boolean;
+  reason?: string;
+  rows: ComboTrialRow[];
+};
+
+export type ComboTrialTableRow = {
+  key: string;
+  comboIndex: number;
+  productName: string;
+  skuId: string;
+  specText: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+  totalPrice: number;
+  rowSpan: number;
+  isSummaryRow: boolean;
+  isDefaultCombination: boolean;
+};
 
 export function createComboOptionProductItem(
   productId: string,
@@ -164,4 +204,159 @@ export function normalizeComboOptionSelectionLimit(
   }
 
   return Math.min(option.selectionLimit, listedCount);
+}
+
+export function getComboOptionDefaultSelectedCount(
+  option: Pick<ProductComboOptionItem, 'items'>
+) {
+  return option.items.filter(
+    (item) => item.listed !== false && (item.required || item.defaultSelected === true)
+  ).length;
+}
+
+export function getComboTrialDefaultSelectionError(
+  options: ProductComboOptionItem[]
+) {
+  const hasInvalidOption = options.some(
+    (option) => getComboOptionDefaultSelectedCount(option) !== option.selectionLimit
+  );
+
+  return hasInvalidOption ? '请配置全部选项卡的默认选中商品' : '';
+}
+
+function getComboTrialOptionLabel(
+  option: Pick<ProductComboOptionItem, 'title'>,
+  index: number
+) {
+  return option.title || `选项${index + 1}`;
+}
+
+function createUnsupportedComboTrialResult(reason: string): ComboTrialResult {
+  return {
+    supported: false,
+    reason,
+    rows: [],
+  };
+}
+
+function getListedComboTrialItems(option: Pick<ProductComboOptionItem, 'items'>) {
+  return option.items.filter((item) => item.listed !== false);
+}
+
+function getComboTrialRowProductMeta(
+  item: Pick<ProductComboOptionProductItem, 'productId' | 'skuId'>,
+  products: ProductListItem[]
+) {
+  const product = products.find((candidate) => candidate.id === item.productId);
+  const sku = product?.skus.find((candidate) => candidate.id === item.skuId);
+
+  return {
+    productName: product?.name || item.productId,
+    specText:
+      product?.specMode === 'multi' ? sku?.specText || '默认规格' : '单规格',
+  };
+}
+
+export function buildComboTrialResult(
+  options: ProductComboOptionItem[],
+  products: ProductListItem[]
+): ComboTrialResult {
+  if (options.length !== 2) {
+    return createUnsupportedComboTrialResult('当前仅支持 2 个选项卡试算');
+  }
+
+  for (let index = 0; index < options.length; index += 1) {
+    const option = options[index];
+    const optionLabel = getComboTrialOptionLabel(option, index);
+
+    if (option.selectionLimit !== 1) {
+      return createUnsupportedComboTrialResult('当前仅支持每个选项卡选择 1 份的试算');
+    }
+
+    if (getRequiredComboOptionSkuTypeCount(option) > 1) {
+      return createUnsupportedComboTrialResult(
+        `${optionLabel}存在多个必选商品，暂不支持试算`
+      );
+    }
+
+    if (!getListedComboTrialItems(option).length) {
+      return createUnsupportedComboTrialResult(`${optionLabel}暂无上架商品，无法试算`);
+    }
+  }
+
+  const [leftOption, rightOption] = options;
+  const leftItems = getListedComboTrialItems(leftOption);
+  const rightItems = getListedComboTrialItems(rightOption);
+
+  const rows = leftItems.flatMap((leftItem) => {
+    const leftMeta = getComboTrialRowProductMeta(leftItem, products);
+    const leftUnitPrice = leftItem.comboPrice ?? 0;
+    const leftSubtotal = leftUnitPrice * leftItem.quantity;
+    const leftDefaultSelected = leftItem.required || leftItem.defaultSelected === true;
+
+    return rightItems.map((rightItem) => {
+      const rightMeta = getComboTrialRowProductMeta(rightItem, products);
+      const rightUnitPrice = rightItem.comboPrice ?? 0;
+      const rightSubtotal = rightUnitPrice * rightItem.quantity;
+      const rightDefaultSelected = rightItem.required || rightItem.defaultSelected === true;
+
+      return {
+        key: `${leftItem.skuId}__${rightItem.skuId}`,
+        leftSkuId: leftItem.skuId,
+        rightSkuId: rightItem.skuId,
+        leftProductName: leftMeta.productName,
+        rightProductName: rightMeta.productName,
+        leftSpecText: leftMeta.specText,
+        rightSpecText: rightMeta.specText,
+        leftUnitPrice,
+        rightUnitPrice,
+        leftQuantity: leftItem.quantity,
+        rightQuantity: rightItem.quantity,
+        leftSubtotal,
+        rightSubtotal,
+        totalPrice: leftSubtotal + rightSubtotal,
+        isDefaultCombination: leftDefaultSelected && rightDefaultSelected,
+      };
+    });
+  });
+
+  return {
+    supported: true,
+    rows,
+  };
+}
+
+export function buildComboTrialTableRows(
+  rows: ComboTrialRow[]
+): ComboTrialTableRow[] {
+  return rows.flatMap((row, index) => [
+    {
+      key: `${row.key}__left`,
+      comboIndex: index + 1,
+      productName: row.leftProductName,
+      skuId: row.leftSkuId,
+      specText: row.leftSpecText,
+      unitPrice: row.leftUnitPrice,
+      quantity: row.leftQuantity,
+      subtotal: row.leftSubtotal,
+      totalPrice: row.totalPrice,
+      rowSpan: 2,
+      isSummaryRow: true,
+      isDefaultCombination: row.isDefaultCombination,
+    },
+    {
+      key: `${row.key}__right`,
+      comboIndex: index + 1,
+      productName: row.rightProductName,
+      skuId: row.rightSkuId,
+      specText: row.rightSpecText,
+      unitPrice: row.rightUnitPrice,
+      quantity: row.rightQuantity,
+      subtotal: row.rightSubtotal,
+      totalPrice: row.totalPrice,
+      rowSpan: 0,
+      isSummaryRow: false,
+      isDefaultCombination: row.isDefaultCombination,
+    },
+  ]);
 }

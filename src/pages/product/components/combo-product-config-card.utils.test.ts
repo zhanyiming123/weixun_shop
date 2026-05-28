@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import type { ProductListItem } from '@/types/product';
 import {
+  buildComboTrialResult,
+  buildComboTrialTableRows,
   canRemoveComboOptionProduct,
   canEnableComboOptionProductRequired,
   createComboOptionProductItem,
   DEFAULT_COMBO_OPTION_PRODUCT_LISTED,
   DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED,
+  getComboOptionDefaultSelectedCount,
+  getComboTrialDefaultSelectionError,
   getComboOptionSelectionLimitError,
   getDisableComboOptionProductListedError,
   moveComboOptionProductItem,
@@ -12,6 +17,38 @@ import {
   preserveNonRemovableComboOptionSkuIds,
   syncComboOptionProductRequiredState,
 } from './combo-product-config-card.utils';
+
+function createProductListItem(
+  overrides: Partial<ProductListItem> = {}
+): ProductListItem {
+  return {
+    id: 'product_default',
+    name: '测试商品',
+    productKind: 'standard',
+    productCatalogId: 'catalog_1',
+    productOwnershipId: 'ownership_1',
+    productType: 'virtual',
+    inventoryUnit: '份',
+    specMode: 'single',
+    skus: [
+      {
+        id: 'sku_default',
+        specText: '',
+        price: 100,
+        stock: 10,
+        status: 'on',
+      },
+    ],
+    status: 'on',
+    price: 100,
+    stock: 10,
+    createdAt: '2026-05-28 10:00:00',
+    sourceType: 'store',
+    storeConfigs: [],
+    storeView: {} as ProductListItem['storeView'],
+    ...overrides,
+  };
+}
 
 describe('combo product config card helpers', () => {
   it('creates added combo products with source price as combo price by default', () => {
@@ -484,5 +521,441 @@ describe('combo product config card helpers', () => {
         ],
       })
     ).toBe(1);
+  });
+
+  it('builds all supported two-option combo trial rows and totals', () => {
+    const products = [
+      createProductListItem({
+        id: 'product_1',
+        name: '主课 A',
+        specMode: 'single',
+        skus: [
+          {
+            id: 'sku_1',
+            specText: '',
+            price: 100,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+      createProductListItem({
+        id: 'product_2',
+        name: '主课 B',
+        specMode: 'single',
+        skus: [
+          {
+            id: 'sku_2',
+            specText: '',
+            price: 200,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+      createProductListItem({
+        id: 'product_3',
+        name: '加购课',
+        specMode: 'multi',
+        skus: [
+          {
+            id: 'sku_3',
+            specText: '直播版',
+            price: 60,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+    ];
+
+    expect(
+      buildComboTrialResult(
+        [
+          {
+            id: 'option_1',
+            title: '选项1',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_1',
+                skuId: 'sku_1',
+                comboPrice: 100,
+                quantity: 1,
+                required: true,
+                listed: true,
+              },
+              {
+                productId: 'product_2',
+                skuId: 'sku_2',
+                comboPrice: 200,
+                quantity: 1,
+                required: false,
+                listed: true,
+              },
+            ],
+          },
+          {
+            id: 'option_2',
+            title: '选项2',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_3',
+                skuId: 'sku_3',
+                comboPrice: 50,
+                quantity: 2,
+                required: false,
+                listed: true,
+                defaultSelected: true,
+              },
+            ],
+          },
+        ],
+        products
+      )
+    ).toEqual({
+      supported: true,
+      rows: [
+        {
+          key: 'sku_1__sku_3',
+          leftSkuId: 'sku_1',
+          rightSkuId: 'sku_3',
+          leftProductName: '主课 A',
+          rightProductName: '加购课',
+          leftSpecText: '单规格',
+          rightSpecText: '直播版',
+          leftUnitPrice: 100,
+          rightUnitPrice: 50,
+          leftQuantity: 1,
+          rightQuantity: 2,
+          leftSubtotal: 100,
+          rightSubtotal: 100,
+          totalPrice: 200,
+          isDefaultCombination: true,
+        },
+        {
+          key: 'sku_2__sku_3',
+          leftSkuId: 'sku_2',
+          rightSkuId: 'sku_3',
+          leftProductName: '主课 B',
+          rightProductName: '加购课',
+          leftSpecText: '单规格',
+          rightSpecText: '直播版',
+          leftUnitPrice: 200,
+          rightUnitPrice: 50,
+          leftQuantity: 1,
+          rightQuantity: 2,
+          leftSubtotal: 200,
+          rightSubtotal: 100,
+          totalPrice: 300,
+          isDefaultCombination: false,
+        },
+      ],
+    });
+  });
+
+  it('filters unlisted products from combo trial rows', () => {
+    const products = [
+      createProductListItem({
+        id: 'product_1',
+        name: '必看主课',
+        skus: [
+          {
+            id: 'sku_1',
+            specText: '',
+            price: 100,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+      createProductListItem({
+        id: 'product_2',
+        name: '候选主课',
+        skus: [
+          {
+            id: 'sku_2',
+            specText: '',
+            price: 120,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+      createProductListItem({
+        id: 'product_3',
+        name: '加购课',
+        skus: [
+          {
+            id: 'sku_3',
+            specText: '',
+            price: 80,
+            stock: 10,
+            status: 'on',
+          },
+        ],
+      }),
+    ];
+
+    expect(
+      buildComboTrialResult(
+        [
+          {
+            id: 'option_1',
+            title: '选项1',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_1',
+                skuId: 'sku_1',
+                comboPrice: 100,
+                quantity: 1,
+                required: true,
+                listed: true,
+              },
+              {
+                productId: 'product_2',
+                skuId: 'sku_2',
+                comboPrice: 120,
+                quantity: 1,
+                required: false,
+                listed: false,
+              },
+            ],
+          },
+          {
+            id: 'option_2',
+            title: '选项2',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_3',
+                skuId: 'sku_3',
+                comboPrice: 80,
+                quantity: 1,
+                required: false,
+                listed: true,
+              },
+            ],
+          },
+        ],
+        products
+      ).rows.map((row) => row.leftSkuId)
+    ).toEqual(['sku_1']);
+  });
+
+  it('rejects combo trial when selection limits are not one-per-option', () => {
+    expect(
+      buildComboTrialResult(
+        [
+          {
+            id: 'option_1',
+            title: '选项1',
+            required: true,
+            selectionLimit: 2,
+            items: [],
+          },
+          {
+            id: 'option_2',
+            title: '选项2',
+            required: true,
+            selectionLimit: 1,
+            items: [],
+          },
+        ],
+        []
+      )
+    ).toEqual({
+      supported: false,
+      reason: '当前仅支持每个选项卡选择 1 份的试算',
+      rows: [],
+    });
+  });
+
+  it('rejects combo trial when an option has multiple required products', () => {
+    expect(
+      buildComboTrialResult(
+        [
+          {
+            id: 'option_1',
+            title: '选项1',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_1',
+                skuId: 'sku_1',
+                comboPrice: 100,
+                quantity: 1,
+                required: true,
+                listed: true,
+              },
+              {
+                productId: 'product_2',
+                skuId: 'sku_2',
+                comboPrice: 120,
+                quantity: 1,
+                required: true,
+                listed: true,
+              },
+            ],
+          },
+          {
+            id: 'option_2',
+            title: '选项2',
+            required: true,
+            selectionLimit: 1,
+            items: [
+              {
+                productId: 'product_3',
+                skuId: 'sku_3',
+                comboPrice: 80,
+                quantity: 1,
+                required: false,
+                listed: true,
+              },
+            ],
+          },
+        ],
+        []
+      )
+    ).toEqual({
+      supported: false,
+      reason: '选项1存在多个必选商品，暂不支持试算',
+      rows: [],
+    });
+  });
+
+  it('counts listed required and default-selected items toward default selection validation', () => {
+    expect(
+      getComboOptionDefaultSelectedCount({
+        items: [
+          {
+            productId: 'product_1',
+            skuId: 'sku_1',
+            comboPrice: 100,
+            quantity: 1,
+            required: true,
+            listed: true,
+          },
+          {
+            productId: 'product_2',
+            skuId: 'sku_2',
+            comboPrice: 120,
+            quantity: 1,
+            required: false,
+            listed: true,
+            defaultSelected: true,
+          },
+          {
+            productId: 'product_3',
+            skuId: 'sku_3',
+            comboPrice: 150,
+            quantity: 1,
+            required: false,
+            listed: false,
+            defaultSelected: true,
+          },
+        ],
+      })
+    ).toBe(2);
+  });
+
+  it('returns an error when any option default-selected count does not match its selection limit', () => {
+    expect(
+      getComboTrialDefaultSelectionError([
+        {
+          id: 'option_1',
+          title: '选项1',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_1',
+              skuId: 'sku_1',
+              comboPrice: 100,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+        {
+          id: 'option_2',
+          title: '选项2',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_2',
+              skuId: 'sku_2',
+              comboPrice: 120,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+          ],
+        },
+      ])
+    ).toBe('请配置全部选项卡的默认选中商品');
+  });
+
+  it('flattens each combo trial into two table rows with shared sequence and total price', () => {
+    expect(
+      buildComboTrialTableRows([
+        {
+          key: 'sku_1__sku_3',
+          leftSkuId: 'sku_1',
+          rightSkuId: 'sku_3',
+          leftProductName: '主课 A',
+          rightProductName: '加购课',
+          leftSpecText: '单规格',
+          rightSpecText: '直播版',
+          leftUnitPrice: 100,
+          rightUnitPrice: 50,
+          leftQuantity: 1,
+          rightQuantity: 2,
+          leftSubtotal: 100,
+          rightSubtotal: 100,
+          totalPrice: 200,
+          isDefaultCombination: true,
+        },
+      ])
+    ).toEqual([
+      {
+        key: 'sku_1__sku_3__left',
+        comboIndex: 1,
+        productName: '主课 A',
+        skuId: 'sku_1',
+        specText: '单规格',
+        unitPrice: 100,
+        quantity: 1,
+        subtotal: 100,
+        totalPrice: 200,
+        rowSpan: 2,
+        isSummaryRow: true,
+        isDefaultCombination: true,
+      },
+      {
+        key: 'sku_1__sku_3__right',
+        comboIndex: 1,
+        productName: '加购课',
+        skuId: 'sku_3',
+        specText: '直播版',
+        unitPrice: 50,
+        quantity: 2,
+        subtotal: 100,
+        totalPrice: 200,
+        rowSpan: 0,
+        isSummaryRow: false,
+        isDefaultCombination: true,
+      },
+    ]);
   });
 });

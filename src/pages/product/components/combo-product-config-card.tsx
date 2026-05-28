@@ -38,8 +38,12 @@ import {
   getProductOwnershipPathById,
 } from '@/pages/product/category/data';
 import {
+  buildComboTrialResult,
+  buildComboTrialTableRows,
   canRemoveComboOptionProduct,
   canEnableComboOptionProductRequired,
+  getComboTrialDefaultSelectionError,
+  type ComboTrialTableRow,
   createComboOptionProductItem,
   getComboOptionSelectionLimitError,
   getDisableComboOptionProductListedError,
@@ -204,6 +208,7 @@ export default function ComboProductConfigCard({
     return map;
   }, [products]);
   const [selectorVisible, setSelectorVisible] = useState(false);
+  const [trialVisible, setTrialVisible] = useState(false);
   const [activeOptionId, setActiveOptionId] = useState<string>();
   const normalizedValue = useMemo(
     () =>
@@ -257,6 +262,14 @@ export default function ComboProductConfigCard({
       ),
     [products, lockedSkuIdSet, currentSelectedSkuIdSet, catalogItems, ownershipItems]
   );
+  const comboTrialResult = useMemo(
+    () => buildComboTrialResult(normalizedValue, products),
+    [normalizedValue, products]
+  );
+  const comboTrialTableRows = useMemo(
+    () => buildComboTrialTableRows(comboTrialResult.rows),
+    [comboTrialResult.rows]
+  );
 
   function patchOptions(
     updater: (previous: ProductComboOptionItem[]) => ProductComboOptionItem[]
@@ -282,6 +295,17 @@ export default function ComboProductConfigCard({
       ...normalizedValue,
       createDefaultComboOption(normalizedValue.length + 1),
     ]);
+  }
+
+  function handleOpenTrial() {
+    const defaultSelectionError = getComboTrialDefaultSelectionError(normalizedValue);
+
+    if (defaultSelectionError) {
+      Message.warning(defaultSelectionError);
+      return;
+    }
+
+    setTrialVisible(true);
   }
 
   function handleDeleteOption(optionId: string) {
@@ -678,6 +702,75 @@ export default function ComboProductConfigCard({
     ];
   }
 
+  const comboTrialColumns = useMemo(
+    () => [
+      {
+        title: '组合序号',
+        dataIndex: 'comboIndex',
+        width: 100,
+        render: (value: number, record: ComboTrialTableRow) => ({
+          children: (
+            <div className={styles.trialIndexCell}>
+              <span className={styles.priceText}>{value}</span>
+              {record.isDefaultCombination && (
+                <Tag size="small" color="arcoblue" bordered={false}>
+                  默认组合
+                </Tag>
+              )}
+            </div>
+          ),
+          props: {
+            rowSpan: record.rowSpan,
+          },
+        }),
+      },
+      {
+        title: '商品名称',
+        dataIndex: 'productName',
+        width: 280,
+        render: (_: string, record: ComboTrialTableRow) => (
+          <div className={styles.trialCell}>
+            <div className={styles.productName}>{record.productName}</div>
+            <div className={styles.productMeta}>{record.specText}</div>
+          </div>
+        ),
+      },
+      {
+        title: '商品单价',
+        dataIndex: 'unitPrice',
+        width: 140,
+        render: (price: number) => (
+          <span className={styles.priceText}>{formatPrice(price)}</span>
+        ),
+      },
+      {
+        title: '商品数量',
+        dataIndex: 'quantity',
+        width: 140,
+      },
+      {
+        title: '商品总价',
+        dataIndex: 'subtotal',
+        width: 160,
+        render: (price: number) => (
+          <span className={styles.priceText}>{formatPrice(price)}</span>
+        ),
+      },
+      {
+        title: '组合总价',
+        dataIndex: 'totalPrice',
+        width: 160,
+        render: (price: number, record: ComboTrialTableRow) => ({
+          children: <span className={styles.priceText}>{formatPrice(price)}</span>,
+          props: {
+            rowSpan: record.rowSpan,
+          },
+        }),
+      },
+    ],
+    []
+  );
+
   return (
     <div className={styles.container}>
       {normalizedValue.map((option, index) => {
@@ -798,14 +891,19 @@ export default function ComboProductConfigCard({
       })}
 
       <div className={styles.footer}>
-        <Button
-          type="outline"
-          icon={<IconPlus />}
-          disabled={normalizedValue.length >= MAX_OPTION_COUNT}
-          onClick={handleAddOption}
-        >
-          新增选项（{normalizedValue.length}/{MAX_OPTION_COUNT}）
-        </Button>
+        <div className={styles.footerActions}>
+          <Button
+            type="outline"
+            icon={<IconPlus />}
+            disabled={normalizedValue.length >= MAX_OPTION_COUNT}
+            onClick={handleAddOption}
+          >
+            新增选项（{normalizedValue.length}/{MAX_OPTION_COUNT}）
+          </Button>
+          <Button type="outline" onClick={handleOpenTrial}>
+            组合试算
+          </Button>
+        </div>
       </div>
 
       <MarketingProductSelector
@@ -816,6 +914,41 @@ export default function ComboProductConfigCard({
         onCancel={() => setSelectorVisible(false)}
         onConfirm={handleSelectorConfirm}
       />
+
+      <Modal
+        title="组合试算"
+        visible={trialVisible}
+        autoFocus={false}
+        focusLock
+        footer={null}
+        style={{ width: 980 }}
+        onCancel={() => setTrialVisible(false)}
+      >
+        <div className={styles.trialModalContent}>
+          <div className={styles.trialSummary}>
+            <div className={styles.trialHint}>当前仅支持 2 个选项卡且每组选 1 份的组合试算</div>
+            {comboTrialResult.supported && (
+              <div className={styles.trialCount}>共 {comboTrialResult.rows.length} 个组合</div>
+            )}
+          </div>
+
+          {comboTrialResult.supported ? (
+            <Table
+              rowKey="key"
+              className={styles.table}
+              columns={comboTrialColumns}
+              data={comboTrialTableRows}
+              pagination={false}
+              scroll={{ x: 800 }}
+            />
+          ) : (
+            <Empty
+              description={comboTrialResult.reason || '当前配置暂不支持试算'}
+              className={styles.trialEmpty}
+            />
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
