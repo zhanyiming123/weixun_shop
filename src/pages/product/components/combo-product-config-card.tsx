@@ -23,6 +23,7 @@ import {
   IconQuestionCircle,
 } from '@arco-design/web-react/icon';
 import type {
+  ProductComboOptionType,
   ProductComboOptionItem,
   ProductListItem,
 } from '@/types/product';
@@ -41,8 +42,10 @@ import {
   buildComboTrialResult,
   buildComboTrialTableRows,
   canRemoveComboOptionProduct,
-  canEnableComboOptionProductRequired,
   getComboTrialDefaultSelectionError,
+  getComboOptionRequiredByType,
+  getComboOptionType,
+  isMustBuyComboOption,
   type ComboTrialTableRow,
   createComboOptionProductItem,
   getComboOptionSelectionLimitError,
@@ -50,12 +53,29 @@ import {
   moveComboOptionProductItem,
   normalizeComboOptionSelectionLimit,
   preserveNonRemovableComboOptionSkuIds,
-  syncComboOptionProductRequiredState,
+  syncComboOptionItemsByType,
 } from './combo-product-config-card.utils';
 import styles from './combo-product-config-card.module.less';
 
 const MAX_OPTION_COUNT = 5;
 const SELECTION_LIMIT_OPTIONS = Array.from({ length: 10 }, (_, index) => index + 1);
+const COMBO_OPTION_TYPE_OPTIONS: Array<{
+  label: string;
+  value: ProductComboOptionType;
+}> = [
+  {
+    label: '必购项',
+    value: 'must_buy',
+  },
+  {
+    label: '选构项',
+    value: 'selective',
+  },
+  {
+    label: '加购项',
+    value: 'add_on',
+  },
+];
 
 type ComboProductConfigCardProps = {
   allowDeleteOption?: boolean;
@@ -90,6 +110,7 @@ export function createDefaultComboOption(optionIndex: number): ProductComboOptio
   return {
     id: createOptionId(),
     title: `选项${optionIndex}`,
+    optionType: 'selective',
     required: true,
     selectionLimit: 1,
     items: [],
@@ -214,7 +235,9 @@ export default function ComboProductConfigCard({
     () =>
       value.map((option) => ({
         ...option,
-        items: syncComboOptionProductRequiredState(option.required, option.items),
+        optionType: getComboOptionType(option),
+        required: getComboOptionRequiredByType(getComboOptionType(option)),
+        items: syncComboOptionItemsByType(getComboOptionType(option), option.items),
       })),
     [value]
   );
@@ -536,41 +559,6 @@ export default function ComboProductConfigCard({
         },
       },
       {
-        title: columnTitle('是否必选', '开启后该商品为组合中的固定必选项，用户购买时不可跳过，且自动计入默认选中。'),
-        dataIndex: 'required',
-        width: 120,
-        render: (required: boolean, record: OptionTableRow) => (
-          <Switch
-            checked={option.required ? required : false}
-            checkedText="必选"
-            uncheckedText="非必选"
-            disabled={!option.required}
-            onChange={(checked) => {
-              if (checked) {
-                if (!canEnableComboOptionProductRequired(option, record.skuId)) {
-                  Message.warning('已达到当前选项卡的选择数量限制');
-                  return;
-                }
-              }
-
-              patchOption(option.id, (currentOption) => ({
-                ...currentOption,
-                items: currentOption.items.map((item) =>
-                  item.skuId === record.skuId
-                    ? {
-                        ...item,
-                        required: checked,
-                        defaultSelected: checked ? true : item.defaultSelected,
-                        listed: checked ? true : item.listed,
-                      }
-                    : item
-                ),
-              }));
-            }}
-          />
-        ),
-      },
-      {
         title: columnTitle('默认选中', '开启后用户进入组合商品页时该商品默认处于选中状态，可节省用户操作步骤。默认选中数量不可超过该选项的选择限制数量。'),
         dataIndex: 'defaultSelected',
         width: 120,
@@ -775,6 +763,7 @@ export default function ComboProductConfigCard({
     <div className={styles.container}>
       {normalizedValue.map((option, index) => {
         const tableRows = optionTables[option.id] || [];
+        const optionType = getComboOptionType(option);
 
         return (
           <div key={option.id} className={styles.optionCard}>
@@ -796,27 +785,6 @@ export default function ComboProductConfigCard({
 
             <div className={styles.optionMetaGrid}>
               <div className={styles.fieldGroup}>
-                <span className={styles.fieldLabel}>是否必选</span>
-                <Radio.Group
-                  type="button"
-                  value={option.required ? 'required' : 'optional'}
-                  onChange={(nextValue) =>
-                    patchOption(option.id, (previous) => ({
-                      ...previous,
-                      required: nextValue === 'required',
-                      items: syncComboOptionProductRequiredState(
-                        nextValue === 'required',
-                        previous.items
-                      ),
-                    }))
-                  }
-                >
-                  <Radio value="required">必选</Radio>
-                  <Radio value="optional">非必选</Radio>
-                </Radio.Group>
-              </div>
-
-              <div className={styles.fieldGroup}>
                 <span className={styles.fieldLabel}>选项标题</span>
                 <Input
                   className={styles.titleInput}
@@ -832,38 +800,88 @@ export default function ComboProductConfigCard({
               </div>
 
               <div className={styles.fieldGroup}>
-                <span className={styles.fieldLabel}>选择限制</span>
-                <div className={styles.limitField}>
-                  <span className={styles.limitPrefix}>选择</span>
-                  <Select
-                    className={styles.limitSelect}
-                    value={option.selectionLimit}
+                <span className={styles.fieldLabelWithTip}>
+                  <span className={styles.fieldLabel}>选项类型</span>
+                  <Tooltip content="必购项：用户必须购买，不可取消；可选购项：用户从中选择 N 件商品；可加购项：用户自主决定是否加购">
+                    <IconQuestionCircle
+                      style={{ color: 'var(--color-text-3)', cursor: 'default' }}
+                    />
+                  </Tooltip>
+                </span>
+                <div className={styles.optionTypeField}>
+                  <Radio.Group
+                    type="button"
+                    value={optionType}
                     onChange={(nextValue) => {
-                      const nextSelectionLimit = Number(nextValue) || 1;
-                      const validationError = getComboOptionSelectionLimitError(
-                        option,
-                        nextSelectionLimit
-                      );
+                      const nextOptionType = nextValue as ProductComboOptionType;
 
-                      if (validationError) {
-                        Message.warning(validationError);
-                        return;
-                      }
+                      patchOption(option.id, (previous) => {
+                        const nextItems = syncComboOptionItemsByType(
+                          nextOptionType,
+                          previous.items
+                        );
 
-                      patchOption(option.id, (previous) => ({
-                        ...previous,
-                        selectionLimit: nextSelectionLimit,
-                      }));
+                        return {
+                          ...previous,
+                          optionType: nextOptionType,
+                          required: getComboOptionRequiredByType(nextOptionType),
+                          selectionLimit:
+                            nextOptionType === 'must_buy'
+                              ? nextItems.length || 1
+                              : normalizeComboOptionSelectionLimit({
+                                  ...previous,
+                                  selectionLimit: previous.selectionLimit,
+                                  items: nextItems,
+                                }),
+                          items: nextItems,
+                        };
+                      });
                     }}
                   >
-                    {SELECTION_LIMIT_OPTIONS.map((count) => (
-                      <Select.Option key={count} value={count}>
-                        {count} 份
-                      </Select.Option>
+                    {COMBO_OPTION_TYPE_OPTIONS.map((item) => (
+                      <Radio key={item.value} value={item.value}>
+                        {item.label}
+                      </Radio>
                     ))}
-                  </Select>
+                  </Radio.Group>
                 </div>
               </div>
+
+              {!isMustBuyComboOption(option) && (
+                <div className={styles.fieldGroup}>
+                  <span className={styles.fieldLabel}>选择限制</span>
+                  <div className={styles.limitField}>
+                    <span className={styles.limitPrefix}>选择</span>
+                    <Select
+                      className={styles.limitSelect}
+                      value={option.selectionLimit}
+                      onChange={(nextValue) => {
+                        const nextSelectionLimit = Number(nextValue) || 1;
+                        const validationError = getComboOptionSelectionLimitError(
+                          option,
+                          nextSelectionLimit
+                        );
+
+                        if (validationError) {
+                          Message.warning(validationError);
+                          return;
+                        }
+
+                        patchOption(option.id, (previous) => ({
+                          ...previous,
+                          selectionLimit: nextSelectionLimit,
+                        }));
+                      }}
+                    >
+                      {SELECTION_LIMIT_OPTIONS.map((count) => (
+                        <Select.Option key={count} value={count}>
+                          {count} 份
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className={styles.optionActions}>

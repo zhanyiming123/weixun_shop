@@ -194,6 +194,8 @@ export type ProductBundleComponentItem = {
   skuId: string;
 };
 
+export type ProductComboOptionType = 'must_buy' | 'selective' | 'add_on';
+
 export type ProductComboOptionProductItem = {
   productId: string;
   skuId: string;
@@ -208,6 +210,7 @@ export type ProductComboOptionProductItem = {
 export type ProductComboOptionItem = {
   id: string;
   title: string;
+  optionType?: ProductComboOptionType;
   required: boolean;
   selectionLimit: number;
   items: ProductComboOptionProductItem[];

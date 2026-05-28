@@ -145,7 +145,12 @@ import CouponStoreSelector from '@/pages/marketing/center/components/store-selec
 import ComboProductConfigCard, {
   createDefaultComboOption,
 } from '@/pages/product/components/combo-product-config-card';
-import { syncComboOptionProductRequiredState } from '@/pages/product/components/combo-product-config-card.utils';
+import {
+  getComboOptionRequiredByType,
+  getComboOptionType,
+  isMustBuyComboOption,
+  syncComboOptionItemsByType,
+} from '@/pages/product/components/combo-product-config-card.utils';
 import { canEditComboProduct } from '../edit';
 import {
   shouldShowComboInventoryFields,
@@ -809,6 +814,7 @@ function buildLegacyComboOptions(
     {
       id: 'option_1',
       title: '选项1',
+      optionType: 'must_buy',
       required: true,
       selectionLimit: legacyComponents.length,
       items: legacyComponents.map((item) => {
@@ -2640,8 +2646,13 @@ function ProductCreatePage() {
     };
     const nextComboOptions = comboOptions.map((option) => ({
       ...option,
-      items: syncComboOptionProductRequiredState(
-        option.required,
+      optionType: getComboOptionType(option),
+      required: getComboOptionRequiredByType(getComboOptionType(option)),
+      selectionLimit: isMustBuyComboOption(option)
+        ? option.items.length || 1
+        : option.selectionLimit,
+      items: syncComboOptionItemsByType(
+        getComboOptionType(option),
         option.items
       ).map((item) => ({
         ...item,
@@ -2988,10 +2999,14 @@ function ProductCreatePage() {
         }
 
         if (option.selectionLimit < 1) {
+          if (isMustBuyComboOption(option)) {
+            return error;
+          }
+
           return `选项${optionIndex + 1}的选择限制至少为 1`;
         }
 
-        if (option.selectionLimit > option.items.length) {
+        if (!isMustBuyComboOption(option) && option.selectionLimit > option.items.length) {
           return `选项${optionIndex + 1}的选择限制不能超过已添加商品数`;
         }
 

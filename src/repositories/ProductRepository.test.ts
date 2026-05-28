@@ -241,6 +241,7 @@ describe('ProductRepository seeded mock recovery', () => {
       {
         id: 'option_a',
         title: '主选项',
+        optionType: 'must_buy',
         required: true,
         selectionLimit: 1,
         items: [
@@ -251,6 +252,7 @@ describe('ProductRepository seeded mock recovery', () => {
             quantity: 2,
             required: true,
             listed: true,
+            defaultSelected: true,
           },
         ],
       },

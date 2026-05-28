@@ -1,6 +1,7 @@
 import type {
   ProductComboOptionItem,
   ProductComboOptionProductItem,
+  ProductComboOptionType,
   ProductListItem,
 } from '@/types/product';
 
@@ -46,6 +47,55 @@ export type ComboTrialTableRow = {
   isSummaryRow: boolean;
   isDefaultCombination: boolean;
 };
+
+export function getComboOptionType(option: Pick<ProductComboOptionItem, 'optionType' | 'required' | 'selectionLimit' | 'items'>): ProductComboOptionType {
+  if (option.optionType) {
+    return option.optionType;
+  }
+
+  if (option.required === false) {
+    return 'add_on';
+  }
+
+  const requiredItemCount = option.items.filter((item) => item.required).length;
+  if (requiredItemCount > 0 && requiredItemCount === option.items.length) {
+    return 'must_buy';
+  }
+
+  return 'selective';
+}
+
+export function isMustBuyComboOption(
+  option: Pick<ProductComboOptionItem, 'optionType' | 'required' | 'selectionLimit' | 'items'>
+) {
+  return getComboOptionType(option) === 'must_buy';
+}
+
+export function getComboOptionRequiredByType(optionType: ProductComboOptionType) {
+  return optionType !== 'add_on';
+}
+
+export function syncComboOptionItemsByType<
+  T extends Pick<ProductComboOptionProductItem, 'required' | 'listed'> & {
+    defaultSelected?: boolean;
+  }
+>(optionType: ProductComboOptionType, items: T[]) {
+  return items.map((item) => {
+    if (optionType === 'must_buy') {
+      return {
+        ...item,
+        required: true,
+        listed: true,
+        defaultSelected: true,
+      };
+    }
+
+    return {
+      ...item,
+      required: false,
+    };
+  });
+}
 
 export function createComboOptionProductItem(
   productId: string,
@@ -268,8 +318,10 @@ export function buildComboTrialResult(
   for (let index = 0; index < options.length; index += 1) {
     const option = options[index];
     const optionLabel = getComboTrialOptionLabel(option, index);
+    const optionType = getComboOptionType(option);
+    const listedItems = getListedComboTrialItems(option);
 
-    if (option.selectionLimit !== 1) {
+    if (optionType !== 'must_buy' && option.selectionLimit !== 1) {
       return createUnsupportedComboTrialResult('当前仅支持每个选项卡选择 1 份的试算');
     }
 
@@ -279,7 +331,11 @@ export function buildComboTrialResult(
       );
     }
 
-    if (!getListedComboTrialItems(option).length) {
+    if (optionType === 'must_buy' && listedItems.length !== 1) {
+      return createUnsupportedComboTrialResult('当前仅支持每个选项卡选择 1 份的试算');
+    }
+
+    if (!listedItems.length) {
       return createUnsupportedComboTrialResult(`${optionLabel}暂无上架商品，无法试算`);
     }
   }

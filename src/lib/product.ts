@@ -3,6 +3,7 @@ import type {
   ProductBundleComponentItem,
   ProductCarouselImage,
   ProductComboOptionItem,
+  ProductComboOptionType,
   ProductFilterValues,
   ProductIndependentPriceRule,
   ProductIndependentStockRule,
@@ -78,6 +79,26 @@ const PRODUCT_SHARE_STATUS_SET = new Set<ProductShareStatus>([
   'pending',
   'referenced',
 ]);
+
+function getNormalizedComboOptionType(
+  option: Pick<ProductComboOptionItem, 'optionType' | 'required'>,
+  requiredItemCount: number,
+  itemCount: number
+): ProductComboOptionType {
+  if (option.optionType) {
+    return option.optionType;
+  }
+
+  if (option.required === false) {
+    return 'add_on';
+  }
+
+  if (requiredItemCount > 0 && requiredItemCount === itemCount) {
+    return 'must_buy';
+  }
+
+  return 'selective';
+}
 const PRODUCT_STORE_CHANNEL_STORE_SCOPE_SET = new Set<
   ProductStoreChannelStoreScope
 >(['allStores', 'specificStores']);
@@ -193,6 +214,7 @@ export function normalizeProductComboOptions(
               ...(typeof normalizedStock === 'number' ? { stock: normalizedStock } : {}),
               required: item?.required !== false,
               listed: item?.listed !== false,
+              ...(item?.defaultSelected === true ? { defaultSelected: true } : {}),
             },
           ];
         })
@@ -202,13 +224,42 @@ export function normalizeProductComboOptions(
       return [];
     }
 
+    const optionType = getNormalizedComboOptionType(
+      {
+        optionType: option?.optionType,
+        required: option?.required !== false,
+      },
+      items.filter((item) => item.required).length,
+      items.length
+    );
+    const normalizedItems = items.map((item) => {
+      if (optionType === 'must_buy') {
+        return {
+          ...item,
+          required: true,
+          listed: true,
+          defaultSelected: true,
+        };
+      }
+
+      return {
+        ...item,
+        required: false,
+      };
+    });
+    const normalizedSelectionLimit =
+      optionType === 'must_buy'
+        ? normalizedItems.length
+        : Math.min(selectionLimit, normalizedItems.length);
+
     return [
       {
         id,
         title,
-        required: option?.required !== false,
-        selectionLimit: Math.min(selectionLimit, items.length),
-        items,
+        optionType,
+        required: optionType !== 'add_on',
+        selectionLimit: normalizedSelectionLimit,
+        items: normalizedItems,
       },
     ];
   });

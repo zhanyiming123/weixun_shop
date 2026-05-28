@@ -224,6 +224,7 @@ describe('product domain rules', () => {
       {
         id: 'option_1',
         title: '必选主项',
+        optionType: 'selective',
         required: true,
         selectionLimit: 2,
         items: [
@@ -232,7 +233,7 @@ describe('product domain rules', () => {
             skuId: 'sku_1',
             comboPrice: 199.5,
             quantity: 2,
-            required: true,
+            required: false,
             listed: true,
           },
           {
@@ -248,6 +249,7 @@ describe('product domain rules', () => {
       {
         id: 'option_3',
         title: '加购项',
+        optionType: 'add_on',
         required: false,
         selectionLimit: 1,
         items: [
