@@ -2158,6 +2158,34 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     createdAt: '2026-05-06 14:20:00',
     sourceType: 'store',
     sourceStoreId: 'store_guangzhou',
+    storeChannelConfig: {
+      shareMode: 'product_pool',
+      storeScope: 'specificStores',
+      storeIds: ['store_beijing', 'store_suzhou', 'store_shenzhen'],
+      productPoolStoreConfigs: [
+        {
+          storeId: 'store_beijing',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku-G_1260601000000000023-1', 'sku-G_1260601000000000023-2'],
+          allowSelfPrice: false,
+        },
+        {
+          storeId: 'store_suzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+          sellableSkuIds: ['sku-G_1260601000000000023-1'],
+          allowSelfPrice: true,
+        },
+        {
+          storeId: 'store_shenzhen',
+          sellStatus: 'unsellable',
+          channelStatus: 'off',
+          sellableSkuIds: [],
+          allowSelfPrice: false,
+        },
+      ],
+    },
     storeConfigs: [
       {
         storeId: 'store_guangzhou',
@@ -2298,6 +2326,21 @@ export const DEFAULT_PRODUCTS: ProductItem[] = [
     createdAt: '2026-05-09 08:50:00',
     sourceType: 'store',
     sourceStoreId: 'store_guangzhou',
+    storeChannelConfig: {
+      shareMode: 'shared_pool',
+      storeScope: 'allStores',
+      storeIds: [],
+      productPoolStoreConfigs: [],
+    },
+    shareTargets: [
+      {
+        storeId: 'store_beijing',
+        status: 'pending',
+        sharedAt: '2026-05-09 09:00:00',
+        sellableSkuIds: ['sku-G_1260601000000000026-1'],
+        allowSelfPrice: true,
+      },
+    ],
     storeConfigs: [
       {
         storeId: 'store_guangzhou',

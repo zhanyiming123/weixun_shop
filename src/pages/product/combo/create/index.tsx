@@ -146,6 +146,7 @@ import ComboProductConfigCard, {
   createDefaultComboOption,
 } from '@/pages/product/components/combo-product-config-card';
 import { syncComboOptionProductRequiredState } from '@/pages/product/components/combo-product-config-card.utils';
+import { canEditComboProduct } from '../edit';
 import {
   shouldShowComboInventoryFields,
   type ProductCreateMode,
@@ -373,6 +374,7 @@ const PRODUCT_FORM_LAYOUT = {
   wrapperCol: { flex: '1' },
   requiredSymbol: true,
 };
+const { useForm } = Form;
 const ONLINE_MALL_EXAMPLE_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720">
     <defs>
@@ -490,6 +492,56 @@ function buildDetailContentState(
         ? product.detailContent.lineHeight
         : '1.75',
   };
+}
+
+function resolveCatalogAttributesByCatalogId(
+  catalogId: string | undefined,
+  catalogAttributeTemplates: ReturnType<typeof readProductCatalogAttributeTemplates>,
+  catalogAttributes: ReturnType<typeof readProductCatalogAttributes>
+) {
+  return buildProductCatalogAttributesFromTemplate(
+    getEnabledProductCatalogAttributeTemplateByCatalogId(
+      catalogAttributeTemplates,
+      catalogId
+    ),
+    catalogAttributes
+  );
+}
+
+function buildCatalogAttributeDraftValues(
+  attributes: ProductCatalogTemplateResolvedAttribute[],
+  productName = ''
+) {
+  return attributes.reduce<Record<string, unknown>>((result, attribute) => {
+    const field = `catalogAttributeValue_${attribute.id}`;
+
+    if (attribute.type === 'single') {
+      result[field] = attribute.values[0] || undefined;
+      return result;
+    }
+
+    if (attribute.type === 'multi') {
+      result[field] = attribute.values[0] ? [attribute.values[0]] : undefined;
+      return result;
+    }
+
+    if (attribute.type === 'number') {
+      result[field] = 1;
+      return result;
+    }
+
+    result[field] = productName ? `${productName}相关说明` : '相关说明';
+    return result;
+  }, {});
+}
+
+function buildEmptyCatalogAttributeDraftValues(
+  attributes: ProductCatalogTemplateResolvedAttribute[]
+) {
+  return attributes.reduce<Record<string, undefined>>((result, attribute) => {
+    result[`catalogAttributeValue_${attribute.id}`] = undefined;
+    return result;
+  }, {});
 }
 
 function buildStoreShareSettingMapFromProduct(
@@ -805,6 +857,7 @@ function getCatalogAttributeRules(attribute: ProductCatalogTemplateResolvedAttri
 
 function ProductCreatePage() {
   const productService = useMemo(() => new ProductService(), []);
+  const [baseForm] = useForm();
   const history = useHistory();
   const location = useLocation<ProductCreateLocationState>();
   const currentOrganization = useSelector(
@@ -873,6 +926,22 @@ function ProductCreatePage() {
       location.state?.sourceProduct
     );
   }, [location.state, productItems, sourceProductId]);
+  const hasInvalidEditSource = useMemo(() => {
+    if (!isEditMode || !currentOrganization?.scope) {
+      return false;
+    }
+
+    return !sourceProduct || !canEditComboProduct(
+      sourceProduct,
+      currentOrganization.scope,
+      visibleStoreIds
+    );
+  }, [
+    currentOrganization?.scope,
+    isEditMode,
+    sourceProduct,
+    visibleStoreIds,
+  ]);
   const sourceComboOptionSkuIds = useMemo(
     () => (isEditMode ? getSourceComboOptionSkuIds(sourceProduct) : []),
     [isEditMode, sourceProduct]
@@ -997,6 +1066,7 @@ function ProductCreatePage() {
   const [storeBatchSellStatus, setStoreBatchSellStatus] =
     useState<ProductStoreSellStatus>();
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
+  const invalidEditRedirectedRef = useRef(false);
   const detailEditorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1006,6 +1076,16 @@ function ProductCreatePage() {
       objectUrlMap.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasInvalidEditSource || invalidEditRedirectedRef.current) {
+      return;
+    }
+
+    invalidEditRedirectedRef.current = true;
+    Message.error('未找到可编辑的组合商品');
+    history.replace('/product/combo');
+  }, [hasInvalidEditSource, history]);
 
   useEffect(() => {
     if (!detailEditorRef.current) {
@@ -1060,6 +1140,14 @@ function ProductCreatePage() {
     const visibleStoreIdSet = new Set(scopedStoreItems.map((item) => item.id));
 
     if (!sourceProduct) {
+      const draftCatalogAttributes = resolveCatalogAttributesByCatalogId(
+        productCatalogId,
+        catalogAttributeTemplates,
+        catalogAttributes
+      );
+      baseForm.setFieldsValue(
+        buildEmptyCatalogAttributeDraftValues(draftCatalogAttributes)
+      );
       setProductCatalogId(undefined);
       setProductOwnershipId(undefined);
       setProductName('');
@@ -1106,11 +1194,11 @@ function ProductCreatePage() {
 
     setProductCatalogId(sourceProduct.productCatalogId);
     setProductOwnershipId(sourceProduct.productOwnershipId);
-    setProductName(
+    const nextProductName =
       pageMode === 'copy'
         ? buildCopyProductName(sourceProduct.name)
-        : sourceProduct.name
-    );
+        : sourceProduct.name;
+    setProductName(nextProductName);
     setUploadFileList(
       buildUploadFileListFromCarouselImages(sourceProduct.carouselImages || [])
     );
@@ -1186,6 +1274,14 @@ function ProductCreatePage() {
     const detailContentState = buildDetailContentState(
       sourceProduct as DomainProductItem
     );
+    const sourceCatalogAttributes = resolveCatalogAttributesByCatalogId(
+      sourceProduct.productCatalogId,
+      catalogAttributeTemplates,
+      catalogAttributes
+    );
+    baseForm.setFieldsValue(
+      buildCatalogAttributeDraftValues(sourceCatalogAttributes, nextProductName)
+    );
     setIsLimited(purchaseLimitState.enabled);
     setLimitCount(purchaseLimitState.count);
     setDetailHtml(detailContentState.html);
@@ -1213,7 +1309,11 @@ function ProductCreatePage() {
     setStoreShareSettingMap(nextStoreShareSettingMap);
     setDraftStoreShareSettingMap(nextStoreShareSettingMap);
   }, [
+    baseForm,
+    catalogAttributeTemplates,
+    catalogAttributes,
     pageMode,
+    productCatalogId,
     productItems,
     scopedStoreItems,
     sourceProduct,
@@ -2915,12 +3015,9 @@ function ProductCreatePage() {
           return `请填写选项${optionIndex + 1}中商品的有效数量`;
         }
 
-        const requiredQuantity = option.items.reduce(
-          (sum, item) => (item.required ? sum + item.quantity : sum),
-          0
-        );
-        if (requiredQuantity > option.selectionLimit) {
-          return `选项${optionIndex + 1}的必选商品数量不能超过选择限制`;
+        const requiredSkuTypeCount = option.items.filter((item) => item.required).length;
+        if (requiredSkuTypeCount > option.selectionLimit) {
+          return `选项${optionIndex + 1}的必选商品种类数不能超过选择限制`;
         }
 
         return undefined;
@@ -3773,6 +3870,10 @@ function ProductCreatePage() {
     },
   ];
 
+  if (hasInvalidEditSource) {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.pageActions}>
@@ -3786,7 +3887,7 @@ function ProductCreatePage() {
           </Typography.Title>
         </div>
 
-        <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
+        <Form form={baseForm} className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
           <div className={styles.formGrid}>
             <Form.Item label="商品类型">
               <Select className={styles.singleFieldControl} value="virtual" disabled>
@@ -4332,336 +4433,7 @@ function ProductCreatePage() {
         </Form>
       </Card>
 
-      {useStoreScopedChannelConfig && (
-        <Card className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>
-            <Typography.Title className={styles.sectionTitle} heading={6}>
-              店铺渠道配置
-            </Typography.Title>
-          </div>
 
-          <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
-            <div className={styles.formGrid}>
-              <Form.Item className={styles.fullWidth} label="店铺渠道">
-                <div className={styles.storeChannelSwitchRow}>
-                  <Switch
-                    checked={storeChannelEnabled}
-                    disabled={isEditMode}
-                    onChange={setStoreChannelEnabled}
-                  />
-                  <span className={styles.storeChannelSwitchText}>
-                    {storeChannelEnabled ? '已开启' : '已关闭'}
-                  </span>
-                </div>
-              </Form.Item>
-
-              {storeChannelEnabled && (
-                <>
-                  <Form.Item className={styles.fullWidth} label="生效商品池">
-                    <>
-                      <Radio.Group
-                        disabled={isEditMode}
-                        value={storeChannelConfigDraft.shareMode}
-                        onChange={(value) =>
-                          patchStoreChannelConfig(
-                            buildComboCreateStoreChannelShareModePatch(
-                              value as StoreChannelConfigDraftItem['shareMode'],
-                              storeChannelConfigDraft.storeIds
-                            )
-                          )
-                        }
-                      >
-                        <Radio value="product_pool">商品库</Radio>
-                        <Radio value="shared_pool">商品共享池</Radio>
-                      </Radio.Group>
-                      <Typography.Paragraph className={styles.storeChannelTableHint}>
-                        商品库：直接进入对应门店商品库并可售；商品共享池：进入全部店铺共享池，由门店自行引用。
-                      </Typography.Paragraph>
-                    </>
-                  </Form.Item>
-
-                  {storeChannelConfigDraft.shareMode === 'product_pool' && (
-                    <Form.Item className={styles.fullWidth} label="销售店铺">
-                      <div className={styles.storeChannelSelectorRow}>
-                        <Button
-                          type="outline"
-                          onClick={() => openStoreChannelProductPoolModal()}
-                        >
-                          选择销售门店
-                        </Button>
-                        <Typography.Text type="secondary">
-                          已选{' '}
-                          {
-                            storeChannelConfigDraft.productPoolStoreConfigs.filter(
-                              (item) =>
-                                item.sellStatus === 'sellable' &&
-                                item.sellableSkuKeys.length > 0
-                            ).length
-                          }{' '}
-                          家可售门店
-                        </Typography.Text>
-                      </div>
-                    </Form.Item>
-                  )}
-
-                  {storeChannelConfigDraft.shareMode === 'shared_pool' && (
-                    <>
-                      {COMBO_CREATE_SHARED_POOL_SHOW_SELLABLE_SKU ? (
-                        <Form.Item className={styles.fullWidth} label="可售 SKU">
-                          <TreeSelect
-                            multiple
-                            treeCheckable
-                            allowClear
-                            placeholder="请选择可售 SKU（默认全部）"
-                            treeData={storeChannelProductPoolSkuTreeData}
-                            value={buildTreeSelectDisplaySkuKeys(
-                              storeChannelConfigDraft.sharedPoolSellableSkuKeys || [],
-                              storeChannelAvailableSkuKeys
-                            )}
-                            onChange={(value) => {
-                              const nextKeys = normalizeTreeSelectSkuKeys(
-                                value,
-                                storeChannelAvailableSkuKeys
-                              );
-                              patchStoreChannelConfig({
-                                sharedPoolSellableSkuKeys: nextKeys,
-                              });
-                            }}
-                          />
-                        </Form.Item>
-                      ) : null}
-                      <Form.Item className={styles.fullWidth} label="自主定价">
-                        <div className={styles.storeChannelSwitchRow}>
-                          <Switch
-                            checked={
-                              storeChannelConfigDraft.sharedPoolAllowSelfPrice === true
-                            }
-                            onChange={(checked) =>
-                              patchStoreChannelConfig({
-                                sharedPoolAllowSelfPrice: checked,
-                              })
-                            }
-                          />
-                        </div>
-                        <Typography.Paragraph
-                          className={styles.storeChannelTableHint}
-                        >
-                          开启后，引用该商品的店铺可以自主定价。
-                        </Typography.Paragraph>
-                      </Form.Item>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </Form>
-        </Card>
-      )}
-
-      {!useStoreScopedChannelConfig && (
-        <>
-          <Card className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <Typography.Title className={styles.sectionTitle} heading={6}>
-                店铺渠道配置
-              </Typography.Title>
-            </div>
-
-            <Form className={styles.sectionForm} {...PRODUCT_FORM_LAYOUT}>
-              <div className={styles.formGrid}>
-                <Form.Item className={styles.fullWidth} label="独立售价授权">
-                  <Radio.Group
-                    value={independentPriceEnabled ? 'allow' : 'disallow'}
-                    onChange={(val) => setIndependentPriceEnabled(val === 'allow')}
-                  >
-                    <Radio value="allow">允许</Radio>
-                    <Radio value="disallow">不允许</Radio>
-                  </Radio.Group>
-                </Form.Item>
-
-                <Form.Item className={styles.fullWidth} label="独立库存授权">
-                  <Radio.Group
-                    value={independentStockEnabled ? 'allow' : 'disallow'}
-                    onChange={(val) => setIndependentStockEnabled(val === 'allow')}
-                  >
-                    <Radio value="allow">允许</Radio>
-                    <Radio value="disallow">不允许</Radio>
-                  </Radio.Group>
-                </Form.Item>
-
-                {(independentPriceEnabled || independentStockEnabled) && (
-                  <Form.Item className={styles.fullWidth}>
-                    <Table
-                      rowKey="key"
-                      className={styles.independentPriceRuleTable}
-                      columns={independentPriceRuleColumns}
-                      data={independentPriceRuleTableData}
-                      noDataElement="请先添加规格信息"
-                      pagination={false}
-                      rowClassName={(record) =>
-                        record.disabled ? styles.channelSkuRowDisabled : ''
-                      }
-                      scroll={{ x: 860 }}
-                      tableLayoutFixed
-                    />
-                  </Form.Item>
-                )}
-
-                <Form.Item className={styles.fullWidth} label="分享店铺">
-                  <div className={styles.storeSummaryPanel}>
-                    {productStoreConfigs.length ? (
-                      <div className={styles.storeSummaryContent}>
-                        <div className={styles.storeSummaryLine}>
-                          <span className={styles.storeSummaryValue}>
-                            {isOwnStoresSellableButOff
-                              ? '自己的店铺可售但下架'
-                              : `分享给 ${productStoreSummary.sellable} 个店铺`}
-                          </span>
-                          <Button
-                            className={styles.storeSummaryAction}
-                            size="mini"
-                            type="text"
-                            onClick={openStoreConfigModal}
-                          >
-                            配置分享店铺
-                          </Button>
-                        </div>
-                        <Typography.Paragraph className={styles.storeSummaryHint}>
-                          可售店铺可配置&quot;分享到店铺商品池/店铺商品共享池&quot;；不可售店铺不参与分享。
-                        </Typography.Paragraph>
-                      </div>
-                    ) : (
-                      <div className={styles.storeSummaryEmpty}>
-                        <Typography.Text className={styles.storeSummaryEmptyText}>
-                          暂未配置发布店铺
-                        </Typography.Text>
-                        <Button type="primary" onClick={openStoreConfigModal}>
-                          配置分享店铺
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </Form.Item>
-              </div>
-            </Form>
-          </Card>
-
-          <Modal
-            title="修改店铺配置"
-            visible={storeConfigModalVisible}
-            autoFocus={false}
-            focusLock
-            style={{ width: 1280 }}
-            onOk={handleStoreConfigConfirm}
-            onCancel={() => setStoreConfigModalVisible(false)}
-          >
-            <div className={styles.storeConfigModalContent}>
-              <div className={styles.storeConfigFilterRow}>
-                <Select
-                  className={styles.storeConfigFilter}
-                  value={storeTypeFilter}
-                  onChange={(value) => {
-                    setStoreTypeFilter(value as StoreConfigFilterType);
-                    setStoreConfigPage(1);
-                  }}
-                >
-                  <Select.Option value="all">全部店铺</Select.Option>
-                  <Select.Option value="store">店铺</Select.Option>
-                  <Select.Option value="mall">商城</Select.Option>
-                </Select>
-
-                <Select
-                  className={styles.storeConfigFilter}
-                  value={storeDepartmentFilter}
-                  onChange={(value) => {
-                    setStoreDepartmentFilter(value);
-                    setStoreConfigPage(1);
-                  }}
-                >
-                  <Select.Option value="all">全部部门</Select.Option>
-                  {storeDepartmentOptions.map((item) => (
-                    <Select.Option key={item.value} value={item.value}>
-                      {item.label}
-                    </Select.Option>
-                  ))}
-                </Select>
-
-                <Select
-                  className={styles.storeConfigFilter}
-                  value={storeStatusFilter}
-                  onChange={(value) => {
-                    setStoreStatusFilter(value as StoreConfigFilterStatus);
-                    setStoreConfigPage(1);
-                  }}
-                >
-                  <Select.Option value="all">全部状态</Select.Option>
-                  <Select.Option value="sellable">可售</Select.Option>
-                  <Select.Option value="unsellable">不可售</Select.Option>
-                </Select>
-
-                <Input
-                  allowClear
-                  className={styles.storeConfigSearch}
-                  placeholder="搜索店铺名称"
-                  value={storeKeyword}
-                  onChange={(value) => {
-                    setStoreKeyword(value);
-                    setStoreConfigPage(1);
-                  }}
-                />
-              </div>
-
-              <div className={styles.storeConfigToolbar}>
-                <Typography.Text className={styles.storeConfigToolbarText}>
-                  已勾选 {selectedStoreKeys.length} 项
-                </Typography.Text>
-                <Typography.Text className={styles.storeConfigToolbarText}>
-                  勾选后可批量设置&quot;是否可售&quot;：
-                </Typography.Text>
-                <Select
-                  allowClear
-                  className={styles.storeConfigBatchSelect}
-                  placeholder="是否可售"
-                  value={storeBatchSellStatus}
-                  onChange={handleBatchSellStatusChange}
-                >
-                  <Select.Option value="sellable">可售</Select.Option>
-                  <Select.Option value="unsellable">不可售</Select.Option>
-                </Select>
-              </div>
-
-              <Table
-                rowKey="id"
-                className={styles.storeConfigTable}
-                columns={storeConfigColumns}
-                data={storeConfigTableData}
-                noDataElement="暂无店铺数据"
-                pagination={{
-                  current: storeConfigPage,
-                  pageSize: storeConfigPageSize,
-                  total: storeConfigTableData.length,
-                  sizeCanChange: true,
-                  sizeOptions: STORE_CONFIG_PAGE_SIZE_OPTIONS,
-                  showTotal: true,
-                  showJumper: true,
-                  onChange: (pageNumber, pageSize) => {
-                    setStoreConfigPage(pageNumber);
-                    setStoreConfigPageSize(pageSize);
-                  },
-                }}
-                rowSelection={{
-                  selectedRowKeys: selectedStoreKeys,
-                  columnWidth: 48,
-                  preserveSelectedRowKeys: true,
-                  onChange: handleStoreSelectionChange,
-                }}
-                scroll={{ x: 1280, y: 440 }}
-                tableLayoutFixed
-              />
-            </div>
-          </Modal>
-        </>
-      )}
 
       {useStoreScopedChannelConfig && (
         <>
@@ -4807,7 +4579,7 @@ function ProductCreatePage() {
         <div className={styles.actionRow}>
           <Button onClick={handleCancel}>取消</Button>
           <Button type="primary" onClick={handleSubmit}>
-            提交
+            {isEditMode ? '保存' : '提交'}
           </Button>
         </div>
       </Card>

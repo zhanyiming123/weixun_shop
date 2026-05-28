@@ -1,5 +1,6 @@
 import { ProductRepository } from '@/repositories/ProductRepository';
 import { AppError } from '@/lib/errors';
+import { buildProductShareConfigResult } from '@/lib/product-share-config';
 import { filterDataByScope } from '@/utils/useDataScopeFilter';
 import {
   applyBundleRuntime,
@@ -54,7 +55,9 @@ import type {
   CancelReferenceSharedProductInput,
   ReferenceSharedProductInput,
   ShareProductsToPoolInput,
+  UpdateProductShareConfigInput,
   UpdateProductStoreChannelConfigInput,
+  UpdateProductStoreChannelSingleConfigInput,
   UpdateProductStoreChannelStatusInput,
   UpdateProductStoreConfigsInput,
   UpdateProductStoreOverrideInput,
@@ -1062,11 +1065,11 @@ export class ProductService {
         ];
       })
     );
-    const nextStoreConfigs = (product.storeConfigs || []).map((config) =>
-      submittedStoreConfigMap.get(config.storeId)
-        ? cloneStoreConfig(submittedStoreConfigMap.get(config.storeId)!)
-        : config
-    );
+    const nextStoreConfigs = (product.storeConfigs || []).map((config) => {
+      const submittedConfig = submittedStoreConfigMap.get(config.storeId);
+
+      return submittedConfig ? cloneStoreConfig(submittedConfig) : config;
+    });
     const existingStoreIdSet = new Set(
       nextStoreConfigs.map((config) => config.storeId)
     );
@@ -1137,6 +1140,281 @@ export class ProductService {
           }
         : item
     );
+
+    await this.repository.save(nextProducts);
+  }
+
+  async updateProductStoreChannelSingleConfig(
+    input: UpdateProductStoreChannelSingleConfigInput
+  ) {
+    const product = await this.getProductById(input.productId);
+
+    if (product.sourceType !== 'store' || !product.sourceStoreId) {
+      throw new AppError('PRODUCT_SOURCE_MISMATCH', '仅支持本店自建商品管理销售店铺');
+    }
+
+    const managedStoreIds = Array.from(
+      new Set(
+        (input.targetStoreIds || []).filter(
+          (storeId) => storeId && storeId !== product.sourceStoreId
+        )
+      )
+    );
+    const managedStoreIdSet = new Set(managedStoreIds);
+    const allSkuIds = (product.skus || []).map((sku) => sku.id).filter(Boolean);
+    const existingShareTargets = normalizeProductShareTargets(product.shareTargets || []);
+    const existingShareTargetMap = new Map(
+      existingShareTargets.map((item) => [item.storeId, item])
+    );
+    const normalizedSharedPoolSellableSkuIds = Array.from(
+      new Set(
+        (input.sharedPoolSellableSkuIds || []).filter((skuId) =>
+          allSkuIds.includes(skuId)
+        )
+      )
+    );
+    const normalizedStoreChannelConfig =
+      input.enabled && input.storeChannelConfig
+        ? normalizeProductStoreChannelConfig(
+            input.storeChannelConfig,
+            undefined,
+            existingShareTargets,
+            product.skus || [],
+            managedStoreIds
+          )
+        : undefined;
+    const now = formatOverrideUpdatedAt();
+    const nextShareTargets = [
+      ...existingShareTargets.filter((item) => !managedStoreIdSet.has(item.storeId)),
+      ...(normalizedStoreChannelConfig?.shareMode === 'product_pool'
+        ? (normalizedStoreChannelConfig.productPoolStoreConfigs || []).flatMap((item) => {
+            if (item.sellStatus !== 'sellable') {
+              return [];
+            }
+
+            const previousTarget = existingShareTargetMap.get(item.storeId);
+
+            return [
+              {
+                storeId: item.storeId,
+                status: 'referenced' as const,
+                sharedAt: previousTarget?.sharedAt || now,
+                referencedAt: previousTarget?.referencedAt || now,
+                ...(item.sellableSkuIds?.length
+                  ? { sellableSkuIds: [...item.sellableSkuIds] }
+                  : { sellableSkuIds: [...allSkuIds] }),
+                ...(item.allowSelfPrice ? { allowSelfPrice: true } : {}),
+              },
+            ];
+          })
+        : normalizedStoreChannelConfig
+          ? (
+              normalizedStoreChannelConfig.storeScope === 'allStores'
+                ? managedStoreIds
+                : normalizedStoreChannelConfig.storeIds || []
+            ).map((storeId) => {
+              const previousTarget = existingShareTargetMap.get(storeId);
+
+              return {
+                storeId,
+                status: 'pending' as const,
+                sharedAt: previousTarget?.sharedAt || now,
+                sellableSkuIds:
+                  normalizedSharedPoolSellableSkuIds.length
+                    ? [...normalizedSharedPoolSellableSkuIds]
+                    : [...allSkuIds],
+                ...(input.sharedPoolAllowSelfPrice
+                  ? { allowSelfPrice: true }
+                  : previousTarget?.allowSelfPrice
+                  ? { allowSelfPrice: true }
+                  : {}),
+              };
+            })
+          : []),
+    ];
+    const normalizedConfigMap = new Map(
+      (normalizedStoreChannelConfig?.productPoolStoreConfigs || []).map((item) => [
+        item.storeId,
+        item,
+      ])
+    );
+    const submittedStoreConfigMap = new Map(
+      managedStoreIds.map((storeId) => {
+        const config = normalizedConfigMap.get(storeId);
+
+        return [
+          storeId,
+          {
+            storeId,
+            sellStatus:
+              normalizedStoreChannelConfig?.shareMode === 'product_pool' &&
+              config?.sellStatus === 'sellable'
+                ? ('sellable' as const)
+                : ('unsellable' as const),
+            channelStatus:
+              normalizedStoreChannelConfig?.shareMode === 'product_pool' &&
+              config?.sellStatus === 'sellable'
+                ? ('on' as const)
+                : ('off' as const),
+          },
+        ];
+      })
+    );
+    const nextStoreConfigs = (product.storeConfigs || []).map((config) =>
+      submittedStoreConfigMap.get(config.storeId)
+        ? cloneStoreConfig(submittedStoreConfigMap.get(config.storeId)!)
+        : config
+    );
+    const existingStoreIdSet = new Set(
+      nextStoreConfigs.map((config) => config.storeId)
+    );
+
+    submittedStoreConfigMap.forEach((config, storeId) => {
+      if (existingStoreIdSet.has(storeId)) {
+        return;
+      }
+
+      nextStoreConfigs.push(cloneStoreConfig(config));
+    });
+
+    const nextShareTargetMap = new Map(
+      nextShareTargets.map((item) => [item.storeId, item])
+    );
+    const nextStoreOverrides = {
+      ...(product.storeOverrides || {}),
+    };
+
+    managedStoreIds.forEach((storeId) => {
+      const shareTarget = nextShareTargetMap.get(storeId);
+
+      if (shareTarget?.status !== 'referenced') {
+        delete nextStoreOverrides[storeId];
+        return;
+      }
+
+      const sellableSkuIdSet = new Set(
+        shareTarget.sellableSkuIds?.length ? shareTarget.sellableSkuIds : allSkuIds
+      );
+      const unsellableSkuIds = allSkuIds.filter((skuId) => !sellableSkuIdSet.has(skuId));
+      const previousOverride = product.storeOverrides?.[storeId]
+        ? normalizeProductStoreOverride(storeId, product.storeOverrides[storeId])
+        : createDefaultProductStoreOverride(storeId);
+      const nextSkuSellStatusOverrides = normalizeProductStoreSkuSellStatusOverrides(
+        unsellableSkuIds.map((skuId) => ({
+          skuId,
+          currentSellStatus: 'unsellable' as const,
+        }))
+      );
+      const nextSkuStatusOverrides = normalizeProductStoreSkuStatusOverrides(
+        (product.skus || [])
+          .filter(
+            (sku) => sku.status !== 'off' && unsellableSkuIds.includes(sku.id)
+          )
+          .map((sku) => ({
+            skuId: sku.id,
+            currentStatus: 'off' as const,
+          }))
+      );
+
+      if (
+        shouldRemoveStoreOverride({
+          priceMode: previousOverride.priceMode,
+          stockMode: previousOverride.stockMode,
+          nameMode: previousOverride.nameMode,
+          carouselMode: previousOverride.carouselMode,
+          skuSellStatusOverrides: nextSkuSellStatusOverrides,
+          skuStatusOverrides: nextSkuStatusOverrides,
+          localSkuItems: previousOverride.localSkuItems,
+        })
+      ) {
+        delete nextStoreOverrides[storeId];
+        return;
+      }
+
+      nextStoreOverrides[storeId] = {
+        ...previousOverride,
+        skuSellStatusOverrides: nextSkuSellStatusOverrides,
+        skuStatusOverrides: nextSkuStatusOverrides,
+        updatedAt: now,
+      };
+    });
+
+    const nextProducts = (await this.repository.list()).map((item) =>
+      item.id === input.productId
+        ? {
+            ...item,
+            shareTargets: nextShareTargets,
+            storeChannelConfig: normalizedStoreChannelConfig,
+            storeConfigs: nextStoreConfigs,
+            storeOverrides: nextStoreOverrides,
+            status: getProductStatusByStoreConfigs(nextStoreConfigs),
+          }
+        : item
+    );
+
+    await this.repository.save(nextProducts);
+  }
+
+  async updateProductShareConfig(input: UpdateProductShareConfigInput) {
+    const submittedStoreConfigMap = (input.storeConfigs || []).reduce<
+      Map<string, ProductStoreConfigItem>
+    >((result, item) => {
+      if (!item.storeId) {
+        return result;
+      }
+
+      result.set(item.storeId, {
+        storeId: item.storeId,
+        sellStatus:
+          item.sellStatus === 'sellable'
+            ? ('sellable' as const)
+            : ('unsellable' as const),
+        channelStatus:
+          item.sellStatus === 'sellable' ? ('on' as const) : ('off' as const),
+      });
+
+      return result;
+    }, new Map<string, ProductStoreConfigItem>());
+    const products = await this.repository.list();
+    const nextProducts = products.map((item) => {
+      if (item.id !== input.productId) {
+        return item;
+      }
+
+      const existingStoreIdSet = new Set(
+        (item.storeConfigs || []).map((config) => config.storeId)
+      );
+      const mergedStoreConfigs = (item.storeConfigs || []).map((config) => {
+        const submittedConfig = submittedStoreConfigMap.get(config.storeId);
+        return submittedConfig ? cloneStoreConfig(submittedConfig) : config;
+      });
+
+      submittedStoreConfigMap.forEach((config, storeId) => {
+        if (existingStoreIdSet.has(storeId)) {
+          return;
+        }
+
+        mergedStoreConfigs.push(cloneStoreConfig(config));
+      });
+
+      const nextShareConfig = buildProductShareConfigResult({
+        product: item,
+        storeConfigs: mergedStoreConfigs,
+        storeShareSettingMap: input.storeShareSettingMap,
+        independentPriceRule: input.independentPriceRule,
+        updatedAt: item.createdAt || formatOverrideUpdatedAt(),
+      });
+      const nextItem = {
+        ...item,
+        shareTargets: nextShareConfig.shareTargets,
+        storeOverrides: nextShareConfig.storeOverrides,
+        storeConfigs: nextShareConfig.storeConfigs,
+        independentPriceRule: nextShareConfig.independentPriceRule,
+        status: getProductStatusByStoreConfigs(nextShareConfig.storeConfigs),
+      };
+
+      return this.syncSharedStoreConfigs(item, nextItem);
+    });
 
     await this.repository.save(nextProducts);
   }

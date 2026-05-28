@@ -5,6 +5,7 @@ import type {
 
 export const DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED = false;
 export const DEFAULT_COMBO_OPTION_PRODUCT_LISTED = true;
+export type ComboOptionProductMoveDirection = 'up' | 'down';
 
 export function createComboOptionProductItem(
   productId: string,
@@ -47,6 +48,30 @@ export function preserveNonRemovableComboOptionSkuIds(
   ];
 }
 
+export function moveComboOptionProductItem(
+  items: ProductComboOptionProductItem[],
+  skuId: string,
+  direction: ComboOptionProductMoveDirection
+) {
+  const currentIndex = items.findIndex((item) => item.skuId === skuId);
+
+  if (currentIndex === -1) {
+    return items;
+  }
+
+  const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+  if (targetIndex < 0 || targetIndex >= items.length) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(currentIndex, 1);
+  nextItems.splice(targetIndex, 0, movedItem);
+
+  return nextItems;
+}
+
 export function syncComboOptionProductRequiredState<
   T extends Pick<ProductComboOptionProductItem, 'required'>
 >(optionRequired: boolean, items: T[]) {
@@ -60,13 +85,10 @@ export function syncComboOptionProductRequiredState<
   );
 }
 
-export function getRequiredComboOptionQuantity(
+export function getRequiredComboOptionSkuTypeCount(
   option: Pick<ProductComboOptionItem, 'items'>
 ) {
-  return option.items.reduce(
-    (sum, item) => (item.required ? sum + item.quantity : sum),
-    0
-  );
+  return option.items.filter((item) => item.required).length;
 }
 
 export function canEnableComboOptionProductRequired(
@@ -79,7 +101,7 @@ export function canEnableComboOptionProductRequired(
     return true;
   }
 
-  return getRequiredComboOptionQuantity(option) + targetItem.quantity <= option.selectionLimit;
+  return getRequiredComboOptionSkuTypeCount(option) + 1 <= option.selectionLimit;
 }
 
 export function getListedComboOptionProductCount(
@@ -121,8 +143,8 @@ export function getComboOptionSelectionLimitError(
     return '当前上架商品数量不足';
   }
 
-  if (getRequiredComboOptionQuantity(option) > nextSelectionLimit) {
-    return '当前必选商品数量过多';
+  if (getRequiredComboOptionSkuTypeCount(option) > nextSelectionLimit) {
+    return '当前必选商品种类过多';
   }
 
   return '';

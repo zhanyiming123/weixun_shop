@@ -7,6 +7,7 @@ import {
   DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED,
   getComboOptionSelectionLimitError,
   getDisableComboOptionProductListedError,
+  moveComboOptionProductItem,
   normalizeComboOptionSelectionLimit,
   preserveNonRemovableComboOptionSkuIds,
   syncComboOptionProductRequiredState,
@@ -35,6 +36,54 @@ describe('combo product config card helpers', () => {
     expect(
       preserveNonRemovableComboOptionSkuIds(['sku_3'], ['sku_1', 'sku_3', 'sku_2'])
     ).toEqual(['sku_3', 'sku_1', 'sku_2']);
+  });
+
+  it('moves a combo product up by one row', () => {
+    expect(
+      moveComboOptionProductItem(
+        [
+          createComboOptionProductItem('product_1', 'sku_1', 100),
+          createComboOptionProductItem('product_2', 'sku_2', 200),
+          createComboOptionProductItem('product_3', 'sku_3', 300),
+        ],
+        'sku_2',
+        'up'
+      ).map((item) => item.skuId)
+    ).toEqual(['sku_2', 'sku_1', 'sku_3']);
+  });
+
+  it('moves a combo product down by one row', () => {
+    expect(
+      moveComboOptionProductItem(
+        [
+          createComboOptionProductItem('product_1', 'sku_1', 100),
+          createComboOptionProductItem('product_2', 'sku_2', 200),
+          createComboOptionProductItem('product_3', 'sku_3', 300),
+        ],
+        'sku_2',
+        'down'
+      ).map((item) => item.skuId)
+    ).toEqual(['sku_1', 'sku_3', 'sku_2']);
+  });
+
+  it('keeps combo product order unchanged when moving beyond list bounds', () => {
+    const items = [
+      createComboOptionProductItem('product_1', 'sku_1', 100),
+      createComboOptionProductItem('product_2', 'sku_2', 200),
+    ];
+
+    expect(moveComboOptionProductItem(items, 'sku_1', 'up')).toEqual(items);
+    expect(moveComboOptionProductItem(items, 'sku_2', 'down')).toEqual(items);
+  });
+
+  it('keeps combo product order unchanged when sku id is invalid', () => {
+    const items = [
+      createComboOptionProductItem('product_1', 'sku_1', 100),
+      createComboOptionProductItem('product_2', 'sku_2', 200),
+    ];
+
+    expect(moveComboOptionProductItem(items, 'sku_3', 'up')).toEqual(items);
+    expect(moveComboOptionProductItem(items, 'sku_3', 'down')).toEqual(items);
   });
 
   it('forces child required state to false when the parent option is optional', () => {
@@ -145,7 +194,7 @@ describe('combo product config card helpers', () => {
     expect(
       canEnableComboOptionProductRequired(
         {
-          selectionLimit: 2,
+          selectionLimit: 1,
           items: [
             {
               productId: 'product_1',
@@ -168,6 +217,27 @@ describe('combo product config card helpers', () => {
         'sku_2'
       )
     ).toBe(false);
+  });
+
+  it('allows enabling required when a single sku quantity exceeds the limit but sku type count does not', () => {
+    expect(
+      canEnableComboOptionProductRequired(
+        {
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_1',
+              skuId: 'sku_1',
+              comboPrice: 100,
+              quantity: 5,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+        'sku_1'
+      )
+    ).toBe(true);
   });
 
   it('allows enabling required when the current option stays within its selection limit', () => {
@@ -227,7 +297,7 @@ describe('combo product config card helpers', () => {
     ).toBe('当前上架商品数量不足');
   });
 
-  it('blocks switching selection limit when required quantity is too large', () => {
+  it('blocks switching selection limit when required sku type count is too large', () => {
     expect(
       getComboOptionSelectionLimitError(
         {
@@ -236,7 +306,7 @@ describe('combo product config card helpers', () => {
               productId: 'product_1',
               skuId: 'sku_1',
               comboPrice: 100,
-              quantity: 2,
+              quantity: 1,
               required: true,
               listed: true,
             },
@@ -244,15 +314,35 @@ describe('combo product config card helpers', () => {
               productId: 'product_2',
               skuId: 'sku_2',
               comboPrice: 120,
-              quantity: 1,
-              required: false,
+              quantity: 5,
+              required: true,
               listed: true,
             },
           ],
         },
         1
       )
-    ).toBe('当前必选商品数量过多');
+    ).toBe('当前必选商品种类过多');
+  });
+
+  it('allows switching selection limit when only required quantity is large', () => {
+    expect(
+      getComboOptionSelectionLimitError(
+        {
+          items: [
+            {
+              productId: 'product_1',
+              skuId: 'sku_1',
+              comboPrice: 100,
+              quantity: 5,
+              required: true,
+              listed: true,
+            },
+          ],
+        },
+        1
+      )
+    ).toBe('');
   });
 
   it('allows switching selection limit when listed and required quantities are valid', () => {

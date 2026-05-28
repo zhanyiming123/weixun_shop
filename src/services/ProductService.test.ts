@@ -1468,6 +1468,298 @@ describe('ProductService store channel config', () => {
   });
 });
 
+describe('ProductService updateProductShareConfig', () => {
+  it('updates share targets, store configs, overrides and independent price rule for headquarter products', async () => {
+    const product = createShareProduct({
+      sourceType: 'headquarter',
+      sourceStoreId: undefined,
+      shareTargets: [
+        {
+          storeId: 'store_old',
+          status: 'referenced',
+          sharedAt: '2026-04-21 10:00:00',
+          referencedAt: '2026-04-21 10:05:00',
+          sellableSkuIds: ['sku_1'],
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_old',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+      independentPriceRule: {
+        enabled: false,
+        skuRules: [],
+      },
+      independentStockRule: {
+        enabled: true,
+        skuRules: [
+          {
+            skuId: 'sku_1',
+            minStock: 1,
+            maxStock: 20,
+          },
+        ],
+      },
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.updateProductShareConfig({
+      productId: 'product_1',
+      storeConfigs: [
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_pending',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_old',
+          sellStatus: 'unsellable',
+          channelStatus: 'off',
+        },
+      ],
+      storeShareSettingMap: {
+        store_target: {
+          shareMode: 'product_pool',
+          sellableSkuIds: ['sku_1'],
+        },
+        store_pending: {
+          shareMode: 'shared_pool',
+          sellableSkuIds: ['sku_1', 'sku_2'],
+        },
+        store_old: {
+          shareMode: 'product_pool',
+          sellableSkuIds: [],
+        },
+      },
+      independentPriceRule: {
+        enabled: true,
+        skuRules: [
+          {
+            skuId: 'sku_1',
+            minPrice: 80,
+            maxPrice: 110,
+          },
+        ],
+      },
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    const savedProduct = savedProducts[0];
+
+    expect(savedProduct.shareTargets).toEqual([
+      {
+        storeId: 'store_target',
+        status: 'referenced',
+        sharedAt: '2026-04-23 12:00:00',
+        referencedAt: '2026-04-23 12:00:00',
+        sellableSkuIds: ['sku_1'],
+      },
+      {
+        storeId: 'store_pending',
+        status: 'pending',
+        sharedAt: '2026-04-23 12:00:00',
+        sellableSkuIds: ['sku_1', 'sku_2'],
+      },
+    ]);
+    expect(savedProduct.storeConfigs).toEqual([
+      {
+        storeId: 'store_old',
+        sellStatus: 'unsellable',
+        channelStatus: 'off',
+      },
+      {
+        storeId: 'store_target',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_pending',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+    ]);
+    expect(savedProduct.storeOverrides).toEqual({
+      store_target: {
+        storeId: 'store_target',
+        priceMode: 'follow',
+        stockMode: 'follow',
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+        skuSellStatusOverrides: [
+          {
+            skuId: 'sku_2',
+            currentSellStatus: 'unsellable',
+          },
+        ],
+        skuStatusOverrides: [
+          {
+            skuId: 'sku_2',
+            currentStatus: 'off',
+          },
+        ],
+      },
+    });
+    expect(savedProduct.independentPriceRule).toEqual({
+      enabled: true,
+      skuRules: [
+        {
+          skuId: 'sku_1',
+          minPrice: 80,
+          maxPrice: 110,
+        },
+      ],
+    });
+    expect(savedProduct.independentStockRule).toEqual({
+      enabled: true,
+      skuRules: [
+        {
+          skuId: 'sku_1',
+          minStock: 1,
+          maxStock: 20,
+        },
+      ],
+    });
+  });
+});
+
+describe('ProductService updateProductStoreChannelSingleConfig', () => {
+  it('updates self-built products to shared-pool mode and clears direct-sale overrides', async () => {
+    const product = createShareProduct({
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'pending',
+          sharedAt: '2026-04-23 12:30:00',
+          sellableSkuIds: ['sku_1'],
+          allowSelfPrice: true,
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_other',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'follow',
+          stockMode: 'follow',
+          nameMode: 'follow',
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+          skuSellStatusOverrides: [
+            {
+              skuId: 'sku_2',
+              currentSellStatus: 'unsellable',
+            },
+          ],
+          skuStatusOverrides: [
+            {
+              skuId: 'sku_2',
+              currentStatus: 'off',
+            },
+          ],
+        },
+      },
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.updateProductStoreChannelSingleConfig({
+      productId: 'product_1',
+      enabled: true,
+      targetStoreIds: ['store_target', 'store_other'],
+      storeChannelConfig: {
+        shareMode: 'shared_pool',
+        storeScope: 'allStores',
+        storeIds: [],
+        productPoolStoreConfigs: [],
+      },
+      sharedPoolSellableSkuIds: ['sku_1'],
+      sharedPoolAllowSelfPrice: true,
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    const savedProduct = savedProducts[0];
+
+    expect(savedProduct.storeChannelConfig).toEqual({
+      shareMode: 'shared_pool',
+      storeScope: 'allStores',
+      storeIds: [],
+      productPoolStoreConfigs: [],
+    });
+    expect(savedProduct.shareTargets).toEqual([
+      {
+        storeId: 'store_target',
+        status: 'pending',
+        sharedAt: '2026-04-23 12:30:00',
+        sellableSkuIds: ['sku_1'],
+        allowSelfPrice: true,
+      },
+      expect.objectContaining({
+        storeId: 'store_other',
+        status: 'pending',
+        sellableSkuIds: ['sku_1'],
+        allowSelfPrice: true,
+      }),
+    ]);
+    expect(savedProduct.storeConfigs).toEqual([
+      {
+        storeId: 'store_source',
+        sellStatus: 'sellable',
+        channelStatus: 'on',
+      },
+      {
+        storeId: 'store_target',
+        sellStatus: 'unsellable',
+        channelStatus: 'off',
+      },
+      {
+        storeId: 'store_other',
+        sellStatus: 'unsellable',
+        channelStatus: 'off',
+      },
+    ]);
+    expect(savedProduct.storeOverrides).toEqual({});
+  });
+});
+
 describe('ProductService query list filters', () => {
   it('supports filtering combo products by sub-product name', () => {
     const standardProductA = createShareProduct({

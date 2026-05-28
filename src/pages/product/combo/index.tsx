@@ -34,10 +34,13 @@ import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count
 import ProductDetailModal from '@/pages/product/components/product-detail-modal';
 import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
 import ShareTargetSelector from '@/pages/product/components/share-target-selector';
-import { handleUnavailableProductEdit } from '@/pages/product/edit-action';
 import {
   getPrimaryProductRowActionKeys,
 } from '@/pages/product/row-actions';
+import {
+  buildComboProductCreateLocation,
+  type ComboProductCreateActionMode,
+} from './edit';
 import {
   buildProductCatalogCascaderOptions,
   getProductCatalogFullLabel,
@@ -95,8 +98,8 @@ import {
   formatComboStockDisplay,
   formatComboSubProductSummary,
 } from './sub-product-display';
+import ChannelConfigModal from '@/pages/product/list/components/channel-config-modal';
 
-type ProductCreateActionMode = 'edit' | 'copy';
 type ProductSourceFilterOption = {
   label: string;
   value: string;
@@ -542,6 +545,9 @@ function ProductListPage() {
   const [shareTargetProduct, setShareTargetProduct] = useState<ProductListItem | null>(null);
   const [shareTargetStoreIds, setShareTargetStoreIds] = useState<string[]>([]);
   const [shareSubmitting, setShareSubmitting] = useState(false);
+  const [channelConfigTarget, setChannelConfigTarget] =
+    useState<ProductListItem | null>(null);
+  const [channelConfigSubmitting, setChannelConfigSubmitting] = useState(false);
   const [salesStoreTarget, setSalesStoreTarget] = useState<ProductListItem | null>(
     null
   );
@@ -822,24 +828,10 @@ function ProductListPage() {
   }
 
   function goToProductCreate(
-    mode: ProductCreateActionMode,
+    mode: ComboProductCreateActionMode,
     record: ProductListItem
   ) {
-    history.push({
-      pathname: '/product/combo/create',
-      search: `?${qs.stringify({
-        mode,
-        sourceId: record.id,
-      })}`,
-      state: {
-        mode,
-        sourceProduct: record,
-      },
-    });
-  }
-
-  function showPendingMessage(text: string) {
-    Message.info(text);
+    history.push(buildComboProductCreateLocation(mode, record));
   }
 
   function closePublishModal() {
@@ -887,6 +879,48 @@ function ProductListPage() {
     setShareTargetProduct(null);
     setShareTargetStoreIds([]);
     setShareSubmitting(false);
+  }
+
+  function openChannelConfigModal(record: ProductListItem) {
+    setChannelConfigTarget(record);
+    setChannelConfigSubmitting(false);
+  }
+
+  function closeChannelConfigModal() {
+    setChannelConfigTarget(null);
+    setChannelConfigSubmitting(false);
+  }
+
+  async function handleChannelConfigSubmit(input: {
+    enabled: boolean;
+    storeChannelConfig?: ProductListItem['storeChannelConfig'];
+    sharedPoolSellableSkuIds?: string[];
+    sharedPoolAllowSelfPrice?: boolean;
+  }) {
+    if (!channelConfigTarget) {
+      return;
+    }
+
+    try {
+      setChannelConfigSubmitting(true);
+      await productService.updateProductStoreChannelSingleConfig({
+        productId: channelConfigTarget.id,
+        enabled: input.enabled,
+        targetStoreIds: salesStoreItems
+          .filter((item) => item.type === 'store')
+          .map((item) => item.id),
+        storeChannelConfig: input.storeChannelConfig,
+        sharedPoolSellableSkuIds: input.sharedPoolSellableSkuIds,
+        sharedPoolAllowSelfPrice: input.sharedPoolAllowSelfPrice,
+      });
+      Message.success('渠道配置已更新');
+      closeChannelConfigModal();
+      setRefreshKey((value) => value + 1);
+    } catch (error) {
+      Message.error(getErrorMessage(error) || '渠道配置更新失败');
+    } finally {
+      setChannelConfigSubmitting(false);
+    }
   }
 
   function openSalesStoreModal(record: ProductListItem) {
@@ -1204,7 +1238,13 @@ function ProductListPage() {
             {record.storeView.showOwnershipTag && record.storeView.ownershipTag && (
               <Tag
                 className={styles.ownershipTag}
-                color={record.storeView.ownershipTag === '自建' ? 'green' : 'arcoblue'}
+                color={
+                  record.storeView.ownershipTag === '自建'
+                    ? 'green'
+                    : record.storeView.ownershipTag === '引用'
+                      ? 'arcoblue'
+                      : 'orange'
+                }
               >
                 {record.storeView.ownershipTag}
               </Tag>
@@ -1328,12 +1368,6 @@ function ProductListPage() {
       ),
     },
     {
-      title: '库存',
-      dataIndex: 'stock',
-      width: 120,
-      render: () => formatComboStockDisplay(),
-    },
-    {
       title: '创建时间',
       dataIndex: 'createdAt',
       width: 168,
@@ -1375,19 +1409,19 @@ function ProductListPage() {
                 {
                   key: 'edit',
                   label: '编辑',
-                  onClick: () => handleUnavailableProductEdit(showPendingMessage),
+                  onClick: () => goToProductCreate('edit', record),
                 },
                 {
                   key: 'copy',
                   label: '复制',
                   onClick: () => goToProductCreate('copy', record),
                 },
-                ...(shouldShowSalesStoreAction(record)
+                ...(record.storeView.isSelfBuilt
                   ? [
                       {
-                        key: 'sales-store',
-                        label: '在售店铺管理',
-                        onClick: () => openSalesStoreModal(record),
+                        key: 'channel-config',
+                        label: '渠道配置',
+                        onClick: () => openChannelConfigModal(record),
                       },
                     ]
                   : []),
@@ -1555,11 +1589,6 @@ function ProductListPage() {
           </Typography.Text>
         </div>
       ),
-    },
-    {
-      title: '库存',
-      dataIndex: 'currentStock',
-      width: 140,
     },
     {
       title: '可售状态',
@@ -1863,6 +1892,15 @@ function ProductListPage() {
         product={detailTarget}
         visible={Boolean(detailTarget)}
         onCancel={() => setDetailTarget(null)}
+      />
+
+      <ChannelConfigModal
+        visible={Boolean(channelConfigTarget)}
+        product={channelConfigTarget}
+        storeItems={salesStoreItems}
+        submitting={channelConfigSubmitting}
+        onCancel={closeChannelConfigModal}
+        onSubmit={handleChannelConfigSubmit}
       />
 
       <SalesStoreModal

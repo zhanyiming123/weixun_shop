@@ -7,6 +7,7 @@ import {
 describe('product row action helpers', () => {
   const defaultActionKeys: ProductRowActionKey[] = [
     'detail',
+    'channel-config',
     'store-setting',
     'copy',
     'sell-status',
@@ -32,6 +33,6 @@ describe('product row action helpers', () => {
         isShared: false,
         canManageStoreSettings: false,
       })
-    ).toEqual(['detail', 'store-setting', 'copy']);
+    ).toEqual(['detail', 'channel-config', 'store-setting']);
   });
 });

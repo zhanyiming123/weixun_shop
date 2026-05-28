@@ -6,14 +6,22 @@ import {
   InputNumber,
   Message,
   Modal,
+  Popconfirm,
   Radio,
   Select,
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from '@arco-design/web-react';
-import { IconPlus } from '@arco-design/web-react/icon';
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconDelete,
+  IconPlus,
+  IconQuestionCircle,
+} from '@arco-design/web-react/icon';
 import type {
   ProductComboOptionItem,
   ProductListItem,
@@ -35,6 +43,7 @@ import {
   createComboOptionProductItem,
   getComboOptionSelectionLimitError,
   getDisableComboOptionProductListedError,
+  moveComboOptionProductItem,
   normalizeComboOptionSelectionLimit,
   preserveNonRemovableComboOptionSkuIds,
   syncComboOptionProductRequiredState,
@@ -54,6 +63,7 @@ type ComboProductConfigCardProps = {
 
 type OptionTableRow = {
   key: string;
+  rowIndex: number;
   productId: string;
   skuId: string;
   productName: string;
@@ -64,6 +74,7 @@ type OptionTableRow = {
   comboPrice?: number;
   quantity: number;
   required: boolean;
+  defaultSelected: boolean;
   listed: boolean;
 };
 
@@ -349,13 +360,14 @@ export default function ComboProductConfigCard({
 
   const optionTables = useMemo(() => {
     return normalizedValue.reduce<Record<string, OptionTableRow[]>>((result, option) => {
-      result[option.id] = option.items.map((item) => {
+      result[option.id] = option.items.map((item, rowIndex) => {
         const matchedEntry = productSkuMap.get(`${item.productId}:${item.skuId}`);
         const product = matchedEntry?.product || productMap.get(item.productId);
         const sku = matchedEntry?.sku || product?.skus.find((candidate) => candidate.id === item.skuId);
 
         return {
           key: `${item.productId}:${item.skuId}`,
+          rowIndex,
           productId: item.productId,
           skuId: item.skuId,
           productName: product?.name || '商品已失效',
@@ -367,12 +379,35 @@ export default function ComboProductConfigCard({
           comboPrice: item.comboPrice,
           quantity: item.quantity,
           required: item.required,
+          defaultSelected: item.required || item.defaultSelected === true,
           listed: item.listed !== false,
         };
       });
       return result;
     }, {});
   }, [normalizedValue, productMap, productSkuMap]);
+
+  function moveOptionItem(
+    optionId: string,
+    skuId: string,
+    direction: 'up' | 'down'
+  ) {
+    patchOption(optionId, (currentOption) => ({
+      ...currentOption,
+      items: moveComboOptionProductItem(currentOption.items, skuId, direction),
+    }));
+  }
+
+  function columnTitle(label: string, tip: string) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        {label}
+        <Tooltip content={tip}>
+          <IconQuestionCircle style={{ color: 'var(--color-text-3)', cursor: 'default' }} />
+        </Tooltip>
+      </span>
+    );
+  }
 
   function getColumns(option: ProductComboOptionItem) {
     return [
@@ -400,7 +435,7 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: '单价',
+        title: '原单价',
         dataIndex: 'sourcePrice',
         width: 120,
         render: (price: number) => (
@@ -408,7 +443,7 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: '组合售卖价',
+        title: '组合售卖单价',
         dataIndex: 'comboPrice',
         width: 180,
         render: (price: number | undefined, record: OptionTableRow) => (
@@ -467,7 +502,17 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: '是否必选',
+        title: '总价',
+        dataIndex: 'comboPrice',
+        width: 120,
+        render: (price: number | undefined, record: OptionTableRow) => {
+          if (price == null) return '—';
+          const total = price * record.quantity;
+          return <span className={styles.priceText}>{total.toFixed(2)}</span>;
+        },
+      },
+      {
+        title: columnTitle('是否必选', '开启后该商品为组合中的固定必选项，用户购买时不可跳过，且自动计入默认选中。'),
         dataIndex: 'required',
         width: 120,
         render: (required: boolean, record: OptionTableRow) => (
@@ -491,6 +536,7 @@ export default function ComboProductConfigCard({
                     ? {
                         ...item,
                         required: checked,
+                        defaultSelected: checked ? true : item.defaultSelected,
                         listed: checked ? true : item.listed,
                       }
                     : item
@@ -501,7 +547,38 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: '上架',
+        title: columnTitle('默认选中', '开启后用户进入组合商品页时该商品默认处于选中状态，可节省用户操作步骤。默认选中数量不可超过该选项的选择限制数量。'),
+        dataIndex: 'defaultSelected',
+        width: 120,
+        render: (defaultSelected: boolean, record: OptionTableRow) => (
+          <Switch
+            checked={defaultSelected}
+            disabled={record.required}
+            onChange={(checked) => {
+              if (checked) {
+                const currentCount = option.items.filter(
+                  (item) => item.skuId !== record.skuId && item.defaultSelected === true
+                ).length;
+                if (currentCount >= option.selectionLimit) {
+                  Message.warning('默认选中的数量不可超过选择限制数量');
+                  return;
+                }
+              }
+
+              patchOption(option.id, (currentOption) => ({
+                ...currentOption,
+                items: currentOption.items.map((item) =>
+                  item.skuId === record.skuId
+                    ? { ...item, defaultSelected: checked }
+                    : item
+                ),
+              }));
+            }}
+          />
+        ),
+      },
+      {
+        title: columnTitle('上架', '控制该子商品在组合中是否对用户展示。关闭后用户在购买页中看不到该商品，但不影响组合本身的可售状态。必选商品无法下架。'),
         dataIndex: 'listed',
         width: 120,
         render: (listed: boolean, record: OptionTableRow) => (
@@ -535,31 +612,67 @@ export default function ComboProductConfigCard({
       {
         title: '操作',
         dataIndex: 'actions',
-        width: 88,
+        width: 140,
         render: (_: unknown, record: OptionTableRow) => (
-          <Button
-            type="text"
-            size="small"
-            className={styles.removeButton}
-            disabled={!canRemoveComboOptionProduct(record.skuId, nonRemovableSkuIds)}
-            onClick={() => {
-              patchOption(option.id, (currentOption) => {
-                const nextItems = currentOption.items.filter(
-                  (item) => item.skuId !== record.skuId
-                );
-                return {
-                  ...currentOption,
-                  selectionLimit: normalizeComboOptionSelectionLimit({
+          <div className={styles.rowActions}>
+            <div className={styles.sortActions}>
+              <Tooltip content="上移">
+                <span>
+                  <Button
+                    type="text"
+                    size="mini"
+                    className={styles.sortButton}
+                    disabled={record.rowIndex === 0}
+                    icon={<IconArrowUp />}
+                    onClick={() => moveOptionItem(option.id, record.skuId, 'up')}
+                  />
+                </span>
+              </Tooltip>
+              <Tooltip content="下移">
+                <span>
+                  <Button
+                    type="text"
+                    size="mini"
+                    className={styles.sortButton}
+                    disabled={record.rowIndex === option.items.length - 1}
+                    icon={<IconArrowDown />}
+                    onClick={() => moveOptionItem(option.id, record.skuId, 'down')}
+                  />
+                </span>
+              </Tooltip>
+            </div>
+            <Popconfirm
+              focusLock
+              title="确认移除该子商品吗？"
+              onOk={() => {
+                patchOption(option.id, (currentOption) => {
+                  const nextItems = currentOption.items.filter(
+                    (item) => item.skuId !== record.skuId
+                  );
+                  return {
                     ...currentOption,
+                    selectionLimit: normalizeComboOptionSelectionLimit({
+                      ...currentOption,
+                      items: nextItems,
+                    }),
                     items: nextItems,
-                  }),
-                  items: nextItems,
-                };
-              });
-            }}
-          >
-            移除
-          </Button>
+                  };
+                });
+              }}
+            >
+              <Tooltip content="移除">
+                <span>
+                  <Button
+                    type="text"
+                    size="mini"
+                    className={styles.removeButton}
+                    disabled={!canRemoveComboOptionProduct(record.skuId, nonRemovableSkuIds)}
+                    icon={<IconDelete />}
+                  />
+                </span>
+              </Tooltip>
+            </Popconfirm>
+          </div>
         ),
       },
     ];
@@ -675,7 +788,7 @@ export default function ComboProductConfigCard({
               scroll={{ x: 980 }}
               noDataElement={
                 <Empty
-                  description="暂无配置商品，请点击“添加商品”"
+                  description={'暂无配置商品，请点击"添加商品"'}
                   className={styles.tableEmpty}
                 />
               }

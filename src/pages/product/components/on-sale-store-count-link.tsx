@@ -7,6 +7,7 @@ type OnSaleStoreCountLinkProps<
   T extends ProductItem & {
     storeView?: {
       isShared?: boolean;
+      isSelfBuilt?: boolean;
     };
   },
 > = {
@@ -19,6 +20,7 @@ export default function OnSaleStoreCountLink<
   T extends ProductItem & {
     storeView?: {
       isShared?: boolean;
+      isSelfBuilt?: boolean;
     };
   },
 >({
@@ -26,7 +28,11 @@ export default function OnSaleStoreCountLink<
   onOpen,
   className,
 }: OnSaleStoreCountLinkProps<T>) {
-  if (product.storeView?.isShared) {
+  // 引用商品 / 自建但未配置渠道的商品，在售店铺显示 —
+  if (
+    product.storeView?.isShared ||
+    (product.storeView?.isSelfBuilt && !product.storeChannelConfig)
+  ) {
     return <Typography.Text type="secondary">—</Typography.Text>;
   }
 

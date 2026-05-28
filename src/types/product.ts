@@ -13,7 +13,7 @@ export type OrganizationScope = 'headquarter' | 'region' | 'store';
 export type ProductStoreOverrideMode = 'follow' | 'override';
 export type ProductStorePriceMode = 'follow' | 'independent';
 export type ProductStoreStockMode = 'follow' | 'independent';
-export type ProductOwnershipTag = '自建' | '引用';
+export type ProductOwnershipTag = '自建' | '引用' | '共享';
 export type PublishProductTargetMode = 'all' | 'specific';
 export type ProductShareStatus = 'pending' | 'referenced';
 
@@ -202,6 +202,7 @@ export type ProductComboOptionProductItem = {
   stock?: number;
   required: boolean;
   listed: boolean;
+  defaultSelected?: boolean;
 };
 
 export type ProductComboOptionItem = {
@@ -237,6 +238,11 @@ export type ProductShareTargetItem = {
   referencedAt?: string;
   sellableSkuIds?: string[];
   allowSelfPrice?: boolean;
+};
+
+export type ProductStoreShareSettingItem = {
+  shareMode: ProductStoreChannelShareMode;
+  sellableSkuIds: string[];
 };
 
 export type ProductItem = {
@@ -396,6 +402,22 @@ export type UpdateProductStoreConfigsInput = {
 export type UpdateProductStoreChannelConfigInput = {
   productId: string;
   productPoolStoreConfigs: ProductStoreChannelProductPoolStoreConfigItem[];
+};
+
+export type UpdateProductStoreChannelSingleConfigInput = {
+  productId: string;
+  enabled: boolean;
+  targetStoreIds: string[];
+  storeChannelConfig?: ProductStoreChannelConfigItem;
+  sharedPoolSellableSkuIds?: string[];
+  sharedPoolAllowSelfPrice?: boolean;
+};
+
+export type UpdateProductShareConfigInput = {
+  productId: string;
+  storeConfigs: ProductStoreConfigItem[];
+  storeShareSettingMap: Record<string, ProductStoreShareSettingItem>;
+  independentPriceRule: ProductIndependentPriceRule;
 };
 
 export type UpdateProductSkuStatusesInput = {

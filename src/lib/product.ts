@@ -1784,6 +1784,15 @@ export function buildProductListItem(
     Boolean(currentStoreId) &&
     resolvedSourceStoreId === currentStoreId;
   const isShared = Boolean(currentStoreId) && !isSelfBuilt;
+  // 本店主动从共享池引用的商品
+  const isReferenced =
+    isShared &&
+    Boolean(
+      currentStoreId &&
+        (product.shareTargets || []).some(
+          (t) => t.storeId === currentStoreId && t.status === 'referenced'
+        )
+    );
   const canManageIndependentPrice =
     isShared && canStoreUseIndependentPrice(product, currentStoreId);
   const priceMode =
@@ -1815,7 +1824,13 @@ export function buildProductListItem(
       sourceStoreName: options.sourceStoreName || '',
       sourceRegionName: options.sourceRegionName || '',
       showOwnershipTag: Boolean(currentStoreId),
-      ownershipTag: currentStoreId ? (isSelfBuilt ? '自建' : '引用') : undefined,
+      ownershipTag: currentStoreId
+        ? isSelfBuilt
+          ? '自建'
+          : isReferenced
+            ? '引用'
+            : '共享'
+        : undefined,
       canManageStoreStatus:
         Boolean(currentStoreId) && currentStoreConfig?.sellStatus === 'sellable',
       canManageStoreSettings: Boolean(currentStoreId) && isShared,

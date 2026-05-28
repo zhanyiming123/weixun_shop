@@ -15,7 +15,6 @@ import {
   Modal,
   Pagination,
   Select,
-  Switch,
   Table,
   Tag,
   Tabs,
@@ -29,6 +28,7 @@ import styles from './index.module.less';
 import PublishStoreModal, {
   PublishStoreModalSubmitPayload,
 } from './components/publish-store-modal';
+import ChannelConfigModal from './components/channel-config-modal';
 import SalesStoreModal from './components/sales-store-modal';
 import ProductDetailModal from '@/pages/product/components/product-detail-modal';
 import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
@@ -446,6 +446,9 @@ function ProductListPage() {
   );
   const [publishModalVisible, setPublishModalVisible] = useState(false);
   const [detailTarget, setDetailTarget] = useState<ProductListItem | null>(null);
+  const [channelConfigTarget, setChannelConfigTarget] =
+    useState<ProductListItem | null>(null);
+  const [channelConfigSubmitting, setChannelConfigSubmitting] = useState(false);
   const [storeSettingTarget, setStoreSettingTarget] =
     useState<ProductListItem | null>(null);
   const [storeSettingDraft, setStoreSettingDraft] =
@@ -812,6 +815,52 @@ function ProductListPage() {
     setSalesStoreSubmitting(false);
   }
 
+  function openChannelConfigModal(record: ProductListItem) {
+    if (!record.storeView.isSelfBuilt) {
+      Message.warning('仅支持本店自建商品配置渠道');
+      return;
+    }
+
+    setChannelConfigTarget(record);
+    setChannelConfigSubmitting(false);
+  }
+
+  function closeChannelConfigModal() {
+    setChannelConfigTarget(null);
+    setChannelConfigSubmitting(false);
+  }
+
+  async function handleChannelConfigSubmit(input: {
+    enabled: boolean;
+    storeChannelConfig?: ProductListItem['storeChannelConfig'];
+    sharedPoolSellableSkuIds?: string[];
+    sharedPoolAllowSelfPrice?: boolean;
+  }) {
+    if (!channelConfigTarget) {
+      return;
+    }
+
+    try {
+      setChannelConfigSubmitting(true);
+      await productService.updateProductStoreChannelSingleConfig({
+        productId: channelConfigTarget.id,
+        enabled: input.enabled,
+        targetStoreIds: salesStoreItems
+          .filter((item) => item.type === 'store')
+          .map((item) => item.id),
+        storeChannelConfig: input.storeChannelConfig,
+        sharedPoolSellableSkuIds: input.sharedPoolSellableSkuIds,
+        sharedPoolAllowSelfPrice: input.sharedPoolAllowSelfPrice,
+      });
+      Message.success('渠道配置已更新');
+      closeChannelConfigModal();
+      setRefreshKey((value) => value + 1);
+    } catch (error) {
+      setChannelConfigSubmitting(false);
+      Message.error(getErrorMessage(error));
+    }
+  }
+
   async function handleSalesStoreSubmit(
     productPoolStoreConfigs: ProductStoreChannelProductPoolStoreConfigItem[]
   ) {
@@ -1129,7 +1178,13 @@ function ProductListPage() {
             {record.storeView.showOwnershipTag && record.storeView.ownershipTag && (
               <Tag
                 className={styles.ownershipTag}
-                color={record.storeView.ownershipTag === '自建' ? 'green' : 'arcoblue'}
+                color={
+                  record.storeView.ownershipTag === '自建'
+                    ? 'green'
+                    : record.storeView.ownershipTag === '引用'
+                      ? 'arcoblue'
+                      : 'orange'
+                }
               >
                 {record.storeView.ownershipTag}
               </Tag>
@@ -1244,8 +1299,7 @@ function ProductListPage() {
       title: '库存',
       dataIndex: 'stock',
       width: 120,
-      render: (value: number, record: ProductListItem) =>
-        `${value} ${record.inventoryUnit || DEFAULT_INVENTORY_UNIT}`,
+      render: (value: number) => value,
       sorter: (a: ProductListItem, b: ProductListItem) => a.stock - b.stock,
     },
     {
@@ -1270,6 +1324,15 @@ function ProductListPage() {
             label: '详情',
             onClick: () => setDetailTarget(record),
           },
+          ...(record.storeView.isSelfBuilt
+            ? [
+                {
+                  key: 'channel-config',
+                  label: '渠道配置',
+                  onClick: () => openChannelConfigModal(record),
+                },
+              ]
+            : []),
           ...(record.storeView.isShared
             ? [
                 ...(record.storeView.canManageStoreSettings
@@ -1298,15 +1361,6 @@ function ProductListPage() {
                   label: '复制',
                   onClick: () => goToProductCreate('copy', record),
                 },
-                ...(shouldShowSalesStoreAction(record)
-                  ? [
-                      {
-                        key: 'sales-store',
-                        label: '在售店铺管理',
-                        onClick: () => openSalesStoreModal(record),
-                      },
-                    ]
-                  : []),
               ]),
           ...(currentStoreId && !record.storeView.isShared
             ? [
@@ -1772,6 +1826,15 @@ function ProductListPage() {
         product={detailTarget}
         visible={Boolean(detailTarget)}
         onCancel={() => setDetailTarget(null)}
+      />
+
+      <ChannelConfigModal
+        visible={Boolean(channelConfigTarget)}
+        product={channelConfigTarget}
+        storeItems={salesStoreItems}
+        submitting={channelConfigSubmitting}
+        onCancel={closeChannelConfigModal}
+        onSubmit={handleChannelConfigSubmit}
       />
 
       <SalesStoreModal

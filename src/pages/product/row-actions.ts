@@ -1,5 +1,6 @@
 export type ProductRowActionKey =
   | 'detail'
+  | 'channel-config'
   | 'store-setting'
   | 'copy'
   | 'edit'
