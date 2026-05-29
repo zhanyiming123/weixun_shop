@@ -85,7 +85,6 @@ export function syncComboOptionItemsByType<
       return {
         ...item,
         required: true,
-        listed: true,
         defaultSelected: true,
       };
     }
@@ -201,17 +200,22 @@ export function getListedComboOptionProductCount(
 }
 
 export function getDisableComboOptionProductListedError(
-  option: Pick<ProductComboOptionItem, 'selectionLimit' | 'items'>,
+  option: Pick<ProductComboOptionItem, 'optionType' | 'required' | 'selectionLimit' | 'items'>,
   skuId: string
 ) {
   const targetItem = option.items.find((item) => item.skuId === skuId);
+  const optionType = getComboOptionType(option);
 
   if (!targetItem || targetItem.listed === false) {
     return '';
   }
 
-  if (targetItem.required) {
+  if (targetItem.required && optionType !== 'must_buy') {
     return '必选商品不允许下架';
+  }
+
+  if (optionType === 'must_buy') {
+    return '';
   }
 
   if (getListedComboOptionProductCount(option) <= option.selectionLimit) {

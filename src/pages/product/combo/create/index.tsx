@@ -146,6 +146,7 @@ import ComboProductConfigCard, {
   createDefaultComboOption,
 } from '@/pages/product/components/combo-product-config-card';
 import {
+  getListedComboOptionProductCount,
   getComboOptionRequiredByType,
   getComboOptionType,
   isMustBuyComboOption,
@@ -2649,7 +2650,16 @@ function ProductCreatePage() {
       optionType: getComboOptionType(option),
       required: getComboOptionRequiredByType(getComboOptionType(option)),
       selectionLimit: isMustBuyComboOption(option)
-        ? option.items.length || 1
+        ? Math.max(
+            1,
+            getListedComboOptionProductCount({
+              ...option,
+              items: syncComboOptionItemsByType(
+                getComboOptionType(option),
+                option.items
+              ),
+            })
+          )
         : option.selectionLimit,
       items: syncComboOptionItemsByType(
         getComboOptionType(option),

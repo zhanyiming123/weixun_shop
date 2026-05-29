@@ -43,6 +43,7 @@ import {
   buildComboTrialTableRows,
   canRemoveComboOptionProduct,
   getComboTrialDefaultSelectionError,
+  getListedComboOptionProductCount,
   getComboOptionRequiredByType,
   getComboOptionType,
   isMustBuyComboOption,
@@ -68,7 +69,7 @@ const COMBO_OPTION_TYPE_OPTIONS: Array<{
     value: 'must_buy',
   },
   {
-    label: '选构项',
+    label: '选购项',
     value: 'selective',
   },
   {
@@ -590,7 +591,7 @@ export default function ComboProductConfigCard({
         ),
       },
       {
-        title: columnTitle('上架', '控制该子商品在组合中是否对用户展示。关闭后用户在购买页中看不到该商品，但不影响组合本身的可售状态。必选商品无法下架。'),
+        title: columnTitle('上架', '控制该子商品在组合中是否对用户展示。关闭后用户在购买页中看不到该商品，但不影响组合本身的可售状态。'),
         dataIndex: 'listed',
         width: 120,
         render: (listed: boolean, record: OptionTableRow) => (
@@ -613,6 +614,17 @@ export default function ComboProductConfigCard({
 
               patchOption(option.id, (currentOption) => ({
                 ...currentOption,
+                selectionLimit: isMustBuyComboOption(currentOption)
+                  ? Math.max(
+                      1,
+                      getListedComboOptionProductCount({
+                        ...currentOption,
+                        items: currentOption.items.map((item) =>
+                          item.skuId === record.skuId ? { ...item, listed: checked } : item
+                        ),
+                      })
+                    )
+                  : currentOption.selectionLimit,
                 items: currentOption.items.map((item) =>
                   item.skuId === record.skuId ? { ...item, listed: checked } : item
                 ),
@@ -810,7 +822,6 @@ export default function ComboProductConfigCard({
                 </span>
                 <div className={styles.optionTypeField}>
                   <Radio.Group
-                    type="button"
                     value={optionType}
                     onChange={(nextValue) => {
                       const nextOptionType = nextValue as ProductComboOptionType;
@@ -827,7 +838,13 @@ export default function ComboProductConfigCard({
                           required: getComboOptionRequiredByType(nextOptionType),
                           selectionLimit:
                             nextOptionType === 'must_buy'
-                              ? nextItems.length || 1
+                              ? Math.max(
+                                  1,
+                                  getListedComboOptionProductCount({
+                                    ...previous,
+                                    items: nextItems,
+                                  })
+                                )
                               : normalizeComboOptionSelectionLimit({
                                   ...previous,
                                   selectionLimit: previous.selectionLimit,
@@ -851,7 +868,6 @@ export default function ComboProductConfigCard({
                 <div className={styles.fieldGroup}>
                   <span className={styles.fieldLabel}>选择限制</span>
                   <div className={styles.limitField}>
-                    <span className={styles.limitPrefix}>选择</span>
                     <Select
                       className={styles.limitSelect}
                       value={option.selectionLimit}

@@ -15,6 +15,7 @@ import {
   moveComboOptionProductItem,
   normalizeComboOptionSelectionLimit,
   preserveNonRemovableComboOptionSkuIds,
+  syncComboOptionItemsByType,
   syncComboOptionProductRequiredState,
 } from './combo-product-config-card.utils';
 
@@ -414,6 +415,8 @@ describe('combo product config card helpers', () => {
     expect(
       getDisableComboOptionProductListedError(
         {
+          optionType: 'selective',
+          required: true,
           selectionLimit: 1,
           items: [
             {
@@ -431,10 +434,42 @@ describe('combo product config card helpers', () => {
     ).toBe('必选商品不允许下架');
   });
 
+  it('allows disabling listed for must-buy combo products', () => {
+    expect(
+      getDisableComboOptionProductListedError(
+        {
+          optionType: 'must_buy',
+          required: true,
+          selectionLimit: 2,
+          items: [
+            {
+              productId: 'product_1',
+              skuId: 'sku_1',
+              comboPrice: 100,
+              quantity: 1,
+              required: true,
+              listed: true,
+            },
+            {
+              productId: 'product_2',
+              skuId: 'sku_2',
+              comboPrice: 120,
+              quantity: 1,
+              required: true,
+              listed: true,
+            },
+          ],
+        },
+        'sku_2'
+      )
+    ).toBe('');
+  });
+
   it('blocks disabling listed when listed product count would drop below selection limit', () => {
     expect(
       getDisableComboOptionProductListedError(
         {
+          required: false,
           selectionLimit: 2,
           items: [
             {
@@ -464,6 +499,7 @@ describe('combo product config card helpers', () => {
     expect(
       getDisableComboOptionProductListedError(
         {
+          required: false,
           selectionLimit: 2,
           items: [
             {
@@ -864,6 +900,31 @@ describe('combo product config card helpers', () => {
         ],
       })
     ).toBe(2);
+  });
+
+  it('keeps listed state when syncing must-buy option items by type', () => {
+    expect(
+      syncComboOptionItemsByType('must_buy', [
+        {
+          productId: 'product_1',
+          skuId: 'sku_1',
+          comboPrice: 100,
+          quantity: 1,
+          required: false,
+          listed: false,
+        },
+      ])
+    ).toEqual([
+      {
+        productId: 'product_1',
+        skuId: 'sku_1',
+        comboPrice: 100,
+        quantity: 1,
+        required: true,
+        listed: false,
+        defaultSelected: true,
+      },
+    ]);
   });
 
   it('returns an error when any option default-selected count does not match its selection limit', () => {
