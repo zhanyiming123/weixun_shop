@@ -589,6 +589,50 @@
   line-height: 18px;
 }
 
+.comboStoreSettingFieldGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.comboStoreSettingFieldItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.comboStoreSettingFieldLabel {
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.comboStoreSettingFieldValue {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.comboStoreSettingProductInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comboStoreSettingProductName {
+  color: var(--color-text-1);
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.comboStoreSettingProductSpec {
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .skuStatusTableWrap {
   margin-top: 4px;
 }
@@ -654,5 +698,11 @@
 
   .storeSettingTableWrap {
     width: 100%;
+  }
+
+  .comboStoreSettingFieldGrid {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 }

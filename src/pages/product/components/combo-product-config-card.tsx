@@ -27,7 +27,6 @@ import type {
   ProductComboOptionItem,
   ProductListItem,
 } from '@/types/product';
-import type { ProductStatus } from '@/pages/product/list/data';
 import type { MarketingProductSelectorSpuItem } from '@/pages/marketing/center/components/product-selector/types';
 import MarketingProductSelector from '@/pages/marketing/center/components/product-selector';
 import {
@@ -93,7 +92,6 @@ type OptionTableRow = {
   skuId: string;
   productName: string;
   imageUrl: string;
-  status: ProductStatus;
   specText: string;
   sourcePrice: number;
   comboPrice?: number;
@@ -116,14 +114,6 @@ export function createDefaultComboOption(optionIndex: number): ProductComboOptio
     selectionLimit: 1,
     items: [],
   };
-}
-
-function getStatusLabel(status: ProductStatus) {
-  return status === 'on' ? '在售' : '仓库';
-}
-
-function getStatusColor(status: ProductStatus) {
-  return status === 'on' ? 'green' : 'arcoblue';
 }
 
 function formatPrice(price: number) {
@@ -420,7 +410,6 @@ export default function ComboProductConfigCard({
           skuId: item.skuId,
           productName: product?.name || '商品已失效',
           imageUrl: product?.carouselImages?.[0]?.url || '',
-          status: product?.status || 'off',
           specText:
             product?.specMode === 'multi' ? sku?.specText || '默认规格' : '单规格',
           sourcePrice: sku?.price ?? 0,
@@ -471,12 +460,8 @@ export default function ComboProductConfigCard({
             )}
             <div className={styles.productInfo}>
               <div className={styles.productTitleRow}>
-                <Tag bordered={false} color={getStatusColor(record.status)} size="small">
-                  {getStatusLabel(record.status)}
-                </Tag>
                 <span className={styles.productName}>{record.productName}</span>
               </div>
-              <div className={styles.productMeta}>SKU编码：{record.skuId}</div>
               <div className={styles.productMeta}>{record.specText}</div>
             </div>
           </div>

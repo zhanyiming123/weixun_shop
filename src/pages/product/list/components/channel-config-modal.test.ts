@@ -4,6 +4,7 @@ import {
   buildChannelConfigDraft,
   buildChannelConfigSubmitPayload,
   buildSharedPoolDraft,
+  shouldShowChannelConfigSellableSku,
 } from './channel-config-modal';
 
 function createProduct(
@@ -169,6 +170,56 @@ describe('channel config modal helpers', () => {
         productPoolStoreConfigs: [],
       },
       sharedPoolSellableSkuIds: ['sku_1'],
+      sharedPoolAllowSelfPrice: true,
+    });
+  });
+
+  it('hides sellable sku config for combo products', () => {
+    const product = createProduct({
+      productKind: 'combo',
+      storeChannelConfig: {
+        shareMode: 'shared_pool',
+        storeScope: 'allStores',
+        storeIds: [],
+        productPoolStoreConfigs: [],
+      },
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'pending',
+          sharedAt: '2026-04-23 12:00:00',
+          sellableSkuIds: ['sku_1'],
+          allowSelfPrice: true,
+        },
+      ],
+    });
+
+    expect(shouldShowChannelConfigSellableSku(product)).toBe(false);
+    expect(buildSharedPoolDraft(product)).toEqual({
+      sellableSkuIds: [],
+      allowSelfPrice: true,
+    });
+    expect(
+      buildChannelConfigSubmitPayload(
+        product,
+        {
+          enabled: true,
+          shareMode: 'shared_pool',
+        },
+        [],
+        {
+          sellableSkuIds: ['sku_1'],
+          allowSelfPrice: true,
+        }
+      )
+    ).toEqual({
+      enabled: true,
+      storeChannelConfig: {
+        shareMode: 'shared_pool',
+        storeScope: 'allStores',
+        storeIds: [],
+        productPoolStoreConfigs: [],
+      },
       sharedPoolAllowSelfPrice: true,
     });
   });

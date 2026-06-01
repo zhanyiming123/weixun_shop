@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProductListItem,
   applyBundleRuntime,
+  getProductCurrentComboOptions,
   getProductCurrentSkus,
   getProductIndependentStockRule,
   getProductShareModeLabel,
@@ -11,6 +12,7 @@ import {
   normalizeProductIndependentStockRule,
   normalizeProductComboOptions,
   normalizeProductShareTargets,
+  normalizeProductStoreComboOptionItemOverrides,
   normalizeProductStoreLocalSkuItems,
   normalizeProductStoreChannelConfig,
   resolveBundleAvailability,
@@ -262,6 +264,70 @@ describe('product domain rules', () => {
             listed: true,
           },
         ],
+      },
+    ]);
+  });
+
+  it('normalizes combo option item overrides and filters invalid items', () => {
+    const normalized = normalizeProductStoreComboOptionItemOverrides(
+      [
+        {
+          optionId: ' option_1 ',
+          skuId: ' sku_1 ',
+          currentComboPrice: 88,
+          currentListed: false,
+          currentDefaultSelected: false,
+        },
+        {
+          optionId: 'option_1',
+          skuId: 'sku_1',
+          currentComboPrice: 99,
+          currentListed: true,
+          currentDefaultSelected: true,
+        },
+        {
+          optionId: 'option_missing',
+          skuId: 'sku_2',
+          currentComboPrice: 77,
+          currentListed: true,
+          currentDefaultSelected: false,
+        },
+        {
+          optionId: 'option_2',
+          skuId: 'sku_missing',
+          currentComboPrice: 66,
+          currentListed: false,
+          currentDefaultSelected: false,
+        },
+      ],
+      [
+        {
+          id: 'option_1',
+          title: '选项1',
+          optionType: 'selective',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'product_1',
+              skuId: 'sku_1',
+              comboPrice: 100,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ]
+    );
+
+    expect(normalized).toEqual([
+      {
+        optionId: 'option_1',
+        skuId: 'sku_1',
+        currentComboPrice: 99,
+        currentListed: true,
+        currentDefaultSelected: true,
       },
     ]);
   });
@@ -629,6 +695,167 @@ describe('product domain rules', () => {
     expect(listItem.storeView.canManageIndependentPrice).toBe(false);
     expect(listItem.storeView.priceMode).toBe('follow');
     expect(listItem.storeView.currentPrice).toBe(100);
+  });
+
+  it('builds product list item with combo option overrides merged into current combo options', () => {
+    const product = createBaseProduct({
+      productKind: 'combo',
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主课',
+          optionType: 'selective',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'sku_child_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+            {
+              productId: 'child_2',
+              skuId: 'sku_child_2',
+              comboPrice: 899,
+              quantity: 2,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 10:10:00',
+          referencedAt: '2026-04-23 10:20:00',
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'follow',
+          stockMode: 'follow',
+          currentPrice: undefined,
+          skuPriceOverrides: [],
+          skuStockOverrides: [],
+          skuSellStatusOverrides: [],
+          skuStatusOverrides: [],
+          comboOptionItemOverrides: [
+            {
+              optionId: 'option_1',
+              skuId: 'sku_child_2',
+              currentComboPrice: 799,
+              currentListed: false,
+              currentDefaultSelected: false,
+            },
+          ],
+          localSkuItems: [],
+          nameMode: 'follow',
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+        },
+      },
+    });
+
+    const currentComboOptions = getProductCurrentComboOptions(product, 'store_target');
+    const listItem = buildProductListItem(product, 'store', ['store_target'], {
+      resolvedSourceStoreId: 'store_source',
+      sourceStoreName: '源店铺',
+      sourceRegionName: '华东',
+      salesStatusCounts: {
+        selling: 1,
+        off: 0,
+      },
+    });
+
+    expect(currentComboOptions).toEqual([
+      {
+        id: 'option_1',
+        title: '主课',
+        optionType: 'selective',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'child_1',
+            skuId: 'sku_child_1',
+            productName: 'child_1',
+            specText: '默认规格',
+            originalPrice: 699,
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+            defaultSelected: true,
+          },
+          {
+            productId: 'child_2',
+            skuId: 'sku_child_2',
+            productName: 'child_2',
+            specText: '默认规格',
+            originalPrice: 899,
+            comboPrice: 799,
+            quantity: 2,
+            required: false,
+            listed: false,
+            defaultSelected: false,
+          },
+        ],
+      },
+    ]);
+    expect(listItem.storeView.originalComboOptions).toEqual([
+      {
+        id: 'option_1',
+        title: '主课',
+        optionType: 'selective',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'child_1',
+            skuId: 'sku_child_1',
+            productName: 'child_1',
+            specText: '默认规格',
+            originalPrice: 699,
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+            defaultSelected: true,
+          },
+          {
+            productId: 'child_2',
+            skuId: 'sku_child_2',
+            productName: 'child_2',
+            specText: '默认规格',
+            originalPrice: 899,
+            comboPrice: 899,
+            quantity: 2,
+            required: false,
+            listed: true,
+          },
+        ],
+      },
+    ]);
+    expect(listItem.storeView.currentComboOptions).toEqual(currentComboOptions);
   });
 
   it('builds share mode label for list items and hides sales-store action for shared-pool self-built products', () => {

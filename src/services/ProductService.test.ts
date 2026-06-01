@@ -229,6 +229,76 @@ function createSharePoolFilterProducts(): ProductItem[] {
         },
       ],
     },
+    {
+      id: 'pool_combo_1',
+      name: '[引用] 苹果橙子组合课',
+      productKind: 'combo',
+      productCatalogId: 'international',
+      productOwnershipId: 'item_06_02_01',
+      productType: 'virtual',
+      inventoryUnit: '套',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 20,
+          status: 'on',
+        },
+      ],
+      status: 'on',
+      price: 299,
+      stock: 20,
+      createdAt: '2026-04-18 10:00:00',
+      sourceType: 'store',
+      sourceStoreId: 'store_suzhou',
+      storeConfigs: [
+        {
+          storeId: 'store_suzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_guangzhou',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+      shareTargets: [
+        {
+          storeId: 'store_guangzhou',
+          status: 'pending',
+          sharedAt: '2026-04-23 09:00:00',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'combo_option_1',
+          title: '水果课包',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'pool_standard_1',
+              skuId: 'sku_a_1',
+              comboPrice: 100,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+            {
+              productId: 'pool_standard_2',
+              skuId: 'sku_c_1',
+              comboPrice: 220,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    },
   ];
 }
 
@@ -515,6 +585,439 @@ describe('ProductService store overrides', () => {
         isDefaultSelected: true,
       },
     ]);
+  });
+
+  it('persists combo option item overrides when saving combo store overrides', async () => {
+    const product = createShareProduct({
+      productKind: 'combo',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 10,
+          status: 'on',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主课',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'child_sku_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+            {
+              productId: 'child_2',
+              skuId: 'child_sku_2',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const save = vi.fn().mockResolvedValue(undefined);
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save,
+    };
+
+    await service.updateProductStoreOverride({
+      productId: 'product_1',
+      storeId: 'store_target',
+      priceMode: 'follow',
+      stockMode: 'follow',
+      skuPriceOverrides: [],
+      skuStockOverrides: [],
+      skuStatusOverrides: [],
+      comboOptionItemOverrides: [
+        {
+          optionId: 'option_1',
+          skuId: 'child_sku_2',
+          currentComboPrice: 799,
+          currentListed: false,
+          currentDefaultSelected: false,
+        },
+      ],
+      nameMode: 'follow',
+      carouselMode: 'follow',
+      overrideCarouselImages: [],
+    });
+
+    const savedProducts = save.mock.calls[0][0] as ProductItem[];
+    const savedOverride = savedProducts[0].storeOverrides?.store_target;
+
+    expect(savedOverride?.comboOptionItemOverrides).toEqual([
+      {
+        optionId: 'option_1',
+        skuId: 'child_sku_2',
+        currentComboPrice: 799,
+        currentListed: false,
+        currentDefaultSelected: false,
+      },
+    ]);
+  });
+
+  it('rejects invalid combo option item overrides', async () => {
+    const product = createShareProduct({
+      productKind: 'combo',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 10,
+          status: 'on',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主课',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'child_sku_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.updateProductStoreOverride({
+        productId: 'product_1',
+        storeId: 'store_target',
+        priceMode: 'follow',
+        stockMode: 'follow',
+        skuPriceOverrides: [],
+        skuStockOverrides: [],
+        skuStatusOverrides: [],
+        comboOptionItemOverrides: [
+          {
+            optionId: 'option_missing',
+            skuId: 'child_sku_1',
+            currentComboPrice: 699,
+            currentListed: true,
+            currentDefaultSelected: false,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+      })
+    ).rejects.toThrowError('请检查组合商品子项配置');
+  });
+
+  it('queryList returns current combo options with saved store overrides', () => {
+    const product = createShareProduct({
+      id: 'combo_store_setting_1',
+      name: '组合商品',
+      productKind: 'combo',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 10,
+          status: 'on',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主课',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'child_sku_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+            {
+              productId: 'child_2',
+              skuId: 'child_sku_2',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+      shareTargets: [
+        {
+          storeId: 'store_target',
+          status: 'referenced',
+          sharedAt: '2026-04-23 12:30:00',
+          referencedAt: '2026-04-23 12:40:00',
+        },
+      ],
+      storeConfigs: [
+        {
+          storeId: 'store_source',
+          sellStatus: 'sellable',
+          channelStatus: 'on',
+        },
+        {
+          storeId: 'store_target',
+          sellStatus: 'sellable',
+          channelStatus: 'off',
+        },
+      ],
+      storeOverrides: {
+        store_target: {
+          storeId: 'store_target',
+          priceMode: 'follow',
+          stockMode: 'follow',
+          currentPrice: undefined,
+          skuPriceOverrides: [],
+          skuStockOverrides: [],
+          skuSellStatusOverrides: [],
+          skuStatusOverrides: [],
+          comboOptionItemOverrides: [
+            {
+              optionId: 'option_1',
+              skuId: 'child_sku_2',
+              currentComboPrice: 799,
+              currentListed: false,
+              currentDefaultSelected: false,
+            },
+          ],
+          localSkuItems: [],
+          nameMode: 'follow',
+          carouselMode: 'follow',
+          overrideCarouselImages: [],
+        },
+      },
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      readSnapshot: vi.fn().mockReturnValue([product]),
+    };
+
+    const result = service.queryList({
+      productKind: 'combo',
+      tab: 'all',
+      filters: createListFilters(),
+      organizationScope: 'store',
+      visibleStoreIds: ['store_target'],
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items[0].storeView.currentComboOptions).toEqual([
+      {
+        id: 'option_1',
+        title: '主课',
+        optionType: 'selective',
+        required: true,
+        selectionLimit: 1,
+        items: [
+          {
+            productId: 'child_1',
+            skuId: 'child_sku_1',
+            productName: 'child_1',
+            specText: '默认规格',
+            originalPrice: 699,
+            comboPrice: 699,
+            quantity: 1,
+            required: false,
+            listed: true,
+            defaultSelected: true,
+          },
+          {
+            productId: 'child_2',
+            skuId: 'child_sku_2',
+            productName: 'child_2',
+            specText: '默认规格',
+            originalPrice: 899,
+            comboPrice: 799,
+            quantity: 1,
+            required: false,
+            listed: false,
+            defaultSelected: false,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('rejects selective default selected count mismatches', async () => {
+    const product = createShareProduct({
+      productKind: 'combo',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 10,
+          status: 'on',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '主课',
+          required: true,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'child_sku_1',
+              comboPrice: 699,
+              quantity: 1,
+              required: false,
+              listed: true,
+              defaultSelected: true,
+            },
+            {
+              productId: 'child_2',
+              skuId: 'child_sku_2',
+              comboPrice: 899,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.updateProductStoreOverride({
+        productId: 'product_1',
+        storeId: 'store_target',
+        priceMode: 'follow',
+        stockMode: 'follow',
+        skuPriceOverrides: [],
+        skuStockOverrides: [],
+        skuStatusOverrides: [],
+        comboOptionItemOverrides: [
+          {
+            optionId: 'option_1',
+            skuId: 'child_sku_1',
+            currentComboPrice: 699,
+            currentListed: true,
+            currentDefaultSelected: false,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+      })
+    ).rejects.toThrowError('默认选中数量需等于选择限制数量');
+  });
+
+  it('rejects add-on down-listing below the selection limit', async () => {
+    const product = createShareProduct({
+      productKind: 'combo',
+      specMode: 'single',
+      skus: [
+        {
+          id: 'sku_combo_1',
+          specText: '',
+          price: 299,
+          stock: 10,
+          status: 'on',
+        },
+      ],
+      comboOptions: [
+        {
+          id: 'option_1',
+          title: '加购资料',
+          optionType: 'add_on',
+          required: false,
+          selectionLimit: 1,
+          items: [
+            {
+              productId: 'child_1',
+              skuId: 'child_sku_1',
+              comboPrice: 99,
+              quantity: 1,
+              required: false,
+              listed: true,
+            },
+          ],
+        },
+      ],
+    });
+    const service = new ProductService() as any;
+
+    service.repository = {
+      getById: vi.fn().mockResolvedValue(product),
+      list: vi.fn().mockResolvedValue([product]),
+      save: vi.fn(),
+    };
+
+    await expect(
+      service.updateProductStoreOverride({
+        productId: 'product_1',
+        storeId: 'store_target',
+        priceMode: 'follow',
+        stockMode: 'follow',
+        skuPriceOverrides: [],
+        skuStockOverrides: [],
+        skuStatusOverrides: [],
+        comboOptionItemOverrides: [
+          {
+            optionId: 'option_1',
+            skuId: 'child_sku_1',
+            currentComboPrice: 99,
+            currentListed: false,
+            currentDefaultSelected: false,
+          },
+        ],
+        nameMode: 'follow',
+        carouselMode: 'follow',
+        overrideCarouselImages: [],
+      })
+    ).rejects.toThrowError('下架商品不可少于选择限制数量');
   });
 
   it('allows shared stores with allowSelfPrice to save independent prices without legacy price ranges', async () => {
@@ -1594,7 +2097,7 @@ describe('ProductService updateProductShareConfig', () => {
         channelStatus: 'on',
       },
     ]);
-    expect(savedProduct.storeOverrides).toEqual({
+    expect(savedProduct.storeOverrides).toMatchObject({
       store_target: {
         storeId: 'store_target',
         priceMode: 'follow',
@@ -1602,6 +2105,7 @@ describe('ProductService updateProductShareConfig', () => {
         nameMode: 'follow',
         carouselMode: 'follow',
         overrideCarouselImages: [],
+        comboOptionItemOverrides: [],
         skuSellStatusOverrides: [
           {
             skuId: 'sku_2',
@@ -2603,9 +3107,17 @@ describe('ProductService share pool filters', () => {
       pageSize: 50,
     });
 
-    expect(allResult.total).toBe(2);
+    expect(allResult.total).toBe(3);
     expect(standardResult.total).toBe(2);
-    expect(comboResult.total).toBe(0);
+    expect(comboResult.total).toBe(1);
+    expect(comboResult.items[0].comboDisplayOptions).toEqual([
+      {
+        key: 'combo_option_1',
+        title: '水果课包',
+        selectionLimit: 1,
+        productNames: ['苹果单品', '橙子单品'],
+      },
+    ]);
   });
 
   it('supports share pool filters for catalog, ownership, source, price, and created date', () => {

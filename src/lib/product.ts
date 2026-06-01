@@ -23,6 +23,7 @@ import type {
   ProductStoreChannelRuleItem,
   ProductStoreChannelShareMode,
   ProductStoreChannelStoreScope,
+  ProductStoreComboOptionItemOverride,
   ProductStoreSellStatus,
   ProductStoreLocalSkuItem,
   ProductStoreSkuPriceOverrideItem,
@@ -406,6 +407,7 @@ export function createDefaultProductStoreOverride(
     skuStockOverrides: [],
     skuSellStatusOverrides: [],
     skuStatusOverrides: [],
+    comboOptionItemOverrides: [],
     localSkuItems: [],
     nameMode: 'follow',
     overrideName: undefined,
@@ -910,6 +912,68 @@ export function normalizeProductStoreSkuSellStatusOverrides(
   return Array.from(overrideMap.values());
 }
 
+export function normalizeProductStoreComboOptionItemOverrides(
+  comboOptionItemOverrides?: ProductStoreComboOptionItemOverride[],
+  comboOptions: ProductComboOptionItem[] = []
+) {
+  if (!Array.isArray(comboOptionItemOverrides)) {
+    return [];
+  }
+
+  const validOptionSkuKeySet = new Set(
+    comboOptions.flatMap((option) =>
+      (option.items || []).map((item) => `${option.id}:${item.skuId}`)
+    )
+  );
+  const sourceOptionItemMap = new Map<string, { defaultSelected?: boolean }>(
+    comboOptions.flatMap((option) =>
+      (option.items || []).map((item) => [`${option.id}:${item.skuId}`, item] as const)
+    )
+  );
+  const overrideMap = new Map<string, ProductStoreComboOptionItemOverride>();
+
+  comboOptionItemOverrides.forEach((item) => {
+    const optionId =
+      typeof item?.optionId === 'string' && item.optionId.trim()
+        ? item.optionId.trim()
+        : '';
+    const skuId =
+      typeof item?.skuId === 'string' && item.skuId.trim()
+        ? item.skuId.trim()
+        : '';
+    const currentComboPrice = Number(item?.currentComboPrice);
+
+    if (
+      !optionId ||
+      !skuId ||
+      !Number.isFinite(currentComboPrice) ||
+      currentComboPrice < 0 ||
+      typeof item?.currentListed !== 'boolean'
+    ) {
+      return;
+    }
+
+    const overrideKey = `${optionId}:${skuId}`;
+
+    if (validOptionSkuKeySet.size && !validOptionSkuKeySet.has(overrideKey)) {
+      return;
+    }
+
+    overrideMap.set(overrideKey, {
+      optionId,
+      skuId,
+      currentComboPrice,
+      currentListed: item.currentListed,
+      currentDefaultSelected:
+        typeof item.currentDefaultSelected === 'boolean'
+          ? item.currentDefaultSelected
+          : sourceOptionItemMap.get(overrideKey)?.defaultSelected === true,
+    });
+  });
+
+  return Array.from(overrideMap.values());
+}
+
 export function normalizeProductStoreLocalSkuItems(
   localSkuItems?: ProductStoreLocalSkuItem[],
   skus: Array<{ id: string; specText?: string }> = []
@@ -999,7 +1063,8 @@ export function normalizeProductStoreLocalSkuItems(
 export function normalizeProductStoreOverride(
   storeId: string,
   override?: Partial<ProductStoreOverrideItem>,
-  skus: Array<{ id: string; specText?: string }> = []
+  skus: Array<{ id: string; specText?: string }> = [],
+  comboOptions: ProductComboOptionItem[] = []
 ): ProductStoreOverrideItem {
   const priceMode: ProductStorePriceMode =
     override?.priceMode === 'independent' ? 'independent' : 'follow';
@@ -1025,6 +1090,10 @@ export function normalizeProductStoreOverride(
   const skuStatusOverrides = normalizeProductStoreSkuStatusOverrides(
     override?.skuStatusOverrides
   );
+  const comboOptionItemOverrides = normalizeProductStoreComboOptionItemOverrides(
+    override?.comboOptionItemOverrides,
+    comboOptions
+  );
   const localSkuItems = normalizeProductStoreLocalSkuItems(
     override?.localSkuItems,
     skus
@@ -1045,6 +1114,7 @@ export function normalizeProductStoreOverride(
     skuStockOverrides,
     skuSellStatusOverrides,
     skuStatusOverrides,
+    comboOptionItemOverrides,
     localSkuItems,
     nameMode,
     overrideName,
@@ -1063,7 +1133,8 @@ export function normalizeProductStoreOverride(
 
 export function normalizeProductStoreOverrides(
   storeOverrides?: ProductStoreOverrideMap,
-  skus: Array<{ id: string; specText?: string }> = []
+  skus: Array<{ id: string; specText?: string }> = [],
+  comboOptions: ProductComboOptionItem[] = []
 ): ProductStoreOverrideMap {
   if (!storeOverrides || typeof storeOverrides !== 'object') {
     return {};
@@ -1078,7 +1149,8 @@ export function normalizeProductStoreOverrides(
       result[storeId] = normalizeProductStoreOverride(
         storeId,
         override as ProductStoreOverrideItem,
-        skus
+        skus,
+        comboOptions
       );
       return result;
     },
@@ -1088,13 +1160,19 @@ export function normalizeProductStoreOverrides(
 
 export function trimProductStoreOverridesBySkus(
   storeOverrides: ProductStoreOverrideMap = {},
-  skus: Array<{ id: string; specText?: string }> = []
+  skus: Array<{ id: string; specText?: string }> = [],
+  comboOptions: ProductComboOptionItem[] = []
 ) {
   const skuIdSet = new Set(skus.map((item) => item.id).filter(Boolean));
 
   return Object.entries(storeOverrides).reduce<ProductStoreOverrideMap>(
     (result, [storeId, override]) => {
-      const normalized = normalizeProductStoreOverride(storeId, override, skus);
+      const normalized = normalizeProductStoreOverride(
+        storeId,
+        override,
+        skus,
+        comboOptions
+      );
 
       result[storeId] = {
         ...normalized,
@@ -1109,6 +1187,10 @@ export function trimProductStoreOverridesBySkus(
         ),
         skuStatusOverrides: (normalized.skuStatusOverrides || []).filter((item) =>
           skuIdSet.has(item.skuId)
+        ),
+        comboOptionItemOverrides: normalizeProductStoreComboOptionItemOverrides(
+          normalized.comboOptionItemOverrides,
+          comboOptions
         ),
       };
       return result;
@@ -1127,7 +1209,12 @@ export function getProductStoreOverride(
 
   const override = product.storeOverrides?.[storeId];
   return override
-    ? normalizeProductStoreOverride(storeId, override, product.skus || [])
+    ? normalizeProductStoreOverride(
+        storeId,
+        override,
+        product.skus || [],
+        product.comboOptions || []
+      )
     : undefined;
 }
 
@@ -1143,6 +1230,7 @@ export function hasProductStoreSetting(override?: ProductStoreOverrideItem) {
     override.carouselMode === 'override' ||
     Boolean(override.skuSellStatusOverrides?.length) ||
     Boolean(override.skuStatusOverrides?.length) ||
+    Boolean(override.comboOptionItemOverrides?.length) ||
     Boolean(override.localSkuItems?.length)
   );
 }
@@ -1345,6 +1433,99 @@ export function getProductCurrentSkus(
   }
 
   return [...sourceSkus, ...buildProductStoreLocalSkuViewItems(override)];
+}
+
+function normalizeComboOptionProductName(name: string) {
+  return name
+    .replace(/^\[引用\]\s*/, '')
+    .replace(/^.+?(?:店铺)?自建·/, '')
+    .trim();
+}
+
+function isProductListItemView(
+  product: ProductItem | ProductListItem | undefined
+): product is ProductListItem {
+  return Boolean(product && 'storeView' in product);
+}
+
+function buildComboOptionItemView(
+  item: ProductComboOptionItem['items'][number],
+  relatedProductMap: Map<string, ProductItem | ProductListItem>
+) {
+  const relatedProduct = relatedProductMap.get(item.productId);
+  const relatedSku =
+    relatedProduct?.skus?.find((sku) => sku.id === item.skuId) ||
+    (isProductListItemView(relatedProduct)
+      ? relatedProduct.storeView.currentSkus.find((sku) => sku.id === item.skuId)
+      : undefined);
+  const rawProductName =
+    (isProductListItemView(relatedProduct) ? relatedProduct.storeView.currentName : undefined) ||
+    relatedProduct?.name ||
+    item.productId;
+
+  return {
+    ...item,
+    productName: normalizeComboOptionProductName(rawProductName),
+    specText: relatedSku?.specText || '默认规格',
+    originalPrice:
+      relatedSku && 'price' in relatedSku && typeof relatedSku.price === 'number'
+        ? relatedSku.price
+        : typeof (relatedSku as ProductStoreSkuViewItem | undefined)?.originalPrice === 'number'
+          ? (relatedSku as ProductStoreSkuViewItem).originalPrice
+          : item.comboPrice,
+    ...(relatedSku?.image ? { image: { ...relatedSku.image } } : {}),
+  };
+}
+
+function buildProductComboOptionViews(
+  options: ProductComboOptionItem[] = [],
+  relatedProductMap: Map<string, ProductItem | ProductListItem> = new Map()
+) {
+  return normalizeProductComboOptions(options).map((option) => ({
+    ...option,
+    items: option.items.map((item) => buildComboOptionItemView(item, relatedProductMap)),
+  }));
+}
+
+export function getProductCurrentComboOptions(
+  product: ProductItem,
+  storeId?: string,
+  relatedProductMap: Map<string, ProductItem | ProductListItem> = new Map()
+) {
+  const override = getProductStoreOverride(product, storeId);
+  const sourceOptions = buildProductComboOptionViews(
+    product.comboOptions || [],
+    relatedProductMap
+  );
+
+  if (!storeId || !override?.comboOptionItemOverrides?.length) {
+    return sourceOptions;
+  }
+
+  const overrideMap = new Map(
+    override.comboOptionItemOverrides.map((item) => [
+      `${item.optionId}:${item.skuId}`,
+      item,
+    ] as const)
+  );
+
+  return sourceOptions.map((option) => ({
+    ...option,
+    items: option.items.map((item) => {
+      const matched = overrideMap.get(`${option.id}:${item.skuId}`);
+
+      if (!matched) {
+        return item;
+      }
+
+      return {
+        ...item,
+        comboPrice: matched.currentComboPrice,
+        listed: matched.currentListed,
+        defaultSelected: matched.currentDefaultSelected,
+      };
+    }),
+  }));
 }
 
 export function getProductCurrentPrice(product: ProductItem, storeId?: string) {
@@ -1823,6 +2004,7 @@ export function buildProductListItem(
       selling: number;
       off: number;
     };
+    relatedProductMap?: Map<string, ProductItem | ProductListItem>;
   } = {}
 ): ProductListItem {
   const currentStoreId = getProductCurrentStoreId(organizationScope, visibleStoreIds);
@@ -1855,6 +2037,16 @@ export function buildProductListItem(
       ? 'independent'
       : 'follow';
   const currentSkus = getProductCurrentSkus(product, currentStoreId);
+  const originalComboOptions = getProductCurrentComboOptions(
+    product,
+    undefined,
+    options.relatedProductMap
+  );
+  const currentComboOptions = getProductCurrentComboOptions(
+    product,
+    currentStoreId,
+    options.relatedProductMap
+  );
   const nextStock = currentStoreId
     ? currentSkus.reduce((total, item) => total + item.currentStock, 0)
     : product.stock;
@@ -1905,6 +2097,8 @@ export function buildProductListItem(
         ...item,
       })),
       currentSkus,
+      originalComboOptions,
+      currentComboOptions,
       originalCarouselImages: normalizeProductCarouselImages(
         product.carouselImages || []
       ),

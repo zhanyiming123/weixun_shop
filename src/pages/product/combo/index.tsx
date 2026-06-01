@@ -71,11 +71,17 @@ import {
   readProductStoreItems,
 } from '../store-config/data';
 import {
+  buildComboStoreSettingSections,
+  canEditComboStoreSettingDefaultSelected,
+  canEditComboStoreSettingListed,
   resolveStoreSettingSourceSkuConfigState,
+  validateComboStoreSettingDefaultSelectedCount,
+  validateComboStoreSettingListedChange,
 } from './store-setting';
 import { ProductService } from '@/services/ProductService';
 import type {
   ProductComboDisplayOption,
+  ProductStoreComboOptionItemOverride,
   ProductCarouselImage,
   ProductFilterValues,
   ProductListItem,
@@ -215,6 +221,7 @@ type ProductStoreSettingDraft = {
   }>;
   skuStockOverrides: ProductStoreSkuStockOverrideItem[];
   skuStatusOverrides: ProductStoreSkuStatusOverrideItem[];
+  comboOptionItemOverrides: ProductStoreComboOptionItemOverride[];
   nameMode: ProductStoreOverrideMode;
   overrideName: string;
   carouselMode: ProductStoreOverrideMode;
@@ -248,6 +255,23 @@ function getStoreSettingDraftSkuStatusOverrides(
   return (override?.skuStatusOverrides || []).map((item) => ({
     ...item,
   }));
+}
+
+function getStoreSettingDraftComboOptionItemOverrides(
+  product: ProductListItem
+): ProductStoreComboOptionItemOverride[] {
+  return (product.storeView.currentComboOptions || []).flatMap((option) =>
+    option.items.map((item) => ({
+      optionId: option.id,
+      skuId: item.skuId,
+      currentComboPrice:
+        typeof item.comboPrice === 'number' && Number.isFinite(item.comboPrice)
+          ? item.comboPrice
+          : 0,
+      currentListed: item.listed !== false,
+      currentDefaultSelected: item.defaultSelected === true,
+    }))
+  );
 }
 
 function getSkuLabel(item: ProductStoreSkuViewItem, index: number) {
@@ -322,6 +346,96 @@ function hasDraftSkuPriceChange(
   return (
     typeof currentPrice === 'number' &&
     Number(currentPrice) !== Number(sku.originalPrice)
+  );
+}
+
+function findStoreSettingDraftComboOptionItem(
+  draft: ProductStoreSettingDraft,
+  optionId: string,
+  skuId: string
+) {
+  return draft.comboOptionItemOverrides.find(
+    (item) => item.optionId === optionId && item.skuId === skuId
+  );
+}
+
+function resolveDraftComboOptionItemPrice(
+  draft: ProductStoreSettingDraft,
+  optionId: string,
+  skuId: string,
+  fallbackPrice?: number
+) {
+  const matched = findStoreSettingDraftComboOptionItem(draft, optionId, skuId);
+
+  if (
+    typeof matched?.currentComboPrice === 'number' &&
+    Number.isFinite(matched.currentComboPrice)
+  ) {
+    return matched.currentComboPrice;
+  }
+
+  return fallbackPrice;
+}
+
+function resolveDraftComboOptionItemListed(
+  draft: ProductStoreSettingDraft,
+  optionId: string,
+  skuId: string,
+  fallbackListed: boolean
+) {
+  const matched = findStoreSettingDraftComboOptionItem(draft, optionId, skuId);
+  return typeof matched?.currentListed === 'boolean' ? matched.currentListed : fallbackListed;
+}
+
+function resolveDraftComboOptionItemDefaultSelected(
+  draft: ProductStoreSettingDraft,
+  optionId: string,
+  skuId: string,
+  fallbackDefaultSelected: boolean
+) {
+  const matched = findStoreSettingDraftComboOptionItem(draft, optionId, skuId);
+  return typeof matched?.currentDefaultSelected === 'boolean'
+    ? matched.currentDefaultSelected
+    : fallbackDefaultSelected;
+}
+
+function findComboOptionItem(
+  options: ProductListItem['storeView']['currentComboOptions'],
+  optionId: string,
+  skuId: string
+) {
+  return options
+    .find((option) => option.id === optionId)
+    ?.items.find((item) => item.skuId === skuId);
+}
+
+function hasDraftComboOptionItemChange(
+  product: ProductListItem,
+  draft: ProductStoreSettingDraft,
+  optionId: string,
+  skuId: string
+) {
+  const originalItem = findComboOptionItem(
+    product.storeView.originalComboOptions,
+    optionId,
+    skuId
+  );
+
+  if (!originalItem) {
+    return false;
+  }
+
+  return (
+    Number(resolveDraftComboOptionItemPrice(draft, optionId, skuId, originalItem.comboPrice)) !==
+      Number(originalItem.comboPrice) ||
+    resolveDraftComboOptionItemListed(draft, optionId, skuId, originalItem.listed !== false) !==
+      (originalItem.listed !== false) ||
+    resolveDraftComboOptionItemDefaultSelected(
+      draft,
+      optionId,
+      skuId,
+      originalItem.defaultSelected === true
+    ) !== (originalItem.defaultSelected === true)
   );
 }
 
@@ -456,6 +570,7 @@ function buildStoreSettingDraft(product: ProductListItem): ProductStoreSettingDr
     skuPriceOverrides: getStoreSettingDraftSkuPriceOverrides(product),
     skuStockOverrides: getStoreSettingDraftSkuStockOverrides(product),
     skuStatusOverrides: getStoreSettingDraftSkuStatusOverrides(product),
+    comboOptionItemOverrides: getStoreSettingDraftComboOptionItemOverrides(product),
     nameMode: product.storeView.nameMode,
     overrideName: product.storeView.currentName,
     carouselMode: product.storeView.carouselMode,
@@ -668,6 +783,76 @@ function ProductListPage() {
       storeSettingTarget ? getStoreSettingSourceSkuViewItems(storeSettingTarget) : [],
     [storeSettingTarget]
   );
+  const storeSettingCurrentComboOptions = useMemo(() => {
+    if (!storeSettingTarget || !storeSettingDraft) {
+      return [];
+    }
+
+    return (storeSettingTarget.storeView.currentComboOptions || []).map((option) => ({
+      ...option,
+      items: option.items.map((item) => ({
+        ...item,
+        comboPrice: resolveDraftComboOptionItemPrice(
+          storeSettingDraft,
+          option.id,
+          item.skuId,
+          item.comboPrice
+        ),
+        listed: resolveDraftComboOptionItemListed(
+          storeSettingDraft,
+          option.id,
+          item.skuId,
+          item.listed !== false
+        ),
+        defaultSelected: resolveDraftComboOptionItemDefaultSelected(
+          storeSettingDraft,
+          option.id,
+          item.skuId,
+          item.defaultSelected === true
+        ),
+      })),
+    }));
+  }, [storeSettingDraft, storeSettingTarget]);
+  const comboStoreSettingSections = useMemo(
+    () => buildComboStoreSettingSections(storeSettingCurrentComboOptions),
+    [storeSettingCurrentComboOptions]
+  );
+  const comboSettingErrorMap = useMemo(() => {
+    if (!storeSettingTarget || !storeSettingDraft || storeSettingTarget.productKind !== 'combo') {
+      return {};
+    }
+
+    return storeSettingCurrentComboOptions.reduce<Record<string, string>>(
+      (result, option) => {
+        option.items.forEach((item) => {
+          const currentPrice = resolveDraftComboOptionItemPrice(
+            storeSettingDraft,
+            option.id,
+            item.skuId,
+            item.comboPrice
+          );
+
+          if (typeof currentPrice !== 'number' || !Number.isFinite(currentPrice) || currentPrice < 0) {
+            result[`${option.id}:${item.skuId}`] = '请填写有效的组合售卖单价';
+          }
+        });
+
+        return result;
+      },
+      {}
+    );
+  }, [storeSettingCurrentComboOptions, storeSettingDraft, storeSettingTarget]);
+  const comboSettingSelectionErrorMap = useMemo(() => {
+    return comboStoreSettingSections.reduce<Record<string, string>>((result, section) => {
+      const error = validateComboStoreSettingDefaultSelectedCount(section.rows);
+
+      if (error) {
+        result[section.optionId] = error;
+      }
+
+      return result;
+    }, {});
+  }, [comboStoreSettingSections]);
   const priceSettingErrorMap = useMemo(() => {
     if (
       !storeSettingTarget ||
@@ -702,6 +887,10 @@ function ProductListPage() {
     );
   }, [storeSettingDraft, storeSettingSourceSkuItems, storeSettingTarget]);
   const hasPriceSettingError = Object.keys(priceSettingErrorMap).length > 0;
+  const hasComboSettingError =
+    Object.keys(comboSettingErrorMap).length > 0 ||
+    Object.keys(comboSettingSelectionErrorMap).length > 0;
+  const hasStoreSettingError = hasPriceSettingError || hasComboSettingError;
   const derivedStoreSettingPriceMode = useMemo<ProductStorePriceMode>(() => {
     if (
       !storeSettingTarget ||
@@ -1147,6 +1336,95 @@ function ProductListPage() {
     });
   }
 
+  function handleComboOptionItemPriceChange(
+    optionId: string,
+    skuId: string,
+    value?: number
+  ) {
+    setStoreSettingDraft((previous) => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        comboOptionItemOverrides: previous.comboOptionItemOverrides.map((item) =>
+          item.optionId === optionId && item.skuId === skuId
+            ? {
+                ...item,
+                currentComboPrice:
+                  typeof value === 'number' && Number.isFinite(value) ? value : NaN,
+              }
+            : item
+        ),
+      };
+    });
+  }
+
+  function handleComboOptionItemListedChange(
+    optionId: string,
+    skuId: string,
+    checked: boolean
+  ) {
+    const currentSection = comboStoreSettingSections.find(
+      (section) => section.optionId === optionId
+    );
+    const listedError = validateComboStoreSettingListedChange(
+      currentSection?.rows || [],
+      skuId,
+      checked
+    );
+
+    if (listedError) {
+      Message.warning(listedError);
+      return;
+    }
+
+    setStoreSettingDraft((previous) => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        comboOptionItemOverrides: previous.comboOptionItemOverrides.map((item) =>
+          item.optionId === optionId && item.skuId === skuId
+            ? {
+                ...item,
+                currentListed: checked,
+                currentDefaultSelected:
+                  checked ? item.currentDefaultSelected : false,
+              }
+            : item
+        ),
+      };
+    });
+  }
+
+  function handleComboOptionItemDefaultSelectedChange(
+    optionId: string,
+    skuId: string,
+    checked: boolean
+  ) {
+    setStoreSettingDraft((previous) => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        comboOptionItemOverrides: previous.comboOptionItemOverrides.map((item) =>
+          item.optionId === optionId && item.skuId === skuId
+            ? {
+                ...item,
+                currentDefaultSelected: checked,
+              }
+            : item
+        ),
+      };
+    });
+  }
+
   async function handleStoreSettingSubmit() {
     if (!storeSettingTarget || !storeSettingDraft || !currentStoreId) {
       return;
@@ -1165,6 +1443,22 @@ function ProductListPage() {
       return;
     }
 
+    if (
+      storeSettingTarget.productKind === 'combo' &&
+      Object.keys(comboSettingErrorMap).length > 0
+    ) {
+      Message.warning('请先填写有效的组合售卖单价');
+      return;
+    }
+
+    if (
+      storeSettingTarget.productKind === 'combo' &&
+      Object.keys(comboSettingSelectionErrorMap).length > 0
+    ) {
+      Message.warning(Object.values(comboSettingSelectionErrorMap)[0]);
+      return;
+    }
+
     try {
       const normalizedSkuPriceOverrides: ProductStoreSkuPriceOverrideItem[] =
         storeSettingDraft.skuPriceOverrides.filter(
@@ -1174,6 +1468,17 @@ function ProductListPage() {
             typeof item.currentPrice === 'number' &&
             Number.isFinite(item.currentPrice)
         );
+      const normalizedComboOptionItemOverrides =
+        storeSettingTarget.productKind === 'combo'
+          ? storeSettingDraft.comboOptionItemOverrides.filter((item) =>
+              hasDraftComboOptionItemChange(
+                storeSettingTarget,
+                storeSettingDraft,
+                item.optionId,
+                item.skuId
+              )
+            )
+          : [];
 
       setStoreSettingSaving(true);
       await productService.updateProductStoreOverride({
@@ -1185,6 +1490,7 @@ function ProductListPage() {
         skuPriceOverrides: normalizedSkuPriceOverrides,
         skuStockOverrides: storeSettingDraft.skuStockOverrides,
         skuStatusOverrides: storeSettingDraft.skuStatusOverrides,
+        comboOptionItemOverrides: normalizedComboOptionItemOverrides,
         nameMode: storeSettingDraft.nameMode,
         overrideName: storeSettingDraft.overrideName,
         carouselMode: storeSettingDraft.carouselMode,
@@ -1573,6 +1879,114 @@ function ProductListPage() {
       },
     },
   ];
+  const comboStoreSettingColumns = [
+    {
+      title: '商品信息',
+      dataIndex: 'productName',
+      width: 260,
+      render: (_: string, record: (typeof comboStoreSettingSections)[number]['rows'][number]) => (
+        <div className={styles.comboStoreSettingProductInfo}>
+          <Typography.Text className={styles.comboStoreSettingProductName}>
+            {record.productName}
+          </Typography.Text>
+          <Typography.Text className={styles.comboStoreSettingProductSpec}>
+            {record.specText}
+          </Typography.Text>
+        </div>
+      ),
+    },
+    {
+      title: '原单价',
+      dataIndex: 'originalPrice',
+      width: 120,
+      render: (value?: number) =>
+        typeof value === 'number' ? formatPriceNumber(value) : '--',
+    },
+    {
+      title: '组合售卖单价',
+      dataIndex: 'comboPrice',
+      width: 180,
+      render: (_: number | undefined, record: (typeof comboStoreSettingSections)[number]['rows'][number]) => (
+        <div className={styles.storeSettingInputCell}>
+          <InputNumber
+            className={styles.storeSettingNumberInput}
+            min={0}
+            precision={2}
+            value={record.comboPrice}
+            onChange={(value) =>
+              handleComboOptionItemPriceChange(
+                record.optionId,
+                record.skuId,
+                typeof value === 'number' ? value : undefined
+              )
+            }
+          />
+          {comboSettingErrorMap[record.key] && (
+            <div className={styles.storeSettingInputError}>
+              {comboSettingErrorMap[record.key]}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: '数量',
+      dataIndex: 'quantity',
+      width: 100,
+    },
+    {
+      title: '总价',
+      dataIndex: 'subtotal',
+      width: 120,
+      render: (value: number) => formatPriceNumber(value),
+    },
+    {
+      title: '默认选中',
+      dataIndex: 'defaultSelected',
+      width: 120,
+      render: (
+        value: boolean,
+        record: (typeof comboStoreSettingSections)[number]['rows'][number]
+      ) =>
+        canEditComboStoreSettingDefaultSelected(record.optionType) ? (
+          <Switch
+            checked={value}
+            checkedText="是"
+            uncheckedText="否"
+            onChange={(checked) =>
+              handleComboOptionItemDefaultSelectedChange(
+                record.optionId,
+                record.skuId,
+                checked
+              )
+            }
+          />
+        ) : (
+          <Typography.Text>{record.defaultSelectedText}</Typography.Text>
+        ),
+    },
+    {
+      title: '上架',
+      dataIndex: 'listed',
+      width: 120,
+      render: (
+        value: boolean,
+        record: (typeof comboStoreSettingSections)[number]['rows'][number]
+      ) =>
+        canEditComboStoreSettingListed(record.optionType) ? (
+          <Switch
+            checked={value}
+            checkedText="上架"
+            uncheckedText="下架"
+            onChange={(checked) =>
+              handleComboOptionItemListedChange(record.optionId, record.skuId, checked)
+            }
+          />
+        ) : (
+          <Typography.Text>{value ? '上架' : '下架'}</Typography.Text>
+        ),
+    },
+  ];
   const skuStatusColumns = [
     {
       title: 'SKU',
@@ -1953,7 +2367,7 @@ function ProductListPage() {
         cancelText="取消"
         confirmLoading={storeSettingSaving}
         okButtonProps={{
-          disabled: hasPriceSettingError,
+          disabled: hasStoreSettingError,
         }}
         onCancel={closePriceSettingModal}
         onOk={handleStoreSettingSubmit}
@@ -1975,42 +2389,92 @@ function ProductListPage() {
               </Typography.Text>
             </div>
 
-            <div className={styles.storeSettingSection}>
-              <div className={styles.storeSettingSectionHeader}>
-                <div>
-                  <Typography.Text className={styles.storeSettingSectionTitle}>
-                    源 SKU 配置
-                  </Typography.Text>
-                </div>
-              </div>
+            {storeSettingTarget.productKind === 'combo' ? (
+              comboStoreSettingSections.length ? (
+                comboStoreSettingSections.map((section) => (
+                  <div key={section.optionId} className={styles.storeSettingSection}>
+                    <div className={styles.storeSettingSectionHeader}>
+                      <div>
+                        <Typography.Text className={styles.storeSettingSectionTitle}>
+                          {section.title}
+                        </Typography.Text>
+                      </div>
+                    </div>
 
-              {storeSettingSourceSkuConfigState.mode === 'price' ? (
-                <div className={styles.storeSettingTableWrap}>
-                  <Table
-                    rowKey="id"
-                    columns={storeSettingSkuColumns}
-                    data={storeSettingSourceSkuPageRows}
-                    noDataElement="暂无源 SKU 数据"
-                    pagination={{
-                      current: storeSettingSkuPage,
-                      pageSize: STORE_SETTING_SKU_PAGE_SIZE,
-                      total: storeSettingSourceSkuItems.length,
-                      simple: true,
-                      sizeCanChange: false,
-                      onChange: (pageNumber) => setStoreSettingSkuPage(pageNumber),
-                    }}
-                    scroll={{ x: 620 }}
-                    tableLayoutFixed
-                  />
-                </div>
+                    <div className={styles.comboStoreSettingFieldGrid}>
+                      {section.fields.map((field) => (
+                        <div key={field.key} className={styles.comboStoreSettingFieldItem}>
+                          <Typography.Text className={styles.comboStoreSettingFieldLabel}>
+                            {field.label}：
+                          </Typography.Text>
+                          <Typography.Text className={styles.comboStoreSettingFieldValue}>
+                            {field.value}
+                          </Typography.Text>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={styles.storeSettingTableWrap}>
+                      <Table
+                        rowKey="key"
+                        columns={comboStoreSettingColumns}
+                        data={section.rows}
+                        noDataElement="暂无配置商品"
+                        pagination={false}
+                        scroll={{ x: 920 }}
+                        tableLayoutFixed
+                      />
+                    </div>
+                    {comboSettingSelectionErrorMap[section.optionId] && (
+                      <div className={styles.storeSettingInputError}>
+                        {comboSettingSelectionErrorMap[section.optionId]}
+                      </div>
+                    )}
+                  </div>
+                ))
               ) : (
                 <div className={styles.storeSettingEmptyState}>
-                  <Typography.Text>
-                    {storeSettingSourceSkuConfigState.emptyText}
-                  </Typography.Text>
+                  <Typography.Text>暂无选项卡配置</Typography.Text>
                 </div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className={styles.storeSettingSection}>
+                <div className={styles.storeSettingSectionHeader}>
+                  <div>
+                    <Typography.Text className={styles.storeSettingSectionTitle}>
+                      源 SKU 配置
+                    </Typography.Text>
+                  </div>
+                </div>
+
+                {storeSettingSourceSkuConfigState.mode === 'price' ? (
+                  <div className={styles.storeSettingTableWrap}>
+                    <Table
+                      rowKey="id"
+                      columns={storeSettingSkuColumns}
+                      data={storeSettingSourceSkuPageRows}
+                      noDataElement="暂无源 SKU 数据"
+                      pagination={{
+                        current: storeSettingSkuPage,
+                        pageSize: STORE_SETTING_SKU_PAGE_SIZE,
+                        total: storeSettingSourceSkuItems.length,
+                        simple: true,
+                        sizeCanChange: false,
+                        onChange: (pageNumber) => setStoreSettingSkuPage(pageNumber),
+                      }}
+                      scroll={{ x: 620 }}
+                      tableLayoutFixed
+                    />
+                  </div>
+                ) : (
+                  <div className={styles.storeSettingEmptyState}>
+                    <Typography.Text>
+                      {storeSettingSourceSkuConfigState.emptyText}
+                    </Typography.Text>
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         )}

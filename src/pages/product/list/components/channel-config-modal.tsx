@@ -50,6 +50,12 @@ type SharedPoolDraft = {
   allowSelfPrice: boolean;
 };
 
+export function shouldShowChannelConfigSellableSku(
+  product: ProductListItem | null
+) {
+  return product?.productKind !== 'combo';
+}
+
 function uniqueStringArray(values: string[] = []) {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -84,11 +90,16 @@ export function buildSharedPoolDraft(product: ProductListItem | null): SharedPoo
     (item) => item.status === 'pending'
   );
   const firstTarget = sharedTargets[0];
+  const showSellableSku = shouldShowChannelConfigSellableSku(product);
   const sellableSkuIds = uniqueStringArray(
-    (firstTarget?.sellableSkuIds?.length
-      ? firstTarget.sellableSkuIds
-      : enabledSkuIds
-    ).filter((skuId) => enabledSkuIds.includes(skuId))
+    (showSellableSku
+      ? (
+          firstTarget?.sellableSkuIds?.length
+            ? firstTarget.sellableSkuIds
+            : enabledSkuIds
+        ).filter((skuId) => enabledSkuIds.includes(skuId))
+      : []
+    )
   );
 
   return {
@@ -136,7 +147,9 @@ export function buildChannelConfigSubmitPayload(
       storeIds: [],
       productPoolStoreConfigs: [],
     },
-    sharedPoolSellableSkuIds: sharedPoolDraft.sellableSkuIds,
+    ...(shouldShowChannelConfigSellableSku(product)
+      ? { sharedPoolSellableSkuIds: sharedPoolDraft.sellableSkuIds }
+      : {}),
     sharedPoolAllowSelfPrice: sharedPoolDraft.allowSelfPrice,
   };
 }
@@ -151,6 +164,7 @@ function ChannelConfigModal({
 }: ChannelConfigModalProps) {
   // 商品已有渠道配置时，开关和商品池选择不可更改
   const hasExistingConfig = Boolean(product && getProductStoreChannelConfig(product));
+  const showSellableSku = shouldShowChannelConfigSellableSku(product);
 
   const [draft, setDraft] = useState<ChannelConfigDraft>({
     enabled: false,
@@ -239,6 +253,7 @@ function ChannelConfigModal({
     if (
       draft.enabled &&
       draft.shareMode === 'shared_pool' &&
+      showSellableSku &&
       !sharedPoolDraft.sellableSkuIds.length
     ) {
       Message.warning('请至少选择 1 个可售 SKU');
@@ -326,36 +341,38 @@ function ChannelConfigModal({
 
         {draft.enabled && draft.shareMode === 'shared_pool' && (
           <div className={styles.sectionCard}>
-            <div className={styles.row}>
-              <div className={styles.label}>可售 SKU</div>
-              <div className={styles.content}>
-                <TreeSelect
-                  multiple
-                  treeCheckable
-                  allowClear
-                  disabled={hasExistingConfig}
-                  className={styles.sharedPoolTreeSelect}
-                  placeholder="请选择可售 SKU"
-                  treeData={skuTreeData}
-                  value={sharedPoolDraft.sellableSkuIds}
-                  onChange={(value) => {
-                    const nextSkuIds = uniqueStringArray(
-                      normalizeStringArray(value).filter(
-                        (skuId) =>
-                          skuId !== SKU_TREE_ROOT_KEY && availableSkuIds.includes(skuId)
-                      )
-                    );
-                    setSharedPoolDraft((previous) => ({
-                      ...previous,
-                      sellableSkuIds: nextSkuIds,
-                      allowSelfPrice: nextSkuIds.length
-                        ? previous.allowSelfPrice
-                        : false,
-                    }));
-                  }}
-                />
+            {showSellableSku && (
+              <div className={styles.row}>
+                <div className={styles.label}>可售 SKU</div>
+                <div className={styles.content}>
+                  <TreeSelect
+                    multiple
+                    treeCheckable
+                    allowClear
+                    disabled={hasExistingConfig}
+                    className={styles.sharedPoolTreeSelect}
+                    placeholder="请选择可售 SKU"
+                    treeData={skuTreeData}
+                    value={sharedPoolDraft.sellableSkuIds}
+                    onChange={(value) => {
+                      const nextSkuIds = uniqueStringArray(
+                        normalizeStringArray(value).filter(
+                          (skuId) =>
+                            skuId !== SKU_TREE_ROOT_KEY && availableSkuIds.includes(skuId)
+                        )
+                      );
+                      setSharedPoolDraft((previous) => ({
+                        ...previous,
+                        sellableSkuIds: nextSkuIds,
+                        allowSelfPrice: nextSkuIds.length
+                          ? previous.allowSelfPrice
+                          : false,
+                      }));
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className={styles.row}>
               <div className={styles.label}>自主定价</div>
@@ -363,7 +380,10 @@ function ChannelConfigModal({
                 <div className={styles.switchRow}>
                   <Switch
                     checked={sharedPoolDraft.allowSelfPrice}
-                    disabled={hasExistingConfig || !sharedPoolDraft.sellableSkuIds.length}
+                    disabled={
+                      hasExistingConfig ||
+                      (showSellableSku && !sharedPoolDraft.sellableSkuIds.length)
+                    }
                     onChange={(checked) =>
                       setSharedPoolDraft((previous) => ({
                         ...previous,

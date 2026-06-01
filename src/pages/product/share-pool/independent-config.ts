@@ -8,5 +8,5 @@ export function canShowIndependentPriceTag(product: ProductSharePoolItem) {
 }
 
 export function getIndependentConfigLabel(product: ProductSharePoolItem) {
-  return canShowIndependentPriceTag(product) ? '允许独立售价' : '--';
+  return canShowIndependentPriceTag(product) ? '允许独立定价' : '--';
 }

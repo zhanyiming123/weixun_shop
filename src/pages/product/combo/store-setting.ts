@@ -1,4 +1,6 @@
 import type {
+  ProductComboOptionItem,
+  ProductComboOptionType,
   ProductCarouselImage,
   ProductStatus,
   ProductStoreSellStatus,
@@ -64,6 +66,158 @@ export function resolveStoreSettingSourceSkuConfigState(
     mode: 'empty',
     emptyText: '该商品无自定义配置项。',
   };
+}
+
+export const COMBO_STORE_SETTING_EDITABLE_FIELDS = [
+  'comboPrice',
+  'listed',
+  'defaultSelected',
+] as const;
+export const COMBO_STORE_SETTING_LISTED_LIMIT_ERROR_MESSAGE =
+  '下架商品不可少于选择限制数量';
+export const COMBO_STORE_SETTING_DEFAULT_SELECTED_LIMIT_ERROR_MESSAGE =
+  '默认选中数量需等于选择限制数量';
+
+export type ComboStoreSettingSectionField = {
+  key: 'title' | 'optionType' | 'selectionLimit';
+  label: string;
+  value: string;
+  displayMode: 'text';
+};
+
+export type ComboStoreSettingSectionRow = {
+  key: string;
+  optionId: string;
+  optionType: ProductComboOptionType;
+  selectionLimit: number;
+  productId: string;
+  skuId: string;
+  productName: string;
+  specText: string;
+  originalPrice?: number;
+  comboPrice?: number;
+  quantity: number;
+  subtotal: number;
+  defaultSelected: boolean;
+  defaultSelectedText: string;
+  listed: boolean;
+};
+
+export type ComboStoreSettingSection = {
+  optionId: string;
+  title: string;
+  fields: ComboStoreSettingSectionField[];
+  rows: ComboStoreSettingSectionRow[];
+};
+
+export function getComboStoreSettingOptionTypeLabel(
+  optionType: ProductComboOptionType | undefined
+) {
+  if (optionType === 'must_buy') {
+    return '必购项';
+  }
+
+  if (optionType === 'add_on') {
+    return '加购项';
+  }
+
+  return '选购项';
+}
+
+export function canEditComboStoreSettingListed(
+  optionType: ProductComboOptionType | undefined
+) {
+  return optionType !== 'must_buy';
+}
+
+export function canEditComboStoreSettingDefaultSelected(
+  optionType: ProductComboOptionType | undefined
+) {
+  return optionType === 'selective';
+}
+
+export function validateComboStoreSettingListedChange(
+  rows: ComboStoreSettingSectionRow[] = [],
+  targetSkuId: string,
+  checked: boolean
+) {
+  if (checked || !rows.length) {
+    return '';
+  }
+
+  const optionType = rows[0].optionType;
+
+  if (optionType !== 'selective' && optionType !== 'add_on') {
+    return '';
+  }
+
+  const nextListedCount = rows.filter((row) =>
+    row.skuId === targetSkuId ? false : row.listed
+  ).length;
+
+  return nextListedCount < rows[0].selectionLimit
+    ? COMBO_STORE_SETTING_LISTED_LIMIT_ERROR_MESSAGE
+    : '';
+}
+
+export function validateComboStoreSettingDefaultSelectedCount(
+  rows: ComboStoreSettingSectionRow[] = []
+) {
+  if (!rows.length || rows[0].optionType !== 'selective') {
+    return '';
+  }
+
+  const defaultSelectedCount = rows.filter((row) => row.defaultSelected).length;
+
+  return defaultSelectedCount === rows[0].selectionLimit
+    ? ''
+    : COMBO_STORE_SETTING_DEFAULT_SELECTED_LIMIT_ERROR_MESSAGE;
+}
+
+export function buildComboStoreSettingSections(
+  options: ProductComboOptionItem[] = []
+): ComboStoreSettingSection[] {
+  return options.map((option, index) => ({
+    optionId: option.id,
+    title: `选项${index + 1}`,
+    fields: [
+      {
+        key: 'title',
+        label: '选项标题',
+        value: option.title,
+        displayMode: 'text',
+      },
+      {
+        key: 'optionType',
+        label: '选项类型',
+        value: getComboStoreSettingOptionTypeLabel(option.optionType),
+        displayMode: 'text',
+      },
+      {
+        key: 'selectionLimit',
+        label: '选择限制',
+        value: `选 ${option.selectionLimit} 份`,
+        displayMode: 'text',
+      },
+    ],
+    rows: (option.items || []).map((item) => ({
+      key: `${option.id}:${item.skuId}`,
+      optionId: option.id,
+      optionType: option.optionType || 'selective',
+      selectionLimit: option.selectionLimit,
+      productId: item.productId,
+      skuId: item.skuId,
+      productName: item.productName || item.productId,
+      specText: item.specText || '默认规格',
+      originalPrice: item.originalPrice,
+      comboPrice: item.comboPrice,
+      quantity: item.quantity,
+      subtotal: Number(item.comboPrice || 0) * Number(item.quantity || 0),
+      defaultSelected: item.defaultSelected === true,
+      defaultSelectedText: item.defaultSelected ? '是' : '否',
+      listed: item.listed !== false,
+    })),
+  }));
 }
 
 const SPEC_TEXT_SEGMENT_SPLIT_PATTERN = /\s*[\/／]\s*/;

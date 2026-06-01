@@ -27,7 +27,7 @@ describe('share-pool independent config display', () => {
     const product = createSharePoolItem();
 
     expect(canShowIndependentPriceTag(product)).toBe(true);
-    expect(getIndependentConfigLabel(product)).toBe('允许独立售价');
+    expect(getIndependentConfigLabel(product)).toBe('允许独立定价');
   });
 
   it('shows allow tag when current share target explicitly allows self price', () => {
@@ -45,7 +45,7 @@ describe('share-pool independent config display', () => {
     });
 
     expect(canShowIndependentPriceTag(product)).toBe(true);
-    expect(getIndependentConfigLabel(product)).toBe('允许独立售价');
+    expect(getIndependentConfigLabel(product)).toBe('允许独立定价');
   });
 
   it('shows placeholder when independent price is not allowed', () => {

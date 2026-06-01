@@ -47,6 +47,14 @@ export type ProductStoreSkuSellStatusOverrideItem = {
   currentSellStatus: ProductStoreSellStatus;
 };
 
+export type ProductStoreComboOptionItemOverride = {
+  optionId: string;
+  skuId: string;
+  currentComboPrice: number;
+  currentListed: boolean;
+  currentDefaultSelected: boolean;
+};
+
 export type ProductStoreLocalSkuItem = {
   skuId: string;
   specText: string;
@@ -145,6 +153,7 @@ export type ProductStoreOverrideItem = {
   skuStockOverrides?: ProductStoreSkuStockOverrideItem[];
   skuSellStatusOverrides?: ProductStoreSkuSellStatusOverrideItem[];
   skuStatusOverrides?: ProductStoreSkuStatusOverrideItem[];
+  comboOptionItemOverrides?: ProductStoreComboOptionItemOverride[];
   localSkuItems?: ProductStoreLocalSkuItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName?: string;
@@ -205,6 +214,10 @@ export type ProductComboOptionProductItem = {
   required: boolean;
   listed: boolean;
   defaultSelected?: boolean;
+  productName?: string;
+  specText?: string;
+  originalPrice?: number;
+  image?: ProductCarouselImage;
 };
 
 export type ProductComboOptionItem = {
@@ -314,6 +327,8 @@ export type ProductStoreView = {
   currentPrice: number;
   originalSkus: ProductSkuItem[];
   currentSkus: ProductStoreSkuViewItem[];
+  originalComboOptions: ProductComboOptionItem[];
+  currentComboOptions: ProductComboOptionItem[];
   originalCarouselImages: ProductCarouselImage[];
   currentCarouselImages: ProductCarouselImage[];
 };
@@ -375,6 +390,7 @@ export type UpdateProductStoreOverrideInput = {
   skuStockOverrides?: ProductStoreSkuStockOverrideItem[];
   skuSellStatusOverrides?: ProductStoreSkuSellStatusOverrideItem[];
   skuStatusOverrides?: ProductStoreSkuStatusOverrideItem[];
+  comboOptionItemOverrides?: ProductStoreComboOptionItemOverride[];
   localSkuItems?: ProductStoreLocalSkuItem[];
   nameMode: ProductStoreOverrideMode;
   overrideName?: string;

@@ -45,6 +45,16 @@ type SalesStoreConfigPanelProps = {
 const STORE_CONFIG_PAGE_SIZE_OPTIONS = [20, 50];
 const SKU_TREE_ROOT_KEY = 'all_skus';
 
+export function buildSalesStoreConfigPanelVisibleColumns<
+  T extends { dataIndex?: string }
+>(columns: T[], productKind: ProductListItem['productKind'] = 'standard') {
+  if (productKind !== 'combo') {
+    return columns;
+  }
+
+  return columns.filter((column) => column.dataIndex !== 'sellableSkuKeys');
+}
+
 function uniqueStringArray(values: string[] = []) {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -168,7 +178,8 @@ export function buildSalesStoreConfigPanelResult(
     string,
     StoreChannelProductPoolStoreConfigDraftItem
   >,
-  availableSkuKeys: string[]
+  availableSkuKeys: string[],
+  productKind: ProductListItem['productKind'] = 'standard'
 ) {
   const availableSkuKeySet = new Set(availableSkuKeys);
 
@@ -176,9 +187,12 @@ export function buildSalesStoreConfigPanelResult(
     const current =
       draftStoreChannelProductPoolConfigMap[item.id] ||
       createDefaultStoreChannelProductPoolStoreConfig(item.id);
-    const normalizedSellableSkuIds = uniqueStringArray(
-      current.sellableSkuKeys.filter((skuId) => availableSkuKeySet.has(skuId))
-    );
+    const normalizedSellableSkuIds =
+      current.sellStatus === 'sellable' && productKind === 'combo'
+        ? [...availableSkuKeys]
+        : uniqueStringArray(
+            current.sellableSkuKeys.filter((skuId) => availableSkuKeySet.has(skuId))
+          );
     const isSellable =
       current.sellStatus === 'sellable' && normalizedSellableSkuIds.length > 0;
 
@@ -284,13 +298,15 @@ function SalesStoreConfigPanel({
       buildSalesStoreConfigPanelResult(
         targetStoreItems,
         draftStoreChannelProductPoolConfigMap,
-        availableSkuKeys
+        availableSkuKeys,
+        product?.productKind
       )
     );
   }, [
     availableSkuKeys,
     draftStoreChannelProductPoolConfigMap,
     onChange,
+    product?.productKind,
     targetStoreItems,
   ]);
 
@@ -572,6 +588,11 @@ function SalesStoreConfigPanel({
       ),
     },
   ];
+  const visibleStoreConfigColumns = buildSalesStoreConfigPanelVisibleColumns(
+    storeConfigColumns,
+    product?.productKind
+  );
+  const showSellableSku = product?.productKind !== 'combo';
 
   return (
     <div className={styles.storeConfigModalContent}>
@@ -597,20 +618,22 @@ function SalesStoreConfigPanel({
             )
           )}
         </Select>
-        <TreeSelect
-          multiple
-          treeCheckable
-          allowClear
-          className={styles.storeConfigBatchTreeSelect}
-          placeholder="可售 SKU"
-          treeData={storeChannelProductPoolSkuTreeData}
-          value={
-            storeChannelProductPoolBatchSellableSkuKeys.length
-              ? storeChannelProductPoolBatchSellableSkuKeys
-              : availableSkuKeys
-          }
-          onChange={handleStoreChannelProductPoolBatchSellableSkuKeysChange}
-        />
+        {showSellableSku && (
+          <TreeSelect
+            multiple
+            treeCheckable
+            allowClear
+            className={styles.storeConfigBatchTreeSelect}
+            placeholder="可售 SKU"
+            treeData={storeChannelProductPoolSkuTreeData}
+            value={
+              storeChannelProductPoolBatchSellableSkuKeys.length
+                ? storeChannelProductPoolBatchSellableSkuKeys
+                : availableSkuKeys
+            }
+            onChange={handleStoreChannelProductPoolBatchSellableSkuKeysChange}
+          />
+        )}
         <Select
           allowClear
           className={styles.storeConfigBatchSelect}
@@ -626,7 +649,7 @@ function SalesStoreConfigPanel({
       <Table
         rowKey="id"
         className={styles.storeConfigTable}
-        columns={storeConfigColumns}
+        columns={visibleStoreConfigColumns}
         data={storeConfigTableData}
         noDataElement="暂无店铺数据"
         pagination={{

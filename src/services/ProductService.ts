@@ -18,9 +18,11 @@ import {
   markShareTargetReferenced,
   markShareTargetPending,
   normalizeProductCarouselImages,
+  normalizeProductComboOptions,
   normalizeProductStoreLocalSkuItems,
   normalizeProductStoreOverride,
   normalizeProductStoreChannelConfig,
+  normalizeProductStoreComboOptionItemOverrides,
   normalizeProductStoreSkuSellStatusOverrides,
   normalizeProductStoreSkuStatusOverrides,
   normalizeProductStoreSkuStockOverrides,
@@ -377,6 +379,7 @@ function shouldRemoveStoreOverride(
     carouselMode: UpdateProductStoreOverrideInput['carouselMode'];
     skuSellStatusOverrides?: UpdateProductStoreOverrideInput['skuSellStatusOverrides'];
     skuStatusOverrides?: UpdateProductStoreOverrideInput['skuStatusOverrides'];
+    comboOptionItemOverrides?: UpdateProductStoreOverrideInput['comboOptionItemOverrides'];
     localSkuItems?: UpdateProductStoreOverrideInput['localSkuItems'];
   }
 ) {
@@ -387,8 +390,100 @@ function shouldRemoveStoreOverride(
     override.carouselMode === 'follow' &&
     !(override.skuSellStatusOverrides || []).length &&
     !(override.skuStatusOverrides || []).length &&
+    !(override.comboOptionItemOverrides || []).length &&
     !(override.localSkuItems || []).length
   );
+}
+
+function validateComboOptionItemOverrides(
+  product: ProductItem,
+  comboOptionItemOverrides: UpdateProductStoreOverrideInput['comboOptionItemOverrides']
+) {
+  const normalizedOptions = normalizeProductComboOptions(product.comboOptions || []);
+  const overrideMap = new Map(
+    (comboOptionItemOverrides || []).map((item) => [
+      `${item.optionId}:${item.skuId}`,
+      item,
+    ] as const)
+  );
+
+  normalizedOptions.forEach((option) => {
+    const resolvedItems = option.items.map((item) => {
+      const matched = overrideMap.get(`${option.id}:${item.skuId}`);
+
+      return matched
+        ? {
+            ...item,
+            comboPrice: matched.currentComboPrice,
+            listed: matched.currentListed,
+            defaultSelected: matched.currentDefaultSelected,
+          }
+        : item;
+    });
+
+    if (option.optionType === 'must_buy') {
+      const hasInvalidItem = resolvedItems.some(
+        (item) => item.listed === false || item.defaultSelected !== true
+      );
+
+      if (hasInvalidItem) {
+        throw new AppError(
+          'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+          '必购项商品不支持修改上下架或默认选中'
+        );
+      }
+
+      return;
+    }
+
+    const listedCount = resolvedItems.filter((item) => item.listed !== false).length;
+
+    if (listedCount < option.selectionLimit) {
+      throw new AppError(
+        'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+        '下架商品不可少于选择限制数量'
+      );
+    }
+
+    if (option.optionType === 'add_on') {
+      const hasDefaultSelectedChange = resolvedItems.some(
+        (item, index) =>
+          (item.defaultSelected === true) !==
+          (option.items[index]?.defaultSelected === true)
+      );
+
+      if (hasDefaultSelectedChange) {
+        throw new AppError(
+          'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+          '加购项不支持修改默认选中'
+        );
+      }
+
+      return;
+    }
+
+    const hasUnlistedDefaultSelected = resolvedItems.some(
+      (item) => item.defaultSelected === true && item.listed === false
+    );
+
+    if (hasUnlistedDefaultSelected) {
+      throw new AppError(
+        'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+        '默认选中商品需保持上架'
+      );
+    }
+
+    const defaultSelectedCount = resolvedItems.filter(
+      (item) => item.defaultSelected === true
+    ).length;
+
+    if (defaultSelectedCount !== option.selectionLimit) {
+      throw new AppError(
+        'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+        '默认选中数量需等于选择限制数量'
+      );
+    }
+  });
 }
 
 function resolveNextSkuState(
@@ -446,6 +541,7 @@ export class ProductService {
       buildProductListItem(item, input.organizationScope, input.visibleStoreIds, {
         ...resolveProductSourceStoreMeta(item, sourceStoreItems, organizationItems),
         salesStatusCounts: getSalesStatusCounts(item, input.visibleStoreIds),
+        relatedProductMap: runtimeProductMap,
       })
     );
     const projectedProductMap = new Map(
@@ -527,12 +623,22 @@ export class ProductService {
           ...buildProductListItem(product, 'store', [currentStoreId], {
             ...resolveProductSourceStoreMeta(product, sourceStoreItems, organizationItems),
             salesStatusCounts: getSalesStatusCounts(product, [currentStoreId]),
+            relatedProductMap: new Map(runtimeProducts.map((item) => [item.id, item])),
           }),
           shareTarget,
         },
       ];
     });
-    const shareableItems = projectedItems.filter(
+    const projectedItemMap = new Map(projectedItems.map((item) => [item.id, item]));
+    const displayReadyItems = projectedItems.map((item) => ({
+      ...item,
+      comboDisplayOptions: buildComboDisplayOptions(
+        item,
+        projectedItemMap,
+        new Map(runtimeProducts.map((product) => [product.id, product]))
+      ),
+    }));
+    const shareableItems = displayReadyItems.filter(
       (item) => item.productKind !== 'bundle'
     );
     const normalizedKind = input.productKind
@@ -1095,7 +1201,12 @@ export class ProductService {
         .filter((sku) => !sellableSkuIdSet.has(sku.id))
         .map((sku) => sku.id);
       const previousOverride = product.storeOverrides?.[storeId]
-        ? normalizeProductStoreOverride(storeId, product.storeOverrides[storeId])
+        ? normalizeProductStoreOverride(
+            storeId,
+            product.storeOverrides[storeId],
+            product.skus || [],
+            product.comboOptions || []
+          )
         : createDefaultProductStoreOverride(storeId);
       const nextSkuSellStatusOverrides = normalizeProductStoreSkuSellStatusOverrides(
         unsellableSkuIds.map((skuId) => ({
@@ -1113,6 +1224,7 @@ export class ProductService {
           carouselMode: previousOverride.carouselMode,
           skuSellStatusOverrides: nextSkuSellStatusOverrides,
           skuStatusOverrides: nextSkuStatusOverrides,
+          comboOptionItemOverrides: previousOverride.comboOptionItemOverrides,
           localSkuItems: previousOverride.localSkuItems,
         })
       ) {
@@ -1297,7 +1409,12 @@ export class ProductService {
       );
       const unsellableSkuIds = allSkuIds.filter((skuId) => !sellableSkuIdSet.has(skuId));
       const previousOverride = product.storeOverrides?.[storeId]
-        ? normalizeProductStoreOverride(storeId, product.storeOverrides[storeId])
+        ? normalizeProductStoreOverride(
+            storeId,
+            product.storeOverrides[storeId],
+            product.skus || [],
+            product.comboOptions || []
+          )
         : createDefaultProductStoreOverride(storeId);
       const nextSkuSellStatusOverrides = normalizeProductStoreSkuSellStatusOverrides(
         unsellableSkuIds.map((skuId) => ({
@@ -1324,6 +1441,7 @@ export class ProductService {
           carouselMode: previousOverride.carouselMode,
           skuSellStatusOverrides: nextSkuSellStatusOverrides,
           skuStatusOverrides: nextSkuStatusOverrides,
+          comboOptionItemOverrides: previousOverride.comboOptionItemOverrides,
           localSkuItems: previousOverride.localSkuItems,
         })
       ) {
@@ -1550,7 +1668,12 @@ export class ProductService {
     }
 
     const previousOverride = product.storeOverrides?.[input.storeId]
-      ? normalizeProductStoreOverride(input.storeId, product.storeOverrides[input.storeId])
+      ? normalizeProductStoreOverride(
+          input.storeId,
+          product.storeOverrides[input.storeId],
+          product.skus || [],
+          product.comboOptions || []
+        )
       : createDefaultProductStoreOverride(input.storeId);
     const sourceSkuIdSet = new Set((product.skus || []).map((item) => item.id));
     const localSkuIdSet = new Set(
@@ -1634,6 +1757,7 @@ export class ProductService {
         carouselMode: previousOverride.carouselMode,
         skuSellStatusOverrides: nextSkuSellStatusOverrides,
         skuStatusOverrides: nextSkuStatusOverrides,
+        comboOptionItemOverrides: previousOverride.comboOptionItemOverrides,
         localSkuItems: nextLocalSkuItems,
       })
     ) {
@@ -1721,6 +1845,26 @@ export class ProductService {
         ? input.skuStatusOverrides
         : previousOverride.skuStatusOverrides || []
     );
+    const submittedComboOptionItemOverrides = Array.isArray(
+      input.comboOptionItemOverrides
+    )
+      ? input.comboOptionItemOverrides
+      : previousOverride.comboOptionItemOverrides || [];
+    const normalizedComboOptionItemOverrides =
+      normalizeProductStoreComboOptionItemOverrides(
+        submittedComboOptionItemOverrides,
+        product.comboOptions || []
+      );
+    if (
+      submittedComboOptionItemOverrides.length !==
+      normalizedComboOptionItemOverrides.length
+    ) {
+      throw new AppError(
+        'PRODUCT_INVALID_COMBO_OPTION_OVERRIDE',
+        '请检查组合商品子项配置'
+      );
+    }
+    validateComboOptionItemOverrides(product, normalizedComboOptionItemOverrides);
     const requiredSkuIdSet = new Set((product.skus || []).map((item) => item.id));
     const independentPriceRule = getProductIndependentPriceRule(product);
     const allowSelfPrice =
@@ -1822,6 +1966,7 @@ export class ProductService {
       carouselMode: input.carouselMode,
       skuSellStatusOverrides: normalizedSkuSellStatusOverrides,
       skuStatusOverrides: normalizedSkuStatusOverrides,
+      comboOptionItemOverrides: normalizedComboOptionItemOverrides,
       localSkuItems: normalizedLocalSkuItems,
     });
 
@@ -1846,6 +1991,7 @@ export class ProductService {
         skuStockOverrides: normalizedSkuStockOverrides,
         skuSellStatusOverrides: normalizedSkuSellStatusOverrides,
         skuStatusOverrides: normalizedSkuStatusOverrides,
+        comboOptionItemOverrides: normalizedComboOptionItemOverrides,
         localSkuItems: normalizedLocalSkuItems,
         nameMode: input.nameMode,
         overrideName:

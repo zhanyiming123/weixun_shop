@@ -46,18 +46,28 @@ import {
   canShowIndependentPriceTag,
   getIndependentConfigLabel,
 } from '@/pages/product/share-pool/independent-config';
+import { formatComboSubProductSummary } from '@/pages/product/combo/sub-product-display';
 import { readOrganizationItems } from '@/pages/enterprise/organization/data';
 import { readProductStoreItems } from '@/pages/product/store-config/data';
 import { ProductService } from '@/services/ProductService';
 import { GlobalState } from '@/store';
 import type {
+  ProductComboDisplayOption,
   ProductFilterValues,
-  ProductKind,
   ProductSearchType,
   ProductSharePoolItem,
   ProductShareStatus,
+  ProductStoreSellStatus,
 } from '@/types/product';
 import { filterStoreItemsByIds } from '@/utils/organization';
+import { PRODUCT_STORE_SELL_STATUS_LABEL_MAP } from '@/pages/product/store-config/data';
+import {
+  getSharePoolQueryStatus,
+  getSharePoolTableColumnKeys,
+  getSharePoolViewConfig,
+  type SharePoolPageTab,
+  type SharePoolTableColumnKey,
+} from '@/pages/product/share-pool/view-config';
 
 type ProductSourceFilterOption = {
   label: string;
@@ -65,9 +75,17 @@ type ProductSourceFilterOption = {
   children?: ProductSourceFilterOption[];
 };
 
-type SharePoolKindTab = 'all' | 'standard' | 'combo';
-
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const SELL_STATUS_FILTER_OPTIONS = [
+  {
+    label: '可售',
+    value: 'sellable',
+  },
+  {
+    label: '不可售',
+    value: 'unsellable',
+  },
+];
 
 const Option = Select.Option;
 const TabPane = Tabs.TabPane;
@@ -148,6 +166,28 @@ function formatPriceRange(prices: number[]) {
     : `${formatPriceNumber(minPrice)}～${formatPriceNumber(maxPrice)}`;
 }
 
+function formatSinglePrice(price?: number) {
+  if (typeof price !== 'number' || !Number.isFinite(price)) {
+    return '--';
+  }
+
+  return formatPriceNumber(price);
+}
+
+function normalizeSharePoolDisplayName(name: string) {
+  return name.replace(/^\[引用\]\s*/, '').trim();
+}
+
+function getRecordSellStatus(record: ProductSharePoolItem): ProductStoreSellStatus {
+  if (record.storeView.currentStoreSellStatus) {
+    return record.storeView.currentStoreSellStatus;
+  }
+
+  return (record.storeConfigs || []).some((item) => item.sellStatus === 'sellable')
+    ? 'sellable'
+    : 'unsellable';
+}
+
 function ProductSharePoolPage() {
   const productService = useMemo(() => new ProductService(), []);
   const currentOrganization = useSelector(
@@ -180,7 +220,7 @@ function ProductSharePoolPage() {
   const [sourceFilterPaths, setSourceFilterPaths] = useState<string[][]>([]);
   const [statusInput, setStatusInput] = useState<'all' | ProductShareStatus>('all');
   const [status, setStatus] = useState<'all' | ProductShareStatus>('all');
-  const [activeKindTab, setActiveKindTab] = useState<SharePoolKindTab>('all');
+  const [activeTab, setActiveTab] = useState<SharePoolPageTab>('standard');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -252,8 +292,8 @@ function ProductSharePoolPage() {
       currentStoreId
         ? productService.querySharePool({
             storeId: currentStoreId,
-            status: status === 'all' ? undefined : status,
-            productKind: activeKindTab === 'all' ? undefined : activeKindTab,
+            status: getSharePoolQueryStatus(activeTab, status),
+            productKind: getSharePoolViewConfig(activeTab).productKind,
             filters: appliedFilters,
             page: currentPage,
             pageSize,
@@ -263,7 +303,7 @@ function ProductSharePoolPage() {
             total: 0,
           },
     [
-      activeKindTab,
+      activeTab,
       appliedFilters,
       currentPage,
       currentStoreId,
@@ -312,9 +352,264 @@ function ProductSharePoolPage() {
     setSourceFilterPaths([]);
     setStatusInput('all');
     setStatus('all');
-    setActiveKindTab('all');
     setCurrentPage(1);
   }
+
+  const viewConfig = getSharePoolViewConfig(activeTab);
+  const columns = useMemo(
+    () => {
+      const visibleColumnKeys = new Set<SharePoolTableColumnKey>(
+        getSharePoolTableColumnKeys(activeTab)
+      );
+      const activeColumns =
+        activeTab === 'combo'
+          ? [
+            {
+              title: '商品名称',
+              dataIndex: 'name',
+              width: 320,
+              render: (_: string, record: ProductSharePoolItem) => (
+                <div className={styles.nameCell}>
+                  <div className={styles.productTitleRow}>
+                    <Typography.Text className={styles.productName}>
+                      {normalizeSharePoolDisplayName(record.name)}
+                    </Typography.Text>
+                  </div>
+                  <Typography.Text className={styles.productId}>
+                    id: {record.id}
+                  </Typography.Text>
+                </div>
+              ),
+            },
+            {
+              title: '子商品',
+              dataIndex: 'comboDisplayOptions',
+              width: 320,
+              render: (value: ProductComboDisplayOption[] | undefined) => {
+                if (!(value || []).length) {
+                  return <Typography.Text type="secondary">--</Typography.Text>;
+                }
+
+                return (
+                  <Typography.Text>
+                    {formatComboSubProductSummary(value || [])}
+                  </Typography.Text>
+                );
+              },
+            },
+            {
+              title: '商品类目',
+              dataIndex: 'productCatalogId',
+              width: 180,
+              render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
+            },
+            {
+              title: '商品分类',
+              dataIndex: 'productOwnershipId',
+              width: 240,
+              render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
+            },
+            {
+              title: '商品来源',
+              dataIndex: 'sourceStoreName',
+              width: 200,
+              render: (_: string, record: ProductSharePoolItem) =>
+                record.storeView.sourceStoreName || '--',
+            },
+            {
+              title: '可售状态',
+              dataIndex: 'sellStatus',
+              width: 116,
+              render: (_: unknown, record: ProductSharePoolItem) => (
+                <Tag color={getRecordSellStatus(record) === 'sellable' ? 'green' : 'red'}>
+                  {PRODUCT_STORE_SELL_STATUS_LABEL_MAP[getRecordSellStatus(record)]}
+                </Tag>
+              ),
+            },
+            {
+              title: '商品售价',
+              dataIndex: 'price',
+              width: 140,
+              render: (_: number, record: ProductSharePoolItem) =>
+                formatSinglePrice(record.storeView.currentPrice),
+            },
+            {
+              title: '独立配置',
+              dataIndex: 'independent',
+              width: 160,
+              render: (_: unknown, record: ProductSharePoolItem) =>
+                canShowIndependentPriceTag(record) ? (
+                  <Tag color="green">{getIndependentConfigLabel(record)}</Tag>
+                ) : null,
+            },
+            {
+              title: '创建时间',
+              dataIndex: 'createdAt',
+              width: 180,
+            },
+            {
+              title: '共享时间',
+              dataIndex: 'sharedAt',
+              width: 180,
+              render: (_: string, record: ProductSharePoolItem) =>
+                record.shareTarget.sharedAt || '--',
+            },
+            {
+              title: '操作',
+              dataIndex: 'operations',
+              width: 180,
+              fixed: 'right' as const,
+              render: (_: string, record: ProductSharePoolItem) => (
+                <span className={styles.actionLinks}>
+                  <Link
+                    className={styles.actionLinkButton}
+                    onClick={() => setViewTarget(record)}
+                  >
+                    查看
+                  </Link>
+                  {record.shareTarget.status === 'pending' ? (
+                    <Link
+                      className={styles.actionLinkButton}
+                      onClick={() => handleReference(record)}
+                    >
+                      {operatingId === record.id ? '引用中...' : '引用商品'}
+                    </Link>
+                  ) : (
+                    <Link className={styles.actionLinkButton} disabled>
+                      已引用
+                    </Link>
+                  )}
+                </span>
+              ),
+            },
+          ]
+          : [
+            {
+              title: '商品名称',
+              dataIndex: 'name',
+              width: 360,
+              render: (_: string, record: ProductSharePoolItem) => (
+                <div className={styles.nameCell}>
+                  <div className={styles.productTitleRow}>
+                    <Typography.Text className={styles.productName}>
+                      {normalizeSharePoolDisplayName(record.name)}
+                    </Typography.Text>
+                  </div>
+                  <Typography.Text className={styles.productId}>
+                    id: {record.id}
+                  </Typography.Text>
+                </div>
+              ),
+            },
+            {
+              title: '商品类目',
+              dataIndex: 'productCatalogId',
+              width: 180,
+              render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
+            },
+            {
+              title: '商品分类',
+              dataIndex: 'productOwnershipId',
+              width: 240,
+              render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
+            },
+            {
+              title: '商品来源',
+              dataIndex: 'sourceStoreName',
+              width: 200,
+              render: (_: string, record: ProductSharePoolItem) =>
+                record.storeView.sourceStoreName || '--',
+            },
+            {
+              title: '在售店铺',
+              dataIndex: 'salesStores',
+              width: 120,
+              render: (_: unknown, record: ProductSharePoolItem) => (
+                <OnSaleStoreCountLink
+                  className={styles.actionLinkButton}
+                  product={record}
+                  onOpen={(product) => setSalesStoreDetailTarget(product)}
+                />
+              ),
+            },
+            {
+              title: '商品售价',
+              dataIndex: 'price',
+              width: 180,
+              render: (_: number, record: ProductSharePoolItem) =>
+                formatPriceRange(record.storeView.currentSkus.map((sku) => sku.currentPrice)),
+            },
+            {
+              title: '库存',
+              dataIndex: 'stock',
+              width: 140,
+              render: (value: number, record: ProductSharePoolItem) =>
+                `${value} ${record.inventoryUnit || '份'}`,
+            },
+            {
+              title: '独立配置',
+              dataIndex: 'independent',
+              width: 180,
+              render: (_: unknown, record: ProductSharePoolItem) =>
+                canShowIndependentPriceTag(record) ? (
+                  <Tag color="green">{getIndependentConfigLabel(record)}</Tag>
+                ) : (
+                  '--'
+                ),
+            },
+            {
+              title: '创建时间',
+              dataIndex: 'createdAt',
+              width: 180,
+            },
+            {
+              title: '分享时间',
+              dataIndex: 'sharedAt',
+              width: 180,
+              render: (_: string, record: ProductSharePoolItem) =>
+                record.shareTarget.sharedAt || '--',
+            },
+            {
+              title: '操作',
+              dataIndex: 'operations',
+              width: 220,
+              fixed: 'right' as const,
+              render: (_: string, record: ProductSharePoolItem) => (
+                <span className={styles.actionLinks}>
+                  <Link
+                    className={styles.actionLinkButton}
+                    onClick={() => setViewTarget(record)}
+                  >
+                    查看
+                  </Link>
+                  {record.shareTarget.status === 'pending' ? (
+                    <Link
+                      className={styles.actionLinkButton}
+                      onClick={() => handleReference(record)}
+                    >
+                      {operatingId === record.id ? '引用中...' : '引用商品'}
+                    </Link>
+                  ) : (
+                    <Link className={styles.actionLinkButton} disabled>
+                      已引用
+                    </Link>
+                  )}
+                </span>
+              ),
+            },
+          ];
+
+      return activeColumns.filter((column) =>
+        visibleColumnKeys.has(column.dataIndex as SharePoolTableColumnKey)
+      );
+    },
+    [
+      activeTab,
+      catalogItems,
+      operatingId,
+      ownershipItems,
+    ]
+  );
 
   async function handleReference(record: ProductSharePoolItem) {
     if (!currentStoreId) {
@@ -351,6 +646,21 @@ function ProductSharePoolPage() {
 
   return (
     <div className={styles.page}>
+      <div style={{ marginBottom: -16 }}>
+        <Tabs
+          activeTab={activeTab}
+          className={styles.tabs}
+          destroyOnHide={false}
+          onChange={(key) => {
+            setActiveTab(key as SharePoolPageTab);
+            setCurrentPage(1);
+          }}
+        >
+          <TabPane key="standard" title="单商品" />
+          <TabPane key="combo" title="组合商品" />
+        </Tabs>
+      </div>
+
       <Card className={styles.filterCard}>
         <Form className={styles.filterForm}>
           <div className={styles.filterGrid}>
@@ -425,6 +735,35 @@ function ProductSharePoolPage() {
               />
             </div>
 
+            {viewConfig.showSubProductFilters && (
+              <div className={styles.filterItem}>
+                <div className={styles.filterLabel}>子商品搜索</div>
+                <Input.Group className={styles.searchGroup} compact>
+                  <Select
+                    bordered
+                    className={styles.searchTypeSelect}
+                    value={formValues.subProductSearchType}
+                    onChange={(value) =>
+                      updateFormValue(
+                        'subProductSearchType',
+                        value as ProductFilterValues['subProductSearchType']
+                      )
+                    }
+                  >
+                    <Option value="subProductName">子商品名称</Option>
+                    <Option value="subProductCode">子商品 ID</Option>
+                  </Select>
+                  <Input
+                    allowClear
+                    className={styles.keywordInput}
+                    placeholder="请输入搜索内容"
+                    value={formValues.subProductKeyword}
+                    onChange={(value) => updateFormValue('subProductKeyword', value)}
+                  />
+                </Input.Group>
+              </div>
+            )}
+
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>商品来源</div>
               <Cascader
@@ -464,6 +803,30 @@ function ProductSharePoolPage() {
               </div>
             </div>
 
+            {viewConfig.showSellStatusFilter && (
+              <div className={styles.filterItem}>
+                <div className={styles.filterLabel}>可售状态</div>
+                <Select
+                  allowClear
+                  className={styles.catalogCascader}
+                  placeholder="全部"
+                  value={formValues.sellStatus}
+                  onChange={(value) =>
+                    updateFormValue(
+                      'sellStatus',
+                      (value || undefined) as ProductFilterValues['sellStatus']
+                    )
+                  }
+                >
+                  {SELL_STATUS_FILTER_OPTIONS.map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
             <div className={styles.filterItem}>
               <div className={styles.filterLabel}>创建时间</div>
               <RangePicker
@@ -476,18 +839,20 @@ function ProductSharePoolPage() {
               />
             </div>
 
-            <div className={styles.filterItem}>
-              <div className={styles.filterLabel}>共享状态</div>
-              <Select
-                className={styles.catalogCascader}
-                value={statusInput}
-                onChange={(value) => setStatusInput(value as 'all' | ProductShareStatus)}
-              >
-                <Select.Option value="all">全部</Select.Option>
-                <Select.Option value="pending">待引用</Select.Option>
-                <Select.Option value="referenced">已引用</Select.Option>
-              </Select>
-            </div>
+            {viewConfig.showShareStatusFilter && (
+              <div className={styles.filterItem}>
+                <div className={styles.filterLabel}>共享状态</div>
+                <Select
+                  className={styles.catalogCascader}
+                  value={statusInput}
+                  onChange={(value) => setStatusInput(value as 'all' | ProductShareStatus)}
+                >
+                  <Select.Option value="all">全部</Select.Option>
+                  <Select.Option value="pending">待引用</Select.Option>
+                  <Select.Option value="referenced">已引用</Select.Option>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className={styles.filterActions}>
@@ -500,148 +865,15 @@ function ProductSharePoolPage() {
       </Card>
 
       <Card className={styles.panelCard}>
-        <Tabs
-          activeTab={activeKindTab}
-          className={styles.tabs}
-          destroyOnHide={false}
-          onChange={(key) => {
-            setActiveKindTab(key as SharePoolKindTab);
-            setCurrentPage(1);
-          }}
-        >
-          <TabPane key="all" title="全部" />
-          <TabPane key="standard" title="单商品" />
-          <TabPane key="combo" title="组合商品" />
-        </Tabs>
-
-        <div className={styles.toolbar}>
-          <Typography.Text>共享池商品共 {queryResult.total} 条</Typography.Text>
-        </div>
-
         <div className={styles.tableWrapper}>
           <Table
             rowKey="id"
-            columns={[
-              {
-                title: '商品名称',
-                dataIndex: 'name',
-                width: 360,
-                render: (_: string, record: ProductSharePoolItem) => (
-                  <div className={styles.nameCell}>
-                    <div className={styles.productTitleRow}>
-                      <Tag color={record.productKind === 'combo' ? 'purple' : 'arcoblue'}>
-                        {record.productKind === 'combo' ? '组合' : '单品'}
-                      </Tag>
-                      <Typography.Text className={styles.productName}>
-                        {record.name}
-                      </Typography.Text>
-                    </div>
-                    <Typography.Text className={styles.productId}>id: {record.id}</Typography.Text>
-                  </div>
-                ),
-              },
-              {
-                title: '商品类目',
-                dataIndex: 'productCatalogId',
-                width: 180,
-                render: (value: string) => getProductCatalogFullLabel(value, catalogItems),
-              },
-              {
-                title: '商品分类',
-                dataIndex: 'productOwnershipId',
-                width: 240,
-                render: (value: string) => getProductOwnershipFullLabel(value, ownershipItems),
-              },
-              {
-                title: '商品来源',
-                dataIndex: 'sourceStoreName',
-                width: 200,
-                render: (_: string, record: ProductSharePoolItem) =>
-                  record.storeView.sourceStoreName || '--',
-              },
-              {
-                title: '在售店铺',
-                dataIndex: 'salesStores',
-                width: 120,
-                render: (_: unknown, record: ProductSharePoolItem) => (
-                  <OnSaleStoreCountLink
-                    className={styles.actionLinkButton}
-                    product={record}
-                    onOpen={(product) => setSalesStoreDetailTarget(product)}
-                  />
-                ),
-              },
-              {
-                title: '商品售价',
-                dataIndex: 'price',
-                width: 180,
-                render: (_: number, record: ProductSharePoolItem) =>
-                  formatPriceRange(record.storeView.currentSkus.map((sku) => sku.currentPrice)),
-              },
-              {
-                title: '库存',
-                dataIndex: 'stock',
-                width: 140,
-                render: (value: number, record: ProductSharePoolItem) =>
-                  `${value} ${record.inventoryUnit || '份'}`,
-              },
-              {
-                title: '独立配置',
-                dataIndex: 'independent',
-                width: 180,
-                render: (_: unknown, record: ProductSharePoolItem) =>
-                  canShowIndependentPriceTag(record) ? (
-                    <Tag color="green">{getIndependentConfigLabel(record)}</Tag>
-                  ) : (
-                    '--'
-                  ),
-              },
-              {
-                title: '创建时间',
-                dataIndex: 'createdAt',
-                width: 180,
-              },
-              {
-                title: '分享时间',
-                dataIndex: 'sharedAt',
-                width: 180,
-                render: (_: string, record: ProductSharePoolItem) =>
-                  record.shareTarget.sharedAt || '--',
-              },
-              {
-                title: '操作',
-                dataIndex: 'operations',
-                width: 220,
-                fixed: 'right' as const,
-                render: (_: string, record: ProductSharePoolItem) => (
-                  <span className={styles.actionLinks}>
-                    <Link
-                      className={styles.actionLinkButton}
-                      onClick={() => setViewTarget(record)}
-                    >
-                      查看
-                    </Link>
-                    {record.shareTarget.status === 'pending' ? (
-                      <Link
-                        className={styles.actionLinkButton}
-                        onClick={() => handleReference(record)}
-                      >
-                        {operatingId === record.id ? '引用中...' : '引用商品'}
-                      </Link>
-                    ) : (
-                      <Link className={styles.actionLinkButton} disabled>
-                        已引用
-                      </Link>
-                    )}
-                  </span>
-                ),
-              },
-            ]}
+            columns={columns}
             data={queryResult.items}
             noDataElement="暂无共享商品"
             pagination={false}
             tableLayoutFixed
-            scroll={{ x: 2060 }}
+            scroll={{ x: activeTab === 'combo' ? 2200 : 2060 }}
           />
         </div>
 
