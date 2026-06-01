@@ -5,6 +5,7 @@ import {
   buildComboTrialTableRows,
   canRemoveComboOptionProduct,
   canEnableComboOptionProductRequired,
+  COMBO_TRIAL_BUTTON_LABEL,
   createComboOptionProductItem,
   DEFAULT_COMBO_OPTION_PRODUCT_LISTED,
   DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED,
@@ -52,6 +53,10 @@ function createProductListItem(
 }
 
 describe('combo product config card helpers', () => {
+  it('uses the updated combo trial button label', () => {
+    expect(COMBO_TRIAL_BUTTON_LABEL).toBe('组合试算（二期不做）');
+  });
+
   it('creates added combo products with source price as combo price by default', () => {
     expect(DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED).toBe(false);
     expect(DEFAULT_COMBO_OPTION_PRODUCT_LISTED).toBe(true);

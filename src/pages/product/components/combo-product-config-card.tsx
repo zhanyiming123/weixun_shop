@@ -41,6 +41,7 @@ import {
   buildComboTrialResult,
   buildComboTrialTableRows,
   canRemoveComboOptionProduct,
+  COMBO_TRIAL_BUTTON_LABEL,
   getComboTrialDefaultSelectionError,
   getListedComboOptionProductCount,
   getComboOptionRequiredByType,
@@ -920,7 +921,7 @@ export default function ComboProductConfigCard({
             新增选项（{normalizedValue.length}/{MAX_OPTION_COUNT}）
           </Button>
           <Button type="outline" onClick={handleOpenTrial}>
-            组合试算
+            {COMBO_TRIAL_BUTTON_LABEL}
           </Button>
         </div>
       </div>

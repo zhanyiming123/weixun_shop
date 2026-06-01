@@ -7,6 +7,7 @@ import type {
 
 export const DEFAULT_COMBO_OPTION_PRODUCT_REQUIRED = false;
 export const DEFAULT_COMBO_OPTION_PRODUCT_LISTED = true;
+export const COMBO_TRIAL_BUTTON_LABEL = '组合试算（二期不做）';
 export type ComboOptionProductMoveDirection = 'up' | 'down';
 
 export type ComboTrialRow = {
