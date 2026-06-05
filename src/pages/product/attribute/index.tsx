@@ -27,6 +27,12 @@ import {
   getProductCatalogAttributeValueSummary,
   useProductCatalogAttributes,
 } from './data';
+import {
+  getAttributeNumberPrecisionRule,
+  getAttributeTextMaxLengthRule,
+  PRODUCT_ATTRIBUTE_NUMBER_PRECISION_LIMIT,
+  PRODUCT_ATTRIBUTE_TEXT_MAX_LENGTH_LIMIT,
+} from './form-rules';
 
 const { useForm } = Form;
 
@@ -42,52 +48,6 @@ function getNextSortValue(attributes: ProductCatalogAttributeItem[]) {
   return (
     attributes.reduce((maxSort, item) => Math.max(maxSort, item.sort), 0) + 1
   );
-}
-
-function getPositiveIntegerRule(message: string) {
-  return {
-    validator: (value: unknown, callback: (error?: string) => void) => {
-      if (value === undefined || value === null || value === '') {
-        callback();
-        return;
-      }
-
-      if (
-        typeof value === 'number' &&
-        Number.isFinite(value) &&
-        Number.isInteger(value) &&
-        value > 0
-      ) {
-        callback();
-        return;
-      }
-
-      callback(message);
-    },
-  };
-}
-
-function getNonNegativeIntegerRule(message: string) {
-  return {
-    validator: (value: unknown, callback: (error?: string) => void) => {
-      if (value === undefined || value === null || value === '') {
-        callback();
-        return;
-      }
-
-      if (
-        typeof value === 'number' &&
-        Number.isFinite(value) &&
-        Number.isInteger(value) &&
-        value >= 0
-      ) {
-        callback();
-        return;
-      }
-
-      callback(message);
-    },
-  };
 }
 
 function AttributePage() {
@@ -493,12 +453,13 @@ function AttributePage() {
             <Form.Item
               field="textMaxLength"
               label="最大字符数"
-              rules={[getPositiveIntegerRule('最大字符数需为大于 0 的整数')]}
+              rules={[getAttributeTextMaxLengthRule()]}
             >
               <InputNumber
                 min={1}
+                max={PRODUCT_ATTRIBUTE_TEXT_MAX_LENGTH_LIMIT}
                 precision={0}
-                placeholder="留空表示不限制"
+                placeholder="请输入最大字符数"
                 style={{ width: '100%' }}
               />
             </Form.Item>
@@ -520,12 +481,13 @@ function AttributePage() {
             <Form.Item
               field="numberPrecision"
               label="最多小数位数"
-              rules={[getNonNegativeIntegerRule('最多小数位数需为大于等于 0 的整数')]}
+              rules={[getAttributeNumberPrecisionRule()]}
             >
               <InputNumber
                 min={0}
+                max={PRODUCT_ATTRIBUTE_NUMBER_PRECISION_LIMIT}
                 precision={0}
-                placeholder="留空表示不限制"
+                placeholder="请输入最多小数位数"
                 style={{ width: '100%' }}
               />
             </Form.Item>

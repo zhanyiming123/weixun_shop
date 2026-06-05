@@ -39,9 +39,7 @@ import {
 } from '@/lib/product';
 import { formatPriceNumber } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
-import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
 import ProductDetailModal from '@/pages/product/components/product-detail-modal';
-import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
 import {
   canShowIndependentPriceTag,
   getIndependentConfigLabel,
@@ -226,8 +224,6 @@ function ProductSharePoolPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [operatingId, setOperatingId] = useState('');
   const [viewTarget, setViewTarget] = useState<ProductSharePoolItem | null>(null);
-  const [salesStoreDetailTarget, setSalesStoreDetailTarget] =
-    useState<ProductSharePoolItem | null>(null);
   const visibleStoreIds = useMemo(
     () => currentOrganization?.storeIds || [],
     [currentOrganization?.storeIds]
@@ -519,18 +515,6 @@ function ProductSharePoolPage() {
               width: 200,
               render: (_: string, record: ProductSharePoolItem) =>
                 record.storeView.sourceStoreName || '--',
-            },
-            {
-              title: '在售店铺',
-              dataIndex: 'salesStores',
-              width: 120,
-              render: (_: unknown, record: ProductSharePoolItem) => (
-                <OnSaleStoreCountLink
-                  className={styles.actionLinkButton}
-                  product={record}
-                  onOpen={(product) => setSalesStoreDetailTarget(product)}
-                />
-              ),
             },
             {
               title: '商品售价',
@@ -899,12 +883,6 @@ function ProductSharePoolPage() {
         product={viewTarget}
         visible={Boolean(viewTarget)}
         onCancel={() => setViewTarget(null)}
-      />
-
-      <SalesStoreDetailModal
-        product={salesStoreDetailTarget}
-        visible={Boolean(salesStoreDetailTarget)}
-        onCancel={() => setSalesStoreDetailTarget(null)}
       />
     </div>
   );

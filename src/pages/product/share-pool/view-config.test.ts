@@ -12,7 +12,6 @@ describe('share pool view config', () => {
       showShareStatusFilter: true,
       showSubProductFilters: false,
       showSellStatusFilter: false,
-      showSalesStoresColumn: true,
       showInventoryColumn: true,
       priceDisplayMode: 'range',
     });
@@ -24,7 +23,6 @@ describe('share pool view config', () => {
       showShareStatusFilter: true,
       showSubProductFilters: true,
       showSellStatusFilter: true,
-      showSalesStoresColumn: false,
       showInventoryColumn: false,
       priceDisplayMode: 'single',
     });
@@ -47,6 +45,21 @@ describe('share pool view config', () => {
       'sourceStoreName',
       'sellStatus',
       'price',
+      'independent',
+      'createdAt',
+      'sharedAt',
+      'operations',
+    ]);
+  });
+
+  it('removes sales-stores column from standard tab', () => {
+    expect(getSharePoolTableColumnKeys('standard')).toEqual([
+      'name',
+      'productCatalogId',
+      'productOwnershipId',
+      'sourceStoreName',
+      'price',
+      'stock',
       'independent',
       'createdAt',
       'sharedAt',

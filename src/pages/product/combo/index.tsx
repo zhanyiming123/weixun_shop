@@ -30,9 +30,7 @@ import PublishStoreModal, {
   PublishStoreModalSubmitPayload,
 } from './components/publish-store-modal';
 import SalesStoreModal from './components/sales-store-modal';
-import OnSaleStoreCountLink from '@/pages/product/components/on-sale-store-count-link';
 import ProductDetailModal from '@/pages/product/components/product-detail-modal';
-import SalesStoreDetailModal from '@/pages/product/components/sales-store-detail-modal';
 import ShareTargetSelector from '@/pages/product/components/share-target-selector';
 import {
   getPrimaryProductRowActionKeys,
@@ -667,8 +665,6 @@ function ProductListPage() {
     null
   );
   const [salesStoreSubmitting, setSalesStoreSubmitting] = useState(false);
-  const [salesStoreDetailTarget, setSalesStoreDetailTarget] =
-    useState<ProductListItem | null>(null);
   const visibleStoreIds = useMemo(
     () => currentOrganization?.storeIds || [],
     [currentOrganization?.storeIds]
@@ -1602,18 +1598,6 @@ function ProductListPage() {
       ),
     },
     {
-      title: '在售店铺',
-      dataIndex: 'salesStores',
-      width: 120,
-      render: (_: unknown, record: ProductListItem) => (
-        <OnSaleStoreCountLink
-          className={styles.actionLinkButton}
-          product={record}
-          onOpen={(product) => setSalesStoreDetailTarget(product)}
-        />
-      ),
-    },
-    {
       title: '可售状态',
       dataIndex: 'sellStatus',
       width: 116,
@@ -2324,12 +2308,6 @@ function ProductListPage() {
         submitting={salesStoreSubmitting}
         onCancel={closeSalesStoreModal}
         onSubmit={handleSalesStoreSubmit}
-      />
-
-      <SalesStoreDetailModal
-        product={salesStoreDetailTarget}
-        visible={Boolean(salesStoreDetailTarget)}
-        onCancel={() => setSalesStoreDetailTarget(null)}
       />
 
       <Modal

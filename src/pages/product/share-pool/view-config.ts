@@ -12,7 +12,6 @@ export type SharePoolTableColumnKey =
   | 'price'
   | 'createdAt'
   | 'operations'
-  | 'salesStores'
   | 'stock'
   | 'independent'
   | 'sharedAt';
@@ -22,7 +21,6 @@ type SharePoolViewConfig = {
   showShareStatusFilter: boolean;
   showSubProductFilters: boolean;
   showSellStatusFilter: boolean;
-  showSalesStoresColumn: boolean;
   showInventoryColumn: boolean;
   priceDisplayMode: 'range' | 'single';
 };
@@ -33,7 +31,6 @@ const SHARE_POOL_VIEW_CONFIG_MAP: Record<SharePoolPageTab, SharePoolViewConfig> 
     showShareStatusFilter: true,
     showSubProductFilters: false,
     showSellStatusFilter: false,
-    showSalesStoresColumn: true,
     showInventoryColumn: true,
     priceDisplayMode: 'range',
   },
@@ -42,7 +39,6 @@ const SHARE_POOL_VIEW_CONFIG_MAP: Record<SharePoolPageTab, SharePoolViewConfig> 
     showShareStatusFilter: true,
     showSubProductFilters: true,
     showSellStatusFilter: true,
-    showSalesStoresColumn: false,
     showInventoryColumn: false,
     priceDisplayMode: 'single',
   },
@@ -57,7 +53,6 @@ const SHARE_POOL_TABLE_COLUMN_KEYS_MAP: Record<
     'productCatalogId',
     'productOwnershipId',
     'sourceStoreName',
-    'salesStores',
     'price',
     'stock',
     'independent',
