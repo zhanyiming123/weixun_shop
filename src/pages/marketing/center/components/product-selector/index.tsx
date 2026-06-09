@@ -238,6 +238,7 @@ export default function MarketingProductSelector({
   const tableData = activeTab === 'all' ? filteredAllData : selectedData;
   const allTabCount = countVisibleSku(filteredAllData);
   const selectedTabCount = countVisibleSku(selectedData);
+  const isReadonlySelectedView = readonly;
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE));
@@ -367,17 +368,6 @@ export default function MarketingProductSelector({
       width: 120,
       render: (value: number) => value,
     },
-    {
-      title: '不可选原因',
-      dataIndex: 'disabledReason',
-      width: 200,
-      render: (value: string) =>
-        value ? (
-          <span className={styles.disabledReason}>{value}</span>
-        ) : (
-          <span className={styles.emptyCell}>-</span>
-        ),
-    },
   ];
 
   return (
@@ -394,20 +384,31 @@ export default function MarketingProductSelector({
       onOk={() => onConfirm?.(draftSelectedSkuIds)}
     >
       <div className={styles.modalBody}>
-        <Tabs
-          activeTab={activeTab}
-          className={styles.tabs}
-          destroyOnHide={false}
-          onChange={(key) => {
-            setActiveTab(key as MarketingProductSelectorTab);
-            setCurrentPage(1);
-          }}
-        >
-          <TabPane key="all" title={`全部商品(${allTabCount})`} />
-          <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
-        </Tabs>
+        {!isReadonlySelectedView ? (
+          <Tabs
+            activeTab={activeTab}
+            className={styles.tabs}
+            destroyOnHide={false}
+            onChange={(key) => {
+              setActiveTab(key as MarketingProductSelectorTab);
+              setCurrentPage(1);
+            }}
+          >
+            <TabPane key="all" title={`全部商品(${allTabCount})`} />
+            <TabPane key="selected" title={`已选商品(${selectedTabCount})`} />
+          </Tabs>
+        ) : (
+          <div className={styles.readonlyHeader}>
+            <Typography.Text className={styles.readonlyTitle}>
+              已选商品
+            </Typography.Text>
+            <Typography.Text type="secondary">
+              共 {selectedTabCount} 个 SKU，仅支持查看
+            </Typography.Text>
+          </div>
+        )}
 
-        {activeTab === 'all' && (
+        {!isReadonlySelectedView && activeTab === 'all' && (
           <div className={styles.filterPanel}>
             <div className={styles.filterGrid}>
               <div className={styles.filterItem}>
@@ -517,9 +518,7 @@ export default function MarketingProductSelector({
               columns={columns}
               data={tableData}
               indentSize={0}
-              noDataElement={
-                activeTab === 'selected' ? '暂无已选商品' : '暂无可选商品'
-              }
+              noDataElement={activeTab === 'selected' ? '暂无已选商品' : '暂无可选商品'}
               expandProps={{
                 strictTreeData: false,
               }}
@@ -569,7 +568,7 @@ export default function MarketingProductSelector({
                         ),
                     }
               }
-              scroll={{ x: 1080 }}
+              scroll={{ x: 880 }}
               tableLayoutFixed
             />
           </div>

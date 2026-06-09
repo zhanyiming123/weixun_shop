@@ -7,14 +7,15 @@ import {
 } from './detail-view';
 
 describe('coupon detail view helpers', () => {
-  it('shows applicable stores in merchant create pages and all detail pages', () => {
+  it('hides applicable stores in store-system detail pages', () => {
     expect(shouldShowApplicableStoresSection(false, 'create')).toBe(true);
     expect(shouldShowApplicableStoresSection(false, 'edit')).toBe(true);
     expect(shouldShowApplicableStoresSection(false, 'detail')).toBe(true);
 
     expect(shouldShowApplicableStoresSection(true, 'create')).toBe(false);
     expect(shouldShowApplicableStoresSection(true, 'edit')).toBe(false);
-    expect(shouldShowApplicableStoresSection(true, 'detail')).toBe(true);
+    expect(shouldShowApplicableStoresSection(true, 'detail', 'shop')).toBe(false);
+    expect(shouldShowApplicableStoresSection(true, 'detail', 'platform')).toBe(false);
   });
 
   it('uses view wording in detail mode and select wording in editable modes', () => {

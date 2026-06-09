@@ -221,6 +221,15 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
 
   function renderActionLinks(record: CouponListItem) {
     const actionNodes: Record<CouponActionKey, React.ReactNode> = {
+      view: (
+        <Link
+          onClick={() =>
+            history.push(`/marketing/center/coupon/detail?id=${record.id}`)
+          }
+        >
+          详情
+        </Link>
+      ),
       edit: (
         <Link
           onClick={() =>
@@ -364,7 +373,7 @@ function CouponListPage({ detailCouponId: routeDetailCouponId }: CouponListPageP
     {
       title: '操作',
       dataIndex: 'operations',
-      width: 260,
+      width: 320,
       fixed: 'right' as const,
       render: (_: unknown, record: CouponListItem) => renderActionLinks(record),
     },

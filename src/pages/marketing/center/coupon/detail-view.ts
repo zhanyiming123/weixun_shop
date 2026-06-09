@@ -1,9 +1,16 @@
-import { CouponPageMode } from './data';
+import { CouponOwnershipType, CouponPageMode } from './data';
 
 export function shouldShowApplicableStoresSection(
   isStoreSystem: boolean,
-  mode: CouponPageMode
+  mode: CouponPageMode,
+  ownershipType?: CouponOwnershipType
 ) {
+  void ownershipType;
+
+  if (isStoreSystem && mode === 'detail') {
+    return false;
+  }
+
   return mode === 'detail' || !isStoreSystem;
 }
 

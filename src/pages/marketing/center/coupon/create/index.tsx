@@ -531,7 +531,8 @@ export function CouponFormPage({
   const canEditCoupon = isCreateMode || isEditMode;
   const showApplicableStoresSection = shouldShowApplicableStoresSection(
     isStoreSystem,
-    mode
+    mode,
+    couponRecord ? getCouponOwnershipType(couponRecord) : undefined
   );
   const shouldShowStackingConfig = isStoreSystem;
   const allStoreIds = useMemo(() => storeItems.map((item) => item.id), [storeItems]);
@@ -591,6 +592,18 @@ export function CouponFormPage({
         setFormErrors({});
         return;
       }
+      const sourceRecord = readCouponById(sourceId, visibleStoreIds, {
+        isStoreSystem,
+      });
+      if (
+        sourceRecord &&
+        isStoreSystem &&
+        getCouponOwnershipType(sourceRecord) === 'platform'
+      ) {
+        Message.error('店铺运营工作台中的平台券仅支持查看详情');
+        history.replace('/marketing/center/coupon/list');
+        return;
+      }
       const sourceValues = buildCreateValuesFromCoupon(sourceId, visibleStoreIds, {
         isStoreSystem,
       });
@@ -645,7 +658,7 @@ export function CouponFormPage({
       isStoreSystem &&
       getCouponOwnershipType(record) === 'platform'
     ) {
-      Message.error('店铺运营工作台中的平台券仅支持查看和复制');
+      Message.error('店铺运营工作台中的平台券仅支持查看详情');
       openCouponDetail(record.id);
       return;
     }
@@ -1800,7 +1813,7 @@ export function CouponFormPage({
                         disabled={!selectedSkuCount}
                         onClick={openReadonlySkuModal}
                       >
-                        查看商品
+                        查看已选商品
                       </Button>
                     )}
 

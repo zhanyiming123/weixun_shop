@@ -278,9 +278,9 @@ describe('coupon data helpers', () => {
     expect(
       firstShopCoupons.map((item) => getCouponActionKeys(item, true))
     ).toEqual([
-      ['view', 'edit', 'copy', 'void'],
-      ['view', 'edit', 'copy', 'void'],
-      ['view', 'edit', 'copy', 'void'],
+      ['edit', 'copy', 'void', 'view'],
+      ['edit', 'copy', 'void', 'view'],
+      ['edit', 'copy', 'void', 'view'],
     ]);
   });
 });
